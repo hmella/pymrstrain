@@ -1,0 +1,6 @@
+demo/3D/files/msh_file
+demo/2D/mesh/
+build/
+dist/
+tmp/
+PyMRStrain.egg-info/
