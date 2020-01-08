@@ -2,6 +2,7 @@ from PyMRStrain import *
 import numpy as np
 import matplotlib.pyplot as plt
 from numpy.fft import *
+import time
 
 def FFT(x):
   return fftshift(fftn(ifftshift(x)))
@@ -15,7 +16,8 @@ if __name__=="__main__":
   # p = Parameters_2D(mesh_resolution = 0.00035)
   # p['time_steps'] = 18
   # np.save("p.npy", p)
-  p=np.load('p.npy').item()
+  p=np.load('p.npy',allow_pickle=True).item()
+  p["mesh_resolution"] = 0.0002
 
   # Field inhomogeneity
   phi = lambda X, Y: (X+Y)/0.1*0.2
@@ -46,11 +48,14 @@ if __name__=="__main__":
 
   # Generation
   g0.phantom = phantom
+  start = time.time()
   u0, u1, uin, mask = g0.get_image()
+  end = time.time()
+  print(end-start)
 
   # Add noise to images
-  un0 = add_noise_to_DENSE_(u0, mask, sigma=1e-10)
-  un1 = add_noise_to_DENSE_(u1, mask, sigma=1e-10)
+  un0 = add_noise_to_DENSE_(u0, mask, sigma=0.2e-1)
+  un1 = add_noise_to_DENSE_(u1, mask, sigma=0.2e-1)
 
   # Corrected image
   u = un0 - un1
@@ -86,11 +91,11 @@ if __name__=="__main__":
   # plt.savefig('DENSE_B0')
   # plt.show()
 
-  fig = plt.imshow(np.angle(u[...,0,10]*np.conj(-uin[...,0,10])),cmap=plt.get_cmap('gray'),vmin=-np.pi,vmax=np.pi)
-  fig.axes.get_xaxis().set_visible(False)
-  fig.axes.get_yaxis().set_visible(False)
-  plt.savefig('DENSE_B0_corrected')
-  plt.show()
+  # fig = plt.imshow(np.angle(u[...,0,10]*np.conj(-uin[...,0,10])),cmap=plt.get_cmap('gray'),vmin=-np.pi,vmax=np.pi)
+  # fig.axes.get_xaxis().set_visible(False)
+  # fig.axes.get_yaxis().set_visible(False)
+  # plt.savefig('DENSE_B0_corrected')
+  # plt.show()
 
   # fig = plt.imshow(np.angle(u[...,0,10]),cmap=plt.get_cmap('gray'),vmin=-np.pi,vmax=np.pi)
   # fig.axes.get_xaxis().set_visible(False)
@@ -98,10 +103,10 @@ if __name__=="__main__":
   # plt.savefig('DENSE_B0_free')
   # plt.show()
 
-  # # Plot
-  # if rank==0:
-  #   fig, ax = plt.subplots(1, 2)
-  #   tracker = IndexTracker(ax, np.abs(uin[:,:,0,:]), np.angle(uin[:,:,0,:]))
-  #   fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
-  #   fig.suptitle('DENSE volunteer')
-  #   plt.show()
+  # Plot
+  if rank==0:
+    fig, ax = plt.subplots(1, 2)
+    tracker = IndexTracker(ax, np.abs(u[:,:,0,:]), np.angle(u[:,:,0,:]))
+    fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
+    fig.suptitle('DENSE volunteer')
+    plt.show()

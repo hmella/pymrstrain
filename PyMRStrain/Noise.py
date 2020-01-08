@@ -14,7 +14,7 @@ def get_segmentation_mask(u_image, tol=1.0e-15):
 #    condition = u_image != 0.0
 #    tissue      = np.where(condition)
 #    background  = np.where(~condition)
-#        
+#
     return tissue, background
 
 
@@ -108,8 +108,8 @@ def add_noise_to_PC(VENC, sigma, v, mask, wrap=False):
     if wrap:
       for j in range(v.shape[-2]):
         v[...,j,i] = np.mod(v[...,j,i] + VENC, 2*VENC) - VENC
-    
-    
+
+
 # Add noise to displacement images
 def add_noise_to_SPAMM(T, mask, sigma):
     # Noise standard deviation
@@ -144,7 +144,7 @@ def add_noise_to_SPAMM_(T, mask, sigma=[], SNR=20):
   Tn = np.zeros(T.shape, dtype=T.dtype)
 
   # Standard deviation
-  if sigma is None:
+  if sigma == []:
     tt = T[...,0,0]
     sigma = 0.5*np.abs(tt.max()-tt.min())/SNR
   else:
@@ -167,7 +167,7 @@ def add_noise_to_SPAMM_(T, mask, sigma=[], SNR=20):
 
       # Add noise
       Tn[...,j,i] = T[...,j,i] + Nr + 1j*Ni
-  
+
   return Tn
 
 
@@ -189,7 +189,8 @@ def add_noise_to_DENSE_(u, mask, sigma=[], SNR=20, ref=0, recover_noise=False):
     mean  = np.mean(mu[pos])
     sigma = np.sqrt(2)*mean/SNR
   else:
-    peak = np.sqrt(sum([np.power(np.abs(u[...,i,0]),2) for i in range(u.shape[-2])])).max()
+    # peak = np.sqrt(sum([np.power(np.abs(u[...,i,0]),2) for i in range(u.shape[-2])])).max()
+    peak = max([np.abs(u[...,0,0]).max(), np.abs(u[...,1,0]).max()])
     sigma = sigma*peak
 
   # Time steps
