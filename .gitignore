@@ -4,3 +4,5 @@ build/
 dist/
 tmp/
 PyMRStrain.egg-info/
+*.png
+*.npy
