@@ -2,14 +2,14 @@ import numpy as np
 import time
 
 # Spins positions
-x = np.zeros([6000,2])
+x = np.zeros([20000,2])
 x[:,0] = 50
 x[:,1] = 50
 
 # Pixels centers
 cx, cy = np.meshgrid(np.linspace(0,199,200),np.linspace(0,199,200),sparse=True)
 width = 1.0
-shape = [100,100]
+shape = [200,200]
 
 start = time.time()
 
@@ -27,7 +27,7 @@ for i in range(20):
     xpx = np.array([x[i,:]/width for i in range(x.shape[0])])
 
     # Displacement field
-    u = np.random.rand(6000,2)
+    u = np.random.rand(20000,2)
     u /= np.abs(u).max()
     u *= 10
 

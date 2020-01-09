@@ -688,14 +688,14 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   t     = parameters["t"]
   dt    = parameters["dt"]
   t_end = parameters["t_end"]
-  n     = parameters["time_steps"]
+  n_t   = parameters["time_steps"]
 
   # Output image
-  size = np.append(image.array_resolution, [image.type_dim(), n])
+  size = np.append(image.array_resolution, [image.type_dim(), n_t])
   image_0 = np.zeros(size, dtype=complex)
   image_1 = np.zeros(size, dtype=complex)
   image_2 = np.zeros(size, dtype=complex)
-  mask    = np.zeros(np.append(image.array_resolution, n), dtype=np.int16)
+  mask    = np.zeros(np.append(image.array_resolution, n_t), dtype=np.int16)
 
  # Sequence parameters
   T1    = image.T1                     # relaxation
@@ -706,7 +706,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
-    alpha = alpha*np.ones([n],dtype=np.float)
+    alpha = alpha*np.ones([n_t],dtype=np.float)
 
   # Magnetization expressions
   Mxy0 = lambda mask, M, M0, alpha, prod, t, T1, ke, X, u, phi: mask*(+0.5*M*np.exp(-t/T1)*np.exp(-1j*ke*u) +
@@ -759,27 +759,115 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   H = signal.hamming(image.array_resolution[0])
   H = np.outer(H,H)
 
+  #############################################
+  # Connectivity test (start)
+  #############################################
+  # Displacement field
+  u = phantom.displacement(0)
+
+  # Function space of the displacement field
+  V = u.function_space()
+
+  # Determine if the image is either 2D or 3D
+  d = image.type_dim()
+
+  # Spins positions
+  x = V.dof_coordinates()[::d]
+
+  # Voxels centers
+  c = input_image._grid                   # global voxel coordinates
+  voxels, voxel_coords = scatter_image(c) # local indices and voxel coordinates
+  nr_local_voxels = voxels.size           # Number of local voxels
+  nr_voxels = c[0].size                   # Number of global voxels
+
+  # Flattened grid coordinates
+  cx = c[0].flatten()
+  cy = c[1].flatten()
+
+  # Voxel width
+  width = input_image.voxel_size()
+
+  # Connectivity (this is done just once)
+  slice = 0
+  p2s = getConnectivity(x, voxel_coords, voxels,
+                  image.voxel_size(),
+                  nr_local_voxels, nr_voxels, slice)  # pixel-to-spins map
+  s2p = -np.ones([x.shape[0],],dtype=np.int64)   # spin-to-pixel map
+  n = len(p2s)
+  for i in range(n):
+      s2p[p2s[i]] = i
+
+  # Spins positions with respect to its containing voxel center
+  x_rel = np.array([(x[i,0:2]-[cx[s2p[i]],cy[s2p[i]]]) for i in range(x.shape[0])])
+
+  # Dummy images
+  Ix = np.zeros([n,])
+  Iy = np.zeros([n,])
+  m  = np.zeros([n,])
+  u_image = np.zeros(input_image._astute_resolution[[0,1,3]])
+
+  #############################################
+  # Connectivity test (end)
+  #############################################
+
   # Time stepping
   prod = 1
-  for i in range(n):
+  for i in range(n_t):
 
     # Update time
     t += dt
 
     if rank==0 and debug: print("- Time: {:.2f}".format(t))
 
-    # Get displacements in the reference frame
+    # Get displacements in the reference frame and deform mesh
     u = phantom.displacement(i)
+    if True: #deformed:
+      V.mesh().move(u)
 
-    # Project to fem-image in the deformed frame
-    u_image, m, original_m = _project2image_vector(u, u, input_image, parameters["mesh_resolution"])
+    # Displacement in terms of pixels
+    (pixel_u, subpixel_u) = np.divmod(u.vector().reshape((-1,2)), width)
+    (pixel_u_2, subpixel_u_2) = np.divmod(subpixel_u + x_rel, 0.5*width)
+
+    # Change spins connectivity according to the new positions
+    for j in range(x.shape[0]):
+        if s2p[j] != -1:
+            s2p[j] += input_image.array_resolution[1]*(pixel_u[j,1] + pixel_u_2[j,1])
+            s2p[j] += pixel_u[j,0] + pixel_u_2[j,0]
+            x_rel[j,:] = subpixel_u_2[j,:] - 0.5*width
+
+    # Update pixel-to-spins connectivity
+    p2s = [[] for j in range(n)]
+    for spin, pixel in enumerate(s2p):
+      if pixel != -1:
+        p2s[pixel].append(spin)
+
+    # Update relative spins positions
+    x_rel_1 = np.array([(x[j,0:2]-[cx[s2p[j]],cy[s2p[j]]]) for j in range(x.shape[0])])
+
+    # Fill images
+    for j in range(n):
+      if p2s[j] != []:
+        Ix[j] = np.mean(u.vector().reshape((-1,2))[p2s[j],0])
+        Iy[j] = np.mean(u.vector().reshape((-1,2))[p2s[j],1])
+        m[j]  = 1
+    u_image[...,0] = Ix.reshape(input_image.array_resolution)
+    u_image[...,1] = Iy.reshape(input_image.array_resolution)
+
+    # # Project to fem-image in the deformed frame
+    # u_image, m, original_m = _project2image_vector(u, u, input_image, parameters["mesh_resolution"])
+
+    # fig = plt.imshow(u_image[...,0],cmap=plt.get_cmap('gray'))
+    # fig.axes.get_xaxis().set_visible(False)
+    # fig.axes.get_yaxis().set_visible(False)
+    # plt.show()
 
     # Save mask
     if np.any(chck):
-      _mask = original_m
+      _mask = m.reshape(input_image.array_resolution)#original_m
     else:
-      _mask = m
-    mask[...,i] = _mask
+      _mask = m.reshape(input_image.array_resolution)
+    mask[...,i] = 1#_mask
+    mm = m.reshape(input_image.array_resolution)
 
     # Grid to evaluate magnetizations
     imgrid = input_image._grid
@@ -788,9 +876,9 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     for j in range(image_0.shape[-2]):
 
       # Magnetization expressions
-      tmp0 = Mxy0(m, M, M0, alpha[i], prod, t, T1, ke[j], imgrid[j]-u_image[...,j], u_image[...,j], phi)
-      tmp1 = Mxy1(m, M, M0, alpha[i], prod, t, T1, ke[j], imgrid[j]-u_image[...,j], u_image[...,j], phi)
-      tmp2 = Mxyin(m, M, M0, alpha[i], prod, t, T1, ke[j], phi)
+      tmp0 = Mxy0(mm, M, M0, alpha[i], prod, t, T1, ke[j], imgrid[j]-u_image[...,j], u_image[...,j], phi)
+      tmp1 = Mxy1(mm, M, M0, alpha[i], prod, t, T1, ke[j], imgrid[j]-u_image[...,j], u_image[...,j], phi)
+      tmp2 = Mxyin(mm, M, M0, alpha[i], prod, t, T1, ke[j], phi)
 
       # Check if images should be cropped
       if np.any(chck):
@@ -813,82 +901,25 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
         image_1[...,j,i] = tmp1
         image_2[...,j,i] = tmp2
 
+    # fig = plt.imshow(np.angle(image_0[...,j,i]),cmap=plt.get_cmap('gray'))
+    # fig.axes.get_xaxis().set_visible(False)
+    # fig.axes.get_yaxis().set_visible(False)
+    # plt.show()
+
     # Flip angles product
     prod = prod*np.cos(alpha[i])
 
+    # Reset mesh deformation
+    if True: #deformed:
+      u.vector()[:] *= -1.0
+      V.mesh().move(u)
+
+    # Reset dummy values
+    Ix[:] = 0
+    Iy[:] = 0
+    m[:] = 0
+
   return image_0, image_1, image_2, mask
-
-
-#######################################
-#   Projections
-#######################################
-# Project scalar fields onto images
-def _project2image_scalar(displacement, taglines, image, mesh_resolution):
-  # Function space of tag-lines
-  V = taglines.function_space()
-
-  # Image vector dimension
-  d = image.type_dim()
-
-  # Ventricle dofmap (dofs coordinates changes with time)
-  dofs = V.vertex_to_dof_map()
-
-  # Move the ventricle according with u
-  V.mesh().move(displacement)
-
-  # Updated ventricular dof coordinates
-  x = V.dof_coordinates()
-
-  # Number of slices
-  number_of_slices = image._astute_resolution[2]
-
-  # Output image
-  o_image = np.zeros(image._astute_resolution)
-  weights = np.zeros(o_image.shape)
-
-  # Projection scheme
-  fem2image = image._scheme
-
-  # Voxel and element volumes
-  voxel_vol = np.prod(image.voxel_size(), axis=0)
-  elem_vol  = np.pi*mesh_resolution**d
-  if d > 2: elem_vol = 4.0/3.0*elem_vol
-
-  # Estimated number of dofs in voxel
-  voxel_dofs = int(round(8.0*voxel_vol/elem_vol))
-  mask = np.zeros([voxel_dofs,], dtype=int)
-
-  # Create local data
-  local_dofs, local_coords, local_values = scatter_dofs(dofs, x, taglines.vector())
-
-  # Fill image
-  for i in range(number_of_slices):
-
-    # Check dofs
-    [spamm_image, lweights] = fem2image(mask, local_coords, image.sparse_grid, image.voxel_size(),
-                                       local_dofs, local_values, image.resolution, i)
-
-    # Gather results
-    spamm_image = gather_image(spamm_image)
-    lweights    = gather_image(lweights)
-
-    # Avoid dividing by zero
-    if rank is not 0:
-      lweights = 1
-
-    # Weighted image
-    spamm_image = np.divide(spamm_image, lweights)
-
-    # Fill image
-    o_image[...,i] = spamm_image
-    weights[...,i] = lweights
-
-  # Reset mesh
-  displacement.vector()[:] *= -1.0
-  V.mesh().move(displacement)
-  displacement.vector()[:] *= -1.0
-
-  return np.squeeze(o_image), np.squeeze(weights)
 
 
 # Project vector fields onto images
@@ -936,27 +967,26 @@ def _project2image_vector(displacement, function, image, mesh_resolution, deform
     _nr_voxels = image._original_grid[0].size
     _resolution = image._original_array_resolution
 
+  # Connectivity (this should be done once)
+  slice = 0
+  p2s = getConnectivity(x, voxel_coords, voxels,
+                  image.voxel_size(),
+                  local_size, nr_voxels, slice)  # pixel-to-spins map
+  s2p = -np.ones([x.shape[0],],dtype=np.int64)   # spin-to-pixel map
+  n = len(p2s)
+  for i in range(n):
+      s2p[p2s[i]] = i
+
   # Fill image
   for slice in range(number_of_slices):
 
 
-    TEST = 1
+    TEST = 2
     if TEST == 1:
         #####################################
         # connectivity test
         #####################################
-        conn = getConnectivity(x, voxel_coords, voxels,
-                        image.voxel_size(),
-                        local_size, nr_voxels, slice)
-        testx = np.array([(np.mean(function.vector()[0::2][conn[i]]),i) for i in range(len(conn)) if conn[i] != []])
-        testy = np.array([(np.mean(function.vector()[1::2][conn[i]]),i) for i in range(len(conn)) if conn[i] != []])
-        Ix = np.zeros([79*79,])
-        Iy = np.zeros([79*79,])
-        mask = np.zeros([79*79,])
-        Ix[testx[:,1].astype(int)] = testx[:,0]
-        Iy[testy[:,1].astype(int)] = testy[:,0]
-        mask[testx[:,1].astype(int)] = 1
-        I = (Ix,Iy)
+
 
         # fig = plt.imshow(I,cmap=plt.get_cmap('gray'))
         # fig.axes.get_xaxis().set_visible(False)
@@ -966,6 +996,7 @@ def _project2image_vector(displacement, function, image, mesh_resolution, deform
         #####################################
 
         # Get mask
+        mask = 0
         weights = mask + 1e-10
 
         # Get original mask
@@ -1036,3 +1067,75 @@ def _project2image_vector(displacement, function, image, mesh_resolution, deform
     displacement.vector()[:] *= -1.0
 
   return np.squeeze(o_image), mask, omask
+
+
+# #######################################
+# #   Projections
+# #######################################
+# # Project scalar fields onto images
+# def _project2image_scalar(displacement, taglines, image, mesh_resolution):
+#   # Function space of tag-lines
+#   V = taglines.function_space()
+#
+#   # Image vector dimension
+#   d = image.type_dim()
+#
+#   # Ventricle dofmap (dofs coordinates changes with time)
+#   dofs = V.vertex_to_dof_map()
+#
+#   # Move the ventricle according with u
+#   V.mesh().move(displacement)
+#
+#   # Updated ventricular dof coordinates
+#   x = V.dof_coordinates()
+#
+#   # Number of slices
+#   number_of_slices = image._astute_resolution[2]
+#
+#   # Output image
+#   o_image = np.zeros(image._astute_resolution)
+#   weights = np.zeros(o_image.shape)
+#
+#   # Projection scheme
+#   fem2image = image._scheme
+#
+#   # Voxel and element volumes
+#   voxel_vol = np.prod(image.voxel_size(), axis=0)
+#   elem_vol  = np.pi*mesh_resolution**d
+#   if d > 2: elem_vol = 4.0/3.0*elem_vol
+#
+#   # Estimated number of dofs in voxel
+#   voxel_dofs = int(round(8.0*voxel_vol/elem_vol))
+#   mask = np.zeros([voxel_dofs,], dtype=int)
+#
+#   # Create local data
+#   local_dofs, local_coords, local_values = scatter_dofs(dofs, x, taglines.vector())
+#
+#   # Fill image
+#   for i in range(number_of_slices):
+#
+#     # Check dofs
+#     [spamm_image, lweights] = fem2image(mask, local_coords, image.sparse_grid, image.voxel_size(),
+#                                        local_dofs, local_values, image.resolution, i)
+#
+#     # Gather results
+#     spamm_image = gather_image(spamm_image)
+#     lweights    = gather_image(lweights)
+#
+#     # Avoid dividing by zero
+#     if rank is not 0:
+#       lweights = 1
+#
+#     # Weighted image
+#     spamm_image = np.divide(spamm_image, lweights)
+#
+#     # Fill image
+#     o_image[...,i] = spamm_image
+#     weights[...,i] = lweights
+#
+#   # Reset mesh
+#   displacement.vector()[:] *= -1.0
+#   V.mesh().move(displacement)
+#   displacement.vector()[:] *= -1.0
+#
+#   return np.squeeze(o_image), np.squeeze(weights)

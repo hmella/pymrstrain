@@ -25,7 +25,7 @@ if __name__=="__main__":
   # Create complimentary image
   ke = 0.12               # encoding frequency [cycles/mm]
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
-  N = 33                  # resolution
+  N = 30                  # resolution
   I0 = DENSEImage(FOV=np.array([0.1, 0.1]),
             resolution=np.array([N, N]),
             encoding_frequency=np.array([ke,ke]),
