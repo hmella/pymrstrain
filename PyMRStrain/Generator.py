@@ -763,13 +763,13 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   # Connectivity test (start)
   #############################################
   # Displacement field
-  u = phantom.displacement(0)
+  # u = phantom.displacement(0)
 
   # Function space of the displacement field
-  V = u.function_space()
+  V = phantom.V
 
   # Determine if the image is either 2D or 3D
-  d = image.type_dim()
+  d = input_image.type_dim()
 
   # Spins positions
   x = V.dof_coordinates()[::d]
@@ -789,16 +789,30 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
   # Connectivity (this is done just once)
   slice = 0
+  print(res)
+  print(input_image.array_resolution)
   p2s = getConnectivity(x, voxel_coords, voxels,
                   image.voxel_size(),
                   nr_local_voxels, nr_voxels, slice)  # pixel-to-spins map
-  s2p = -np.ones([x.shape[0],],dtype=np.int64)   # spin-to-pixel map
+  s2p = -np.ones([x.shape[0],],dtype=np.int64)        # spin-to-pixel map
   n = len(p2s)
+
+  sum = 0
+  for i in range(n):
+    sum += len(p2s[i])
+  print("El problema esta aqui!")
+  print("Al dejar spins sin conectar con voxeles el arreglo s2p tendra -1")
+  print("en algunas locaciones. Como consecuencia, en la estimacion de x_rel")
+  print("habran posiciones relativas muy grandes")
+  print(sum,x.shape[0])
+
   for i in range(n):
       s2p[p2s[i]] = i
 
   # Spins positions with respect to its containing voxel center
-  x_rel = np.array([(x[i,0:2]-[cx[s2p[i]],cy[s2p[i]]]) for i in range(x.shape[0])])
+  # x_rel = np.array([(x[i,0:2]-[c[0][0,s2p[i]],c[1][s2p[i],0]]) for i in range(x.shape[0])])
+  x_rel = x[:,0:2] - np.array([cx[s2p],cy[s2p]]).T
+  print(x_rel)
 
   # Dummy images
   Ix = np.zeros([n,])
@@ -829,11 +843,18 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     (pixel_u_2, subpixel_u_2) = np.divmod(subpixel_u + x_rel, 0.5*width)
 
     # Change spins connectivity according to the new positions
-    for j in range(x.shape[0]):
-        if s2p[j] != -1:
-            s2p[j] += input_image.array_resolution[1]*(pixel_u[j,1] + pixel_u_2[j,1])
-            s2p[j] += pixel_u[j,0] + pixel_u_2[j,0]
-            x_rel[j,:] = subpixel_u_2[j,:] - 0.5*width
+    # for j in range(x.shape[0]):
+    #     if s2p[j] != -1:
+    #         s2p[j] += input_image.array_resolution[1]*(pixel_u[j,1] + pixel_u_2[j,1])
+    #         s2p[j] += pixel_u[j,0] + pixel_u_2[j,0]
+    #         x_rel[j,:] = subpixel_u_2[j,:] - 0.5*width
+    print(s2p)
+    print(np.abs(x_rel).max())
+    print(np.abs(subpixel_u).max())
+    s2p[:] += input_image.array_resolution[1]*(pixel_u[:,1] + pixel_u_2[:,1]).astype(np.int64)
+    s2p[:] += (pixel_u[:,0] + pixel_u_2[:,0]).astype(np.int64)
+    # x_rel[:,:] = subpixel_u_2[:,:] - 0.5*width
+    print(s2p)
 
     # Update pixel-to-spins connectivity
     p2s = [[] for j in range(n)]
@@ -842,7 +863,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
         p2s[pixel].append(spin)
 
     # Update relative spins positions
-    x_rel_1 = np.array([(x[j,0:2]-[cx[s2p[j]],cy[s2p[j]]]) for j in range(x.shape[0])])
+    # x_rel = x[:,0:2] + u.vector().reshape((-1,2)) - np.array([cx[s2p],cy[s2p]]).T
 
     # Fill images
     for j in range(n):

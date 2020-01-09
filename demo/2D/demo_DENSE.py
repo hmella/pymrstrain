@@ -17,7 +17,7 @@ if __name__=="__main__":
   # p['time_steps'] = 18
   # np.save("p.npy", p)
   p=np.load('p.npy',allow_pickle=True).item()
-  p["mesh_resolution"] = 0.0002
+  p["mesh_resolution"] = 0.00035
 
   # Field inhomogeneity
   phi = lambda X, Y: (X+Y)/0.1*0.2
@@ -25,7 +25,7 @@ if __name__=="__main__":
   # Create complimentary image
   ke = 0.12               # encoding frequency [cycles/mm]
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
-  N = 30                  # resolution
+  N = 100                 # resolution
   I0 = DENSEImage(FOV=np.array([0.1, 0.1]),
             resolution=np.array([N, N]),
             encoding_frequency=np.array([ke,ke]),

@@ -22,6 +22,9 @@ std::vector<std::vector<int>> getConnectivity(const Eigen::MatrixXd &x,
   // Vector for group of voxels
   std::vector<std::vector<int>> V;
 
+  // Vector for individual voxel
+  std::vector<int> v;
+
   // Positions, counter and iterators
   // (OBS: indices i and j represents row and col positions. However,
   //       these indices are flipped with respect to the spatial
@@ -36,17 +39,17 @@ std::vector<std::vector<int>> getConnectivity(const Eigen::MatrixXd &x,
   // Iterates over voxels to perform logical operations
   for (i=0; i<local_size; i++) {
 
-    // Vector for individual voxel
-    std::vector<int> v;
 
     // Loop over ventricle dofs (Is inside?)
     for (k=0; k<M; k++) {
-      if (std::abs(x(k,0) - x_i[0](i)) >= dx || std::abs(x(k,1) - x_i[1](i)) >= dy) {}
-      else {
+      if (std::abs(x(k,0) - x_i[0](i)) > dx || std::abs(x(k,1) - x_i[1](i)) > dy){
+      }
+      else{
         v.push_back(k);
       }
     }
     V.push_back(v);
+    v.clear();
   }
 
   return V;
