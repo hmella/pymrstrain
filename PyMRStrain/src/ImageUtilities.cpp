@@ -36,20 +36,15 @@ std::vector<std::vector<int>> getConnectivity(const Eigen::MatrixXd &x,
   const double dx = 0.5*voxel_size[0];
   const double dy = 0.5*voxel_size[1];
 
-  py::print(x);
-  py::print();
-
   // Iterates over voxels to perform logical operations
   for (i=0; i<local_size; i++) {
 
     // Loop over ventricle dofs (Is inside?)
     for (k=0; k<M; k++) {
-
       // Stores the spins that are inside of the pixel
       if (std::abs(x(k,0) - x_i[0](i)) <= dx && std::abs(x(k,1) - x_i[1](i)) <= dy){
         v.push_back(k);
       }
-
     }
 
     // Store each pixel in the global list

@@ -827,7 +827,6 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     (pixel_u_2, subpixel_u_2) = np.divmod(subpixel_u + x_rel, 0.5*width)
 
     # Change spins connectivity according to the new positions
-    # print(s2p)
     s2p[:] += input_image.array_resolution[1]*(pixel_u[:,1] + pixel_u_2[:,1]).astype(np.int64)
     s2p[:] += (pixel_u[:,0] + pixel_u_2[:,0]).astype(np.int64)
 
