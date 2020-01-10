@@ -36,7 +36,8 @@ class ImageBase(object):
 
   # Pixel size
   def voxel_size(self):
-    return np.divide(self.FOV, self.resolution)
+    return np.array([self._grid[0][0,1]-self._grid[0][0,0],
+                    self._grid[1][1,0]-self._grid[1][0,0]])
 
   # Practical resolution
   # OBS: resolution of the image is intended to be the number of x-coordinates

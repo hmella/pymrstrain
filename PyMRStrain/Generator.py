@@ -759,12 +759,6 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   H = signal.hamming(image.array_resolution[0])
   H = np.outer(H,H)
 
-  #############################################
-  # Connectivity test (start)
-  #############################################
-  # Displacement field
-  # u = phantom.displacement(0)
-
   # Function space of the displacement field
   V = phantom.V
 
@@ -789,40 +783,29 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
   # Connectivity (this is done just once)
   slice = 0
-  print(res)
-  print(input_image.array_resolution)
+  n = nr_local_voxels
   p2s = getConnectivity(x, voxel_coords, voxels,
                   image.voxel_size(),
                   nr_local_voxels, nr_voxels, slice)  # pixel-to-spins map
   s2p = -np.ones([x.shape[0],],dtype=np.int64)        # spin-to-pixel map
-  n = len(p2s)
-
-  sum = 0
   for i in range(n):
-    sum += len(p2s[i])
-  print("El problema esta aqui!")
-  print("Al dejar spins sin conectar con voxeles el arreglo s2p tendra -1")
-  print("en algunas locaciones. Como consecuencia, en la estimacion de x_rel")
-  print("habran posiciones relativas muy grandes")
-  print(sum,x.shape[0])
+      if p2s[i] != []:
+          s2p[p2s[i]] = i
 
-  for i in range(n):
-      s2p[p2s[i]] = i
+  # s2p = np.array(getConnectivity(x, voxel_coords, voxels,
+  #                 image.voxel_size(),
+  #                 nr_local_voxels, nr_voxels, slice))  # pixel-to-spins map
+  # p2s = [[] for j in range(n)]
+  # [p2s[pixel].append(spin) for (spin, pixel) in enumerate(s2p)]
 
   # Spins positions with respect to its containing voxel center
-  # x_rel = np.array([(x[i,0:2]-[c[0][0,s2p[i]],c[1][s2p[i],0]]) for i in range(x.shape[0])])
   x_rel = x[:,0:2] - np.array([cx[s2p],cy[s2p]]).T
-  print(x_rel)
 
   # Dummy images
   Ix = np.zeros([n,])
   Iy = np.zeros([n,])
   m  = np.zeros([n,])
   u_image = np.zeros(input_image._astute_resolution[[0,1,3]])
-
-  #############################################
-  # Connectivity test (end)
-  #############################################
 
   # Time stepping
   prod = 1
@@ -835,41 +818,32 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
     # Get displacements in the reference frame and deform mesh
     u = phantom.displacement(i)
+    reshaped_u = u.vector().reshape((-1,2))
     if True: #deformed:
       V.mesh().move(u)
 
     # Displacement in terms of pixels
-    (pixel_u, subpixel_u) = np.divmod(u.vector().reshape((-1,2)), width)
+    (pixel_u, subpixel_u) = np.divmod(reshaped_u, width)
     (pixel_u_2, subpixel_u_2) = np.divmod(subpixel_u + x_rel, 0.5*width)
 
     # Change spins connectivity according to the new positions
-    # for j in range(x.shape[0]):
-    #     if s2p[j] != -1:
-    #         s2p[j] += input_image.array_resolution[1]*(pixel_u[j,1] + pixel_u_2[j,1])
-    #         s2p[j] += pixel_u[j,0] + pixel_u_2[j,0]
-    #         x_rel[j,:] = subpixel_u_2[j,:] - 0.5*width
-    print(s2p)
-    print(np.abs(x_rel).max())
-    print(np.abs(subpixel_u).max())
+    # print(s2p)
     s2p[:] += input_image.array_resolution[1]*(pixel_u[:,1] + pixel_u_2[:,1]).astype(np.int64)
     s2p[:] += (pixel_u[:,0] + pixel_u_2[:,0]).astype(np.int64)
-    # x_rel[:,:] = subpixel_u_2[:,:] - 0.5*width
-    print(s2p)
 
     # Update pixel-to-spins connectivity
     p2s = [[] for j in range(n)]
-    for spin, pixel in enumerate(s2p):
-      if pixel != -1:
-        p2s[pixel].append(spin)
+    [p2s[pixel].append(spin) for spin, pixel in enumerate(s2p) if pixel != -1]
 
     # Update relative spins positions
-    # x_rel = x[:,0:2] + u.vector().reshape((-1,2)) - np.array([cx[s2p],cy[s2p]]).T
+    x_rel = x[:,0:2] - np.array([cx[s2p],cy[s2p]]).T
 
     # Fill images
+    # reshaped_u = u.vector().reshape((-1,2))
     for j in range(n):
       if p2s[j] != []:
-        Ix[j] = np.mean(u.vector().reshape((-1,2))[p2s[j],0])
-        Iy[j] = np.mean(u.vector().reshape((-1,2))[p2s[j],1])
+        Ix[j] = np.mean(reshaped_u[p2s[j],0])
+        Iy[j] = np.mean(reshaped_u[p2s[j],1])
         m[j]  = 1
     u_image[...,0] = Ix.reshape(input_image.array_resolution)
     u_image[...,1] = Iy.reshape(input_image.array_resolution)
