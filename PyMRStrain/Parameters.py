@@ -1,14 +1,13 @@
 import numpy as np
 
-def Parameters_2D(mesh_resolution=1e-03,
-                  dt=0.0333, decimals=8):
+def Parameters_2D(mesh_resolution=1e-03, decimals=8, time_steps=20):
     ''' Generate parameters for simulations
     '''
     # Time stepping parameters
     t     = 0.0
-    dt    = dt
     t_end = 1.0
     time_steps = 30
+    dt = t_end/time_steps
 
     # Ventricle geometry
     tau  = np.round(np.random.uniform(0.0075, 0.0125),decimals=decimals)

@@ -8,56 +8,7 @@ namespace py = pybind11;
 // This functions builds the map between pixels and voxels
 // creating a vector of vectors containing the spins inside
 // a specific voxel
-std::vector<std::vector<int>> getConnectivity(const Eigen::MatrixXd &x,
-                        const std::vector<Eigen::VectorXd> &x_i,
-                        const std::vector<int> &local_voxels,
-                        const std::vector<double> &voxel_size,
-                        const size_t &local_size,
-                        const size_t &size,
-                        const size_t &slice) {
-
-  // Number of DOFs in ventricle
-  const size_t M = x.rows();
-
-  // Vector for group of voxels
-  std::vector<std::vector<int>> V(local_size);
-
-  // Vector for individual voxel
-  std::vector<int> v;
-
-  // Positions, counter and iterators
-  // (OBS: indices i and j represents row and col positions. However,
-  //       these indices are flipped with respect to the spatial
-  //       coordinates of the image 'x_i'. This mean that 'i' is varying
-  //       across the y-coordinate and 'j' across x-coordinate.
-  size_t i, k;
-
-  // Voxel half-width
-  const double dx = 0.5*voxel_size[0];
-  const double dy = 0.5*voxel_size[1];
-
-  // Iterates over voxels to perform logical operations
-  for (i=0; i<local_size; i++) {
-
-    // Loop over ventricle dofs (Is inside?)
-    for (k=0; k<M; k++) {
-      // Stores the spins that are inside of the pixel
-      if (std::abs(x(k,0) - x_i[0](i)) <= dx && std::abs(x(k,1) - x_i[1](i)) <= dy){
-        v.push_back(k);
-      }
-    }
-
-    // Store each pixel in the global list
-    V[i] = v;
-    v.clear();
-
-  }
-
-  return V;
-}
-
-// ////////////////////////////////////////
-// std::vector<int> getConnectivity(const Eigen::MatrixXd &x,
+// std::vector<std::vector<int>> getConnectivity(const Eigen::MatrixXd &x,
 //                         const std::vector<Eigen::VectorXd> &x_i,
 //                         const std::vector<int> &local_voxels,
 //                         const std::vector<double> &voxel_size,
@@ -69,7 +20,10 @@ std::vector<std::vector<int>> getConnectivity(const Eigen::MatrixXd &x,
 //   const size_t M = x.rows();
 //
 //   // Vector for group of voxels
-//   std::vector<int> V(M);
+//   std::vector<std::vector<int>> V(local_size);
+//
+//   // Vector for individual voxel
+//   std::vector<int> v;
 //
 //   // Positions, counter and iterators
 //   // (OBS: indices i and j represents row and col positions. However,
@@ -83,21 +37,67 @@ std::vector<std::vector<int>> getConnectivity(const Eigen::MatrixXd &x,
 //   const double dy = 0.5*voxel_size[1];
 //
 //   // Iterates over voxels to perform logical operations
-//   for (k=0; k<M; k++) {
-//     // Loop over ventricle dofs (Is inside?)
-//     for (i=0; i<local_size; i++) {
+//   for (i=0; i<local_size; i++) {
 //
+//     // Loop over ventricle dofs (Is inside?)
+//     for (k=0; k<M; k++) {
 //       // Stores the spins that are inside of the pixel
-//       if ((std::abs(x(k,0) - x_i[0](i)) <= dx) &&
-//           (std::abs(x(k,1) - x_i[1](i)) <= dy)){
-//         V[k] = i;
-//         break;
+//       if (std::abs(x(k,0) - x_i[0](i)) <= dx && std::abs(x(k,1) - x_i[1](i)) <= dy){
+//         v.push_back(k);
 //       }
 //     }
+//
+//     // Store each pixel in the global list
+//     V[i] = v;
+//     v.clear();
+//
 //   }
 //
 //   return V;
 // }
+
+////////////////////////////////////////
+std::vector<int> getConnectivity(const Eigen::MatrixXd &x,
+                        const std::vector<Eigen::VectorXd> &x_i,
+                        const std::vector<int> &local_voxels,
+                        const std::vector<double> &voxel_size,
+                        const size_t &local_size,
+                        const size_t &size,
+                        const size_t &slice) {
+
+  // Number of DOFs in ventricle
+  const size_t M = x.rows();
+
+  // Vector for group of voxels
+  std::vector<int> V(M);
+
+  // Positions, counter and iterators
+  // (OBS: indices i and j represents row and col positions. However,
+  //       these indices are flipped with respect to the spatial
+  //       coordinates of the image 'x_i'. This mean that 'i' is varying
+  //       across the y-coordinate and 'j' across x-coordinate.
+  size_t i, k;
+
+  // Voxel half-width
+  const double dx = 0.5*voxel_size[0];
+  const double dy = 0.5*voxel_size[1];
+
+  // Iterates over voxels to perform logical operations
+  for (k=0; k<M; k++) {
+    // Loop over ventricle dofs (Is inside?)
+    for (i=0; i<local_size; i++) {
+
+      // Stores the spins that are inside of the pixel
+      if ((std::abs(x(k,0) - x_i[0](i)) <= dx) &&
+          (std::abs(x(k,1) - x_i[1](i)) <= dy)){
+        V[k] = i;
+        break;
+      }
+    }
+  }
+
+  return V;
+}
 
 
 

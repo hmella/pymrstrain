@@ -27,36 +27,39 @@ for i in range(n):
     s2p[p2s[i]] = i
 print(s2p)
 
-# Spins positions wrt to the voxel center
-xpx = np.array([(x[i,:]-[c[0][s2p[i]],c[1][s2p[i]]]) for i in range(x.shape[0])])
-print(xpx)
+# Spins positions wrt to the lower-left voxel corner
+xpx = x[:,:]-(np.array([c[0][s2p],c[1][s2p]])-0.5*width).T
 
 # Displacement field
-u = np.array([[0.26,0.26],
+u = np.array([[1.0,0.24],
               [0,0],
               [0,0],
               [0,0],
               [0,0],
               [0,0]])
 
-# Updated positions
-xu = x + u
+print(xpx.T)
+print(u.T)
+print((xpx+u).T)
+print()
 
 # Displacement in terms of pixels
-(pixel_u, subpixel_u) = np.divmod(u, width)
-(pixel_u_2, subpixel_u_2) = np.divmod(subpixel_u + xpx, 0.5*width)
-print((pixel_u,subpixel_u))
-print((pixel_u_2,subpixel_u_2))
+pixel_u = ((xpx+u)/width).astype(int)
+subpixel_u = xpx+u - pixel_u
+
+# (pixel_u, subpixel_u) = np.divmod(u, width)
+# (pixel_u_2, subpixel_u_2) = np.divmod(subpixel_u + xpx, 0.5*width)
+
+print(pixel_u.T)
+print(subpixel_u.T)
+print()
 
 # Change spins connectivity according to the new positions
 for j in range(x.shape[0]):
     if s2p[j] != -1:
-        s2p[j] += shape[1]*pixel_u[j,1] + shape[1]*pixel_u_2[j,1]
-        s2p[j] += pixel_u[j,0] + pixel_u_2[j,0]
-        xpx[j,:] = subpixel_u_2[j,:] - 0.5*width
+        s2p[j] += shape[1]*pixel_u[j,1] + pixel_u[j,0]
 print(p2s)
 print(s2p)
-print(xpx)
 
 # Update pixel-to-spins connectivity
 p2s = [[] for j in range(n)]
@@ -64,3 +67,7 @@ for spin, pixel in enumerate(s2p):
   if pixel != -1:
     p2s[pixel].append(spin)
 print(p2s)
+
+# Update relative spins positions
+xpx = subpixel_u
+print(xpx)

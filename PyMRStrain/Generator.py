@@ -778,28 +778,24 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   cx = c[0].flatten()
   cy = c[1].flatten()
 
-  # Voxel width
+  # Voxel width and image resolution
   width = input_image.voxel_size()
+  resolution = input_image.array_resolution
 
   # Connectivity (this is done just once)
   slice = 0
   n = nr_local_voxels
-  p2s = getConnectivity(x, voxel_coords, voxels,
+  s2p = np.array(getConnectivity(x, voxel_coords, voxels,
                   image.voxel_size(),
-                  nr_local_voxels, nr_voxels, slice)  # pixel-to-spins map
-  s2p = -np.ones([x.shape[0],],dtype=np.int64)        # spin-to-pixel map
-  for i in range(n):
-      if p2s[i] != []:
-          s2p[p2s[i]] = i
-
-  # s2p = np.array(getConnectivity(x, voxel_coords, voxels,
-  #                 image.voxel_size(),
-  #                 nr_local_voxels, nr_voxels, slice))  # pixel-to-spins map
-  # p2s = [[] for j in range(n)]
-  # [p2s[pixel].append(spin) for (spin, pixel) in enumerate(s2p)]
+                  nr_local_voxels, nr_voxels, slice))  # pixel-to-spins map
+  p2s = [[] for j in range(n)]
+  [p2s[pixel].append(spin) for (spin, pixel) in enumerate(s2p)]
 
   # Spins positions with respect to its containing voxel center
-  x_rel = x[:,0:2] - np.array([cx[s2p],cy[s2p]]).T
+  corners = np.array([cx[s2p],cy[s2p]]).T
+  corners[:,0] -= 0.5*width[0]
+  corners[:,1] -= 0.5*width[1]
+  x_rel = x[:,0:2] - corners
 
   # Dummy images
   Ix = np.zeros([n,])
@@ -809,6 +805,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
   # Time stepping
   prod = 1
+  upre = 0
   for i in range(n_t):
 
     # Update time
@@ -819,23 +816,20 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     # Get displacements in the reference frame and deform mesh
     u = phantom.displacement(i)
     reshaped_u = u.vector().reshape((-1,2))
-    if True: #deformed:
-      V.mesh().move(u)
 
     # Displacement in terms of pixels
-    (pixel_u, subpixel_u) = np.divmod(reshaped_u, width)
-    (pixel_u_2, subpixel_u_2) = np.divmod(subpixel_u + x_rel, 0.5*width)
+    pixel_u = np.divide(x_rel + reshaped_u - upre, width).astype(np.int64)
+    subpixel_u = x_rel + reshaped_u - upre - np.multiply(pixel_u, width)
 
     # Change spins connectivity according to the new positions
-    s2p[:] += input_image.array_resolution[1]*(pixel_u[:,1] + pixel_u_2[:,1]).astype(np.int64)
-    s2p[:] += (pixel_u[:,0] + pixel_u_2[:,0]).astype(np.int64)
+    s2p[:] += resolution[1]*pixel_u[:,1] + pixel_u[:,0]
 
     # Update pixel-to-spins connectivity
     p2s = [[] for j in range(n)]
     [p2s[pixel].append(spin) for spin, pixel in enumerate(s2p) if pixel != -1]
 
     # Update relative spins positions
-    x_rel = x[:,0:2] - np.array([cx[s2p],cy[s2p]]).T
+    x_rel = subpixel_u
 
     # Fill images
     # reshaped_u = u.vector().reshape((-1,2))
@@ -844,8 +838,8 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
         Ix[j] = np.mean(reshaped_u[p2s[j],0])
         Iy[j] = np.mean(reshaped_u[p2s[j],1])
         m[j]  = 1
-    u_image[...,0] = Ix.reshape(input_image.array_resolution)
-    u_image[...,1] = Iy.reshape(input_image.array_resolution)
+    u_image[...,0] = Ix.reshape(resolution)
+    u_image[...,1] = Iy.reshape(resolution)
 
     # # Project to fem-image in the deformed frame
     # u_image, m, original_m = _project2image_vector(u, u, input_image, parameters["mesh_resolution"])
@@ -857,11 +851,11 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
     # Save mask
     if np.any(chck):
-      _mask = m.reshape(input_image.array_resolution)#original_m
+      _mask = m.reshape(resolution)#original_m
     else:
-      _mask = m.reshape(input_image.array_resolution)
+      _mask = m.reshape(resolution)
     mask[...,i] = 1#_mask
-    mm = m.reshape(input_image.array_resolution)
+    mm = m.reshape(resolution)
 
     # Grid to evaluate magnetizations
     imgrid = input_image._grid
@@ -903,15 +897,13 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     # Flip angles product
     prod = prod*np.cos(alpha[i])
 
-    # Reset mesh deformation
-    if True: #deformed:
-      u.vector()[:] *= -1.0
-      V.mesh().move(u)
-
     # Reset dummy values
     Ix[:] = 0
     Iy[:] = 0
     m[:] = 0
+
+    # Copy previous displcement field
+    upre = np.copy(reshaped_u)
 
   return image_0, image_1, image_2, mask
 

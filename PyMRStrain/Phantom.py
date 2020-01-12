@@ -72,9 +72,9 @@ class PhantomBase:
             Tp[i] = 1.0
         else:
             Tp[i] = np.exp(-11*(t_tmp[i] - tC))
-
-    # filtering
-    Tp = gaussian_filter(Tp, sigma=3)
+    
+    # # filtering
+    # Tp = gaussian_filter(Tp, sigma=3)
     Tp = Tp/Tp.max()
 
     # modulation resampling
