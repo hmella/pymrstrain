@@ -1,5 +1,5 @@
 demo/3D/files/msh_file
-demo/2D/mesh/
+*mesh/
 build/
 dist/
 tmp/
