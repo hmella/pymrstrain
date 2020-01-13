@@ -719,7 +719,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   Mxyin = lambda mask, M, M0, alpha, prod, t, T1, ke, phi: mask*(M0*(1 - np.exp(-t/T1)))*prod*np.sin(alpha)*np.exp(1j*phi)
 
   # Check k space bandwidth to avoid folding artifacts
-  pxsz = np.array([2*np.pi/(6.5*ke[i]) for i in range(ke.size)])
+  pxsz = np.array([2*np.pi/(image.kspace_factor*ke[i]) for i in range(ke.size)])
   res  = np.floor(np.divide(image.FOV,pxsz)).astype(int)
   chck = [image.resolution[i] < res[i] for i in range(ke.size)]
   if np.any(chck):

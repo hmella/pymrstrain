@@ -30,7 +30,8 @@ if __name__=="__main__":
             encoding_frequency=np.array([ke,ke]),
             T1=0.85,
             flip_angle=15*np.pi/180,
-            off_resonance=phi)
+            off_resonance=phi,
+            kspace_factor=20)
 
   # Generator
   g0 = Generator(p, I0)
@@ -53,8 +54,8 @@ if __name__=="__main__":
   print(end-start)
 
   # Add noise to images
-  un0 = add_noise_to_DENSE_(u0, mask, sigma=0.2e-22)
-  un1 = add_noise_to_DENSE_(u1, mask, sigma=0.2e-22)
+  un0 = add_noise_to_DENSE_(u0, mask, sigma=0.2e-2)
+  un1 = add_noise_to_DENSE_(u1, mask, sigma=0.2e-2)
 
   # Corrected image
   u = un0 - un1
@@ -84,10 +85,10 @@ if __name__=="__main__":
   # plt.savefig('DENSE')
   # plt.show()
 
-  fig = plt.imshow(np.abs(u[...,0,7]),cmap=plt.get_cmap('gray'))
+  fig = plt.imshow(np.angle(u[...,0,7]),cmap=plt.get_cmap('gray'))
   fig.axes.get_xaxis().set_visible(False)
   fig.axes.get_yaxis().set_visible(False)
-  plt.savefig('old')
+  plt.savefig('new')
   plt.show()
 
   # fig = plt.imshow(np.angle(u[...,0,10]*np.conj(-uin[...,0,10])),cmap=plt.get_cmap('gray'),vmin=-np.pi,vmax=np.pi)
