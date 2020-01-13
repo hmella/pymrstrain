@@ -43,7 +43,7 @@ if __name__=="__main__":
   V = FunctionSpace(mesh, FE)
 
   # Create phantom object
-  phantom = DefaultPhantom(p, function_space=V, patient=True)
+  phantom = DefaultPhantom(p, function_space=V, patient=False)
 
   # Generation
   g0.phantom = phantom
@@ -53,8 +53,8 @@ if __name__=="__main__":
   print(end-start)
 
   # Add noise to images
-  un0 = add_noise_to_DENSE_(u0, mask, sigma=0.2e-6)
-  un1 = add_noise_to_DENSE_(u1, mask, sigma=0.2e-7)
+  un0 = add_noise_to_DENSE_(u0, mask, sigma=0.2e-22)
+  un1 = add_noise_to_DENSE_(u1, mask, sigma=0.2e-22)
 
   # Corrected image
   u = un0 - un1
@@ -84,11 +84,11 @@ if __name__=="__main__":
   # plt.savefig('DENSE')
   # plt.show()
 
-  # fig = plt.imshow(np.angle(u[...,0,10]),cmap=plt.get_cmap('gray'),vmin=-np.pi,vmax=np.pi)
-  # fig.axes.get_xaxis().set_visible(False)
-  # fig.axes.get_yaxis().set_visible(False)
-  # plt.savefig('DENSE_B0')
-  # plt.show()
+  fig = plt.imshow(np.abs(u[...,0,7]),cmap=plt.get_cmap('gray'))
+  fig.axes.get_xaxis().set_visible(False)
+  fig.axes.get_yaxis().set_visible(False)
+  plt.savefig('old')
+  plt.show()
 
   # fig = plt.imshow(np.angle(u[...,0,10]*np.conj(-uin[...,0,10])),cmap=plt.get_cmap('gray'),vmin=-np.pi,vmax=np.pi)
   # fig.axes.get_xaxis().set_visible(False)
@@ -107,5 +107,4 @@ if __name__=="__main__":
     fig, ax = plt.subplots(1, 2)
     tracker = IndexTracker(ax, np.abs(u[:,:,0,:]), np.angle(u[:,:,0,:]))
     fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
-    fig.suptitle('DENSE volunteer')
     plt.show()

@@ -798,10 +798,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   corners[:,1] -= 0.5*width[1]
   x_rel = x[:,0:2] - corners
 
-  # Dummy images
-  Ix = np.zeros([n,])
-  Iy = np.zeros([n,])
-  m  = np.zeros([n,])
+  # Displacement image
   u_image = np.zeros(input_image._astute_resolution[[0,1,3]])
 
   # Time stepping
@@ -820,37 +817,23 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
     # Displacement in terms of pixels
     x_new = x_rel + reshaped_u - upre
-    pixel_u = np.divide(x_new, width).astype(np.int64)
+    pixel_u = np.floor(np.divide(x_new, width))
     subpixel_u = x_new - np.multiply(pixel_u, width)
-    # [pixel_u, subpixel_u] = PixelDisplacement(x_rel, reshaped_u, upre, width);
 
     # Change spins connectivity according to the new positions
     s2p[:] += (resolution[1]*pixel_u[:,1] + pixel_u[:,0]).astype(np.int64)
-    # print(s2p)
 
     # Update pixel-to-spins connectivity
-    p2s = [[] for j in range(n)]
-    [p2s[pixel].append(spin) for spin, pixel in enumerate(s2p) if pixel != -1]
+    p2s = update_p2s(s2p, n)
 
     # Update relative spins positions
-    x_rel = subpixel_u
+    x_rel[:,:] = subpixel_u
 
     # Fill images
     for j in range(d):
-        (I, m) = getImages(reshaped_u[:,j],p2s)
+        (I, m) = getImage(reshaped_u[:,j],p2s)
         u_image[...,j] = I.reshape(resolution)
     m = m.reshape(resolution)
-
-    # # Project to fem-image in the deformed frame
-    # u_image, m, original_m = _project2image_vector(u, u, input_image, parameters["mesh_resolution"])
-
-    # Save mask
-    if np.any(chck):
-      _mask = m.reshape(resolution)#original_m
-    else:
-      _mask = m.reshape(resolution)
-    mask[...,i] = 1#_mask
-    mm = m.reshape(resolution)
 
     # Grid to evaluate magnetizations
     imgrid = input_image._grid
@@ -859,9 +842,9 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     for j in range(image_0.shape[-2]):
 
       # Magnetization expressions
-      tmp0 = Mxy0(mm, M, M0, alpha[i], prod, t, T1, ke[j], imgrid[j]-u_image[...,j], u_image[...,j], phi)
-      tmp1 = Mxy1(mm, M, M0, alpha[i], prod, t, T1, ke[j], imgrid[j]-u_image[...,j], u_image[...,j], phi)
-      tmp2 = Mxyin(mm, M, M0, alpha[i], prod, t, T1, ke[j], phi)
+      tmp0 = Mxy0(m, M, M0, alpha[i], prod, t, T1, ke[j], imgrid[j]-u_image[...,j], u_image[...,j], phi)
+      tmp1 = Mxy1(m, M, M0, alpha[i], prod, t, T1, ke[j], imgrid[j]-u_image[...,j], u_image[...,j], phi)
+      tmp2 = Mxyin(m, M, M0, alpha[i], prod, t, T1, ke[j], phi)
 
       # Check if images should be cropped
       if np.any(chck):
@@ -871,6 +854,8 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
         s = image.array_resolution
 
         # kspace cropping
+        mask_ = iFFT(H*FFT(m)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
+                              int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
         image_0[...,j,i] = iFFT(H*FFT(tmp0)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
                                           int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
         image_1[...,j,i] = iFFT(H*FFT(tmp1)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
@@ -880,25 +865,19 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
       else:
 
+        mask_ = m
         image_0[...,j,i] = tmp0
         image_1[...,j,i] = tmp1
         image_2[...,j,i] = tmp2
 
-    # fig = plt.imshow(np.angle(image_0[...,j,i]),cmap=plt.get_cmap('gray'))
-    # fig.axes.get_xaxis().set_visible(False)
-    # fig.axes.get_yaxis().set_visible(False)
-    # plt.show()
-
     # Flip angles product
     prod = prod*np.cos(alpha[i])
 
-    # Reset dummy values
-    Ix[:] = 0
-    Iy[:] = 0
-    m[:] = 0
-
     # Copy previous displcement field
     upre = np.copy(reshaped_u)
+
+    # Save mask
+    mask[...,i] = np.abs(mask_)
 
   return image_0, image_1, image_2, mask
 

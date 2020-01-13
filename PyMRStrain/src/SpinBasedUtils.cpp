@@ -50,33 +50,10 @@ std::vector<int> getConnectivity(const Eigen::MatrixXd &x,
   return V;
 }
 
-//
-std::vector<Eigen::MatrixXd> PixelDisplacement(Eigen::Ref<const Eigen::MatrixXd> x_rel,
-                                              Eigen::Ref<const Eigen::MatrixXd> u,
-                                              Eigen::Ref<const Eigen::MatrixXd> u_prev,
-                                              Eigen::Ref<const Eigen::VectorXd> width){
-
-    // Output
-    std::vector<Eigen::MatrixXd> matrices;
-
-    // Number of spins
-    // const size_t nr_spins = x_rel.rows();
-
-    // Spins displacement in terms of pixels
-    Eigen::MatrixXd pixel_u = x_rel + u - u_prev;
-    pixel_u(Eigen::all,0) *= width(0);
-    pixel_u(Eigen::all,1) *= width(1);
-    matrices.push_back(pixel_u);
-
-    // Remanent displacemnt
-    Eigen::MatrixXd subpixel_u = x_rel + u - u_prev - pixel_u*width;
-    matrices.push_back(subpixel_u);
-
-    return matrices;
-}
-
-// Generate images
-std::vector<Eigen::VectorXd> getImages(const Eigen::MatrixXd u,
+// Calculates the pixel intensity of the images based on the pixel-to-spins
+// connectivity. The intensity is estimated using the mean of all the spins
+// inside a fgiven pixel
+std::vector<Eigen::VectorXd> getImage(const Eigen::MatrixXd u,
                           const std::vector<std::vector<int>> p2s){
 
 // Number of pixels
@@ -99,9 +76,30 @@ return output;
 
 }
 
+// Updates the pixel-to-spin connectivity using the spin-to-pixel vector
+std::vector<std::vector<int>> update_p2s(const std::vector<int> s2p,
+                                         const size_t nr_voxels){
+
+    // Pixel-to-spins connectivity
+    std::vector<std::vector<int>> p2s(nr_voxels);
+
+    // Number of spins
+    const size_t nr_spins = s2p.size();
+
+    // Update connectivity
+    for (size_t i=0; i<nr_spins; i++){
+      p2s[s2p[i]].push_back(i);
+    }
+
+    return p2s;
+
+}
+
+
+
 PYBIND11_MODULE(SpinBasedutils, m) {
-    m.doc() = "Utilities for Image generation"; // optional module docstring
+    m.doc() = "Utilities for spins-based image generation"; // optional module docstring
     m.def("getConnectivity", &getConnectivity, py::return_value_policy::reference, "Get connectivity between spins and voxels");
-    m.def("PixelDisplacement", &PixelDisplacement, py::return_value_policy::reference, "Get connectivity between spins and voxels");
-    m.def("getImages", &getImages, py::return_value_policy::reference, "Get connectivity between spins and voxels");
+    m.def("getImage", &getImage, py::return_value_policy::reference, "Calculates the pixel intensity based on the pixel-to-spins connectivity");
+    m.def("update_p2s", &update_p2s, py::return_value_policy::reference, "Updates the pixel-to-spin connectivity using the spin-to-pixel vector");
 }
