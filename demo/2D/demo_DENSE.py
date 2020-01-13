@@ -29,7 +29,8 @@ if __name__=="__main__":
             encoding_frequency=np.array([ke,ke]),
             T1=0.85,
             flip_angle=15*np.pi/180,
-            off_resonance=phi)
+            off_resonance=phi
+            kspace_factor=6.5)
 
   # Generator
   g0 = Generator(p, I0)

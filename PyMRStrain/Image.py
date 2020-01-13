@@ -13,7 +13,8 @@ class ImageBase(object):
                T1=1.0, T2=0.5,
                M0=1.0, M=1.0,
                off_resonance=[],
-               interpolation='mean'):
+               interpolation='mean',
+               kspace_factor=6.5):
     self.FOV = FOV
     self.resolution = resolution
     self.array_resolution = self._array_resolution()
@@ -29,6 +30,7 @@ class ImageBase(object):
     self.off_resonance = off_resonance
     self.interpolation = interpolation
     self._modified_resolution = False
+    self.kspace_factor = kspace_factor
 
   # Geometric dimension
   def geometric_dimension(self):

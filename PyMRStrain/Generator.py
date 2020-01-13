@@ -97,7 +97,7 @@ def get_sine_image(image, phantom, parameters, debug, fem=False):
   if image.encoding_direction is None:
     edir = np.array([i for i in range(len(ke))])
   else:
-    edir = image.encoding_direction  
+    edir = image.encoding_direction
 
   # Magnetization expression
   Mxy = lambda mask, M0, t, T1, tagline: np.multiply(M0*np.exp(-t/T1)*tagline,mask)
@@ -110,7 +110,7 @@ def get_sine_image(image, phantom, parameters, debug, fem=False):
   else:
     [X,Y] = image._grid
     taglines = np.zeros(np.append(X.shape,2))
-    spamm = lambda omega, X: np.cos(omega*X)    
+    spamm = lambda omega, X: np.cos(omega*X)
 
   # SPAMM modulation
   d = image.geometric_dimension()
@@ -129,7 +129,7 @@ def get_sine_image(image, phantom, parameters, debug, fem=False):
     # Get coordinates in spatial config
     if not fem:
       x = interpolate.griddata(((X+u[...,0]).ravel(),(Y+u[...,1]).ravel()),X.ravel(),(X,Y))
-      y = interpolate.griddata(((X+u[...,0]).ravel(),(Y+u[...,1]).ravel()),Y.ravel(),(X,Y))      
+      y = interpolate.griddata(((X+u[...,0]).ravel(),(Y+u[...,1]).ravel()),Y.ravel(),(X,Y))
 
     # Project to fem-image in the deformed frame
     if fem:
@@ -149,7 +149,7 @@ def get_sine_image(image, phantom, parameters, debug, fem=False):
       sigma = parameters["sigma"]
       mu = (R_ep - r)/(R_ep - R_en)
       mu = np.power(mu, sigma)
-      mu = interpolate.griddata(((X+u[...,0]).ravel(),(Y+u[...,1]).ravel()),mu.ravel(),(X,Y))    
+      mu = interpolate.griddata(((X+u[...,0]).ravel(),(Y+u[...,1]).ravel()),mu.ravel(),(X,Y))
       mu[np.isnan(mu)] = -1e-04
       mu[np.logical_or(mu>1,mu<0)] = np.nan
       m = ~np.isnan(mu)
@@ -208,7 +208,7 @@ def get_tagging_image(image, phantom, parameters, debug=False):
   if image.encoding_direction is None:
     edir = np.array([i for i in range(len(ke))])
   else:
-    edir = image.encoding_direction  
+    edir = image.encoding_direction
 
   # Check complementary acquisition
   if image.complementary:
@@ -302,7 +302,7 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
   if image.encoding_direction is None:
     edir = np.array([i for i in range(len(ke))])
   else:
-    edir = image.encoding_direction  
+    edir = image.encoding_direction
 
   # Magnetization expression
   Mxy0 = lambda mask, M, M0, alpha, prod, beta, t, T1, tagline, phi: mask*(
@@ -351,7 +351,7 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
   else:
     [X,Y] = image._grid
     taglines = np.zeros(np.append(X.shape,2))
-    spamm = lambda omega, X: np.cos(omega*X)    
+    spamm = lambda omega, X: np.cos(omega*X)
 
   # Off resonance
   d = image.geometric_dimension()
@@ -394,7 +394,7 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
     # Get coordinates in spatial config
     if not fem:
       x = interpolate.griddata(((X+u[...,0]).ravel(),(Y+u[...,1]).ravel()),X.ravel(),(X,Y))
-      y = interpolate.griddata(((X+u[...,0]).ravel(),(Y+u[...,1]).ravel()),Y.ravel(),(X,Y))    
+      y = interpolate.griddata(((X+u[...,0]).ravel(),(Y+u[...,1]).ravel()),Y.ravel(),(X,Y))
 
     # Project to fem-image in the deformed frame
     if fem:
@@ -423,7 +423,7 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
       sigma = parameters["sigma"]
       mu = (R_ep - r)/(R_ep - R_en)
       mu = np.power(mu, sigma)
-      mu = interpolate.griddata(((X+u[...,0]).ravel(),(Y+u[...,1]).ravel()),mu.ravel(),(X,Y))    
+      mu = interpolate.griddata(((X+u[...,0]).ravel(),(Y+u[...,1]).ravel()),mu.ravel(),(X,Y))
       mu[np.isnan(mu)] = -1e-04
       mu[np.logical_or(mu>1,mu<0)] = np.nan
       m = ~np.isnan(mu)
@@ -549,7 +549,7 @@ def get_PCSPAMM_image(image, phantom, parameters, debug=False):
   if image.encoding_direction is None:
     edir = np.array([i for i in range(len(ke))])
   else:
-    edir = image.encoding_direction  
+    edir = image.encoding_direction
 
   # Magnetization expression
   Mxy0 = lambda i, mask, M, M0, alpha, prod, beta, t, T1, tagline, phase_velocity: mask*(
@@ -710,7 +710,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
   # Magnetization expressions
   Mxy0 = lambda mask, M, M0, alpha, prod, t, T1, ke, X, u, phi: mask*(+0.5*M*np.exp(-t/T1)*np.exp(-1j*ke*u) +
-                                                          0.5*M*np.exp(-t/T1)*np.exp(-1j*ke*(2*X+u)) + 
+                                                          0.5*M*np.exp(-t/T1)*np.exp(-1j*ke*(2*X+u)) +
                                                           M0*(1 - np.exp(-t/T1))*np.exp(-1j*ke*(X+u)))*prod*np.sin(alpha)*np.exp(1j*phi)
   Mxy1 = lambda mask, M, M0, alpha, prod, t, T1, ke, X, u, phi: mask*(-0.5*M*np.exp(-t/T1)*np.exp(-1j*ke*u) +
                                                           -0.5*M*np.exp(-t/T1)*np.exp(-1j*ke*(2*X+u)) +
@@ -718,7 +718,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   Mxyin = lambda mask, M, M0, alpha, prod, t, T1, ke, phi: mask*(M0*(1 - np.exp(-t/T1)))*prod*np.sin(alpha)*np.exp(1j*phi)
 
   # Check k space bandwidth to avoid folding artifacts
-  pxsz = np.array([2*np.pi/(6.5*ke[i]) for i in range(ke.size)])
+  pxsz = np.array([2*np.pi/(image.kspace_factor*ke[i]) for i in range(ke.size)])
   res  = np.floor(np.divide(image.FOV,pxsz)).astype(int)
   chck = [image.resolution[i] < res[i] for i in range(ke.size)]
   if np.any(chck):
@@ -854,7 +854,7 @@ def _project2image_scalar(displacement, taglines, image, mesh_resolution):
   elem_vol  = np.pi*mesh_resolution**d
   if d > 2: elem_vol = 4.0/3.0*elem_vol
 
-  # Estimated number of dofs in voxel 
+  # Estimated number of dofs in voxel
   voxel_dofs = int(round(8.0*voxel_vol/elem_vol))
   mask = np.zeros([voxel_dofs,], dtype=int)
 
@@ -941,19 +941,19 @@ def _project2image_vector(displacement, function, image, mesh_resolution, deform
 
     # Get mask
     if image.interpolation is 'mean':
-      weights = getWeights(x, voxel_coords, voxels, 
+      weights = getWeights(x, voxel_coords, voxels,
                       image.voxel_size(),
                       local_size, nr_voxels, slice)
       mask = (weights > 1e-06).astype(float)
     else:
-      mask = getMask(x, voxel_coords, voxels, 
+      mask = getMask(x, voxel_coords, voxels,
                     image.voxel_size(),
                     local_size, nr_voxels, slice)
       weights = mask
 
     # Get original mask
     if original_mask:
-      omask = getMask(x, _voxel_coords, _voxels, 
+      omask = getMask(x, _voxel_coords, _voxels,
                       image._original_voxel_size,
                       _local_size, _nr_voxels, slice)
 
