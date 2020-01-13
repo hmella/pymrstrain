@@ -13,8 +13,7 @@ std::vector<int> getConnectivity(const Eigen::MatrixXd &x,
                         const std::vector<int> &local_voxels,
                         const std::vector<double> &voxel_size,
                         const size_t &local_size,
-                        const size_t &size,
-                        const size_t &slice) {
+                        const size_t &size) {
 
   // Number of DOFs in ventricle
   const size_t M = x.rows();
@@ -92,9 +91,7 @@ std::vector<std::vector<int>> update_p2s(const std::vector<int> s2p,
     }
 
     return p2s;
-
 }
-
 
 
 PYBIND11_MODULE(SpinBasedutils, m) {

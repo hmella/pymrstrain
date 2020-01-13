@@ -788,7 +788,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   n = nr_local_voxels
   s2p = np.array(getConnectivity(x, voxel_coords, voxels,
                   image.voxel_size(),
-                  nr_local_voxels, nr_voxels, slice))  # pixel-to-spins map
+                  nr_local_voxels, nr_voxels))  # pixel-to-spins map
   p2s = [[] for j in range(n)]
   [p2s[pixel].append(spin) for (spin, pixel) in enumerate(s2p)]
 
