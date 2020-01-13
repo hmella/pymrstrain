@@ -1,12 +1,11 @@
 import numpy as np
 
-def Parameters_2D(mesh_resolution=1e-03, decimals=8, time_steps=20):
+def Parameters_2D(mesh_resolution=1e-03, time_steps=20, decimals=8):
     ''' Generate parameters for simulations
     '''
     # Time stepping parameters
     t     = 0.0
     t_end = 1.0
-    time_steps = 30
     dt = t_end/time_steps
 
     # Ventricle geometry

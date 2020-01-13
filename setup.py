@@ -47,6 +47,17 @@ ext_modules = [
         ],
         language='c++'
     ),
+    Extension(
+        'SpinBasedutils',
+        ['PyMRStrain/src/SpinBasedUtils.cpp'],
+        include_dirs=[
+            # Path to pybind11 headers
+            get_pybind_include(),
+            get_pybind_include(user=True),
+            '/usr/include/eigen3/'
+        ],
+        language='c++'
+    ),
 ]
 
 

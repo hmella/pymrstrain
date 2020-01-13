@@ -5,6 +5,7 @@ from PyMRStrain.Function import *
 from PyMRStrain.Image import *
 from PyMRStrain.MPIUtilities import *
 from ImageUtilities import *
+from SpinBasedutils import *
 import numpy as np
 from numpy.fft import *
 import matplotlib.pyplot as plt
@@ -805,7 +806,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
   # Time stepping
   prod = 1
-  upre = 0
+  upre = np.zeros([x.shape[0],d])
   for i in range(n_t):
 
     # Update time
@@ -818,11 +819,14 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     reshaped_u = u.vector().reshape((-1,2))
 
     # Displacement in terms of pixels
-    pixel_u = np.divide(x_rel + reshaped_u - upre, width).astype(np.int64)
-    subpixel_u = x_rel + reshaped_u - upre - np.multiply(pixel_u, width)
+    x_new = x_rel + reshaped_u - upre
+    pixel_u = np.divide(x_new, width).astype(np.int64)
+    subpixel_u = x_new - np.multiply(pixel_u, width)
+    # [pixel_u, subpixel_u] = PixelDisplacement(x_rel, reshaped_u, upre, width);
 
     # Change spins connectivity according to the new positions
-    s2p[:] += resolution[1]*pixel_u[:,1] + pixel_u[:,0]
+    s2p[:] += (resolution[1]*pixel_u[:,1] + pixel_u[:,0]).astype(np.int64)
+    # print(s2p)
 
     # Update pixel-to-spins connectivity
     p2s = [[] for j in range(n)]
@@ -832,22 +836,13 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     x_rel = subpixel_u
 
     # Fill images
-    # reshaped_u = u.vector().reshape((-1,2))
-    for j in range(n):
-      if p2s[j] != []:
-        Ix[j] = np.mean(reshaped_u[p2s[j],0])
-        Iy[j] = np.mean(reshaped_u[p2s[j],1])
-        m[j]  = 1
-    u_image[...,0] = Ix.reshape(resolution)
-    u_image[...,1] = Iy.reshape(resolution)
+    for j in range(d):
+        (I, m) = getImages(reshaped_u[:,j],p2s)
+        u_image[...,j] = I.reshape(resolution)
+    m = m.reshape(resolution)
 
     # # Project to fem-image in the deformed frame
     # u_image, m, original_m = _project2image_vector(u, u, input_image, parameters["mesh_resolution"])
-
-    # fig = plt.imshow(u_image[...,0],cmap=plt.get_cmap('gray'))
-    # fig.axes.get_xaxis().set_visible(False)
-    # fig.axes.get_yaxis().set_visible(False)
-    # plt.show()
 
     # Save mask
     if np.any(chck):
