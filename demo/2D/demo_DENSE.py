@@ -54,8 +54,9 @@ if __name__=="__main__":
   print(end-start)
 
   # Add noise to images
-  un0 = add_noise_to_DENSE_(u0, mask, sigma=0.2e-2)
-  un1 = add_noise_to_DENSE_(u1, mask, sigma=0.2e-2)
+  sigma = 0.2e-02
+  un0 = add_noise_to_DENSE_(u0, mask, sigma=sigma)
+  un1 = add_noise_to_DENSE_(u1, mask, sigma=sigma)
 
   # Corrected image
   u = un0 - un1
