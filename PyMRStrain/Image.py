@@ -5,10 +5,11 @@ import numpy as np
 # Base Image object
 ###################
 class ImageBase(object):
-  def __init__(self,FOV=np.array([1.0,1.0,1.0]),
-               resolution=np.array([30, 30, 30]),
+  def __init__(self,
+               FOV=np.array([1.0,1.0,0.008]),
+               resolution=np.array([30, 30, 1]),
                center=np.array([0.0, 0.0, 0.0]),
-               encoding_direction=None,
+               encoding_direction=[0, 1],
                flip_angle=0.5*np.pi,
                T1=1.0, T2=0.5,
                M0=1.0, M=1.0,
@@ -38,8 +39,7 @@ class ImageBase(object):
 
   # Pixel size
   def voxel_size(self):
-    return np.array([self._grid[0][0,1]-self._grid[0][0,0],
-                    self._grid[1][1,0]-self._grid[1][0,0]])
+    return self.FOV/self.resolution
 
   # Practical resolution
   # OBS: resolution of the image is intended to be the number of x-coordinates
@@ -79,9 +79,8 @@ class ImageBase(object):
     X = [np.linspace(-0.5*self.FOV[i], 0.5*self.FOV[i], resolution[i]) + self.center[i] for i in range(d)]
 
     if d < 3:
-      grid = np.meshgrid(X[0], X[1], indexing='xy', sparse=sparse)
-    else:
-      grid = np.meshgrid(X[0], X[1], X[2], indexing='xy', sparse=sparse)
+      X.append(np.array([0]))
+    grid = np.meshgrid(X[0], X[1], X[2], indexing='xy', sparse=sparse)
 
     return grid
 
@@ -93,8 +92,7 @@ class ImageBase(object):
 
   # Type of image dimension
   def type_dim(self):
-    dim = len(self.resolution)
-    return dim
+    return self.geometric_dimension()
 
   # Voxel centers
   def voxel_midpoints(self):
@@ -129,7 +127,6 @@ class DENSEImage(ImageBase):
     self._original_array_resolution = []
     self._original_voxel_size = []
     super(DENSEImage, self).__init__(**kwargs)
-
 
 ###################
 # EXACT Image

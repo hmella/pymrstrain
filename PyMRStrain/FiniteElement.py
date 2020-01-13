@@ -44,7 +44,7 @@ class VectorElement(FiniteElementBase):
   # Number of dofs per cell
   def get_dofs_per_cell(self):
     return _get_dofs_per_cell(self.kind, self.shape)
-    
+
 
 
 # Number of dofs per cell

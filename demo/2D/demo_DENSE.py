@@ -1,14 +1,7 @@
 from PyMRStrain import *
 import numpy as np
 import matplotlib.pyplot as plt
-from numpy.fft import *
 import time
-
-def FFT(x):
-  return fftshift(fftn(ifftshift(x)))
-
-def iFFT(x):
-  return fftshift(ifftn(ifftshift(x)))
 
 if __name__=="__main__":
 
@@ -25,13 +18,20 @@ if __name__=="__main__":
   ke = 0.12               # encoding frequency [cycles/mm]
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
   N = 100                 # resolution
-  I0 = DENSEImage(FOV=np.array([0.1, 0.1]),
-            resolution=np.array([N, N]),
-            encoding_frequency=np.array([ke,ke]),
+  I0 = DENSEImage(FOV=np.array([0.1, 0.1, 0.008]),
+            resolution=np.array([N, N, 1]),
+            encoding_frequency=np.array([ke,ke,0]),
             T1=0.85,
             flip_angle=15*np.pi/180,
             off_resonance=phi,
-            kspace_factor=20)
+            kspace_factor=16.5)
+  # I0 = DENSEImage(FOV=np.array([0.1, 0.1]),
+  #           resolution=np.array([N, N]),
+  #           encoding_frequency=np.array([ke,ke]),
+  #           T1=0.85,
+  #           flip_angle=15*np.pi/180,
+  #           off_resonance=phi,
+  #           kspace_factor=16.5)
 
   # Generator
   g0 = Generator(p, I0)
@@ -86,7 +86,7 @@ if __name__=="__main__":
   # plt.savefig('DENSE')
   # plt.show()
 
-  fig = plt.imshow(np.angle(u[...,0,7]),cmap=plt.get_cmap('gray'))
+  fig = plt.imshow(np.angle(u[...,0,0,7]),cmap=plt.get_cmap('gray'))
   fig.axes.get_xaxis().set_visible(False)
   fig.axes.get_yaxis().set_visible(False)
   plt.savefig('new')
@@ -107,6 +107,6 @@ if __name__=="__main__":
   # Plot
   if rank==0:
     fig, ax = plt.subplots(1, 2)
-    tracker = IndexTracker(ax, np.abs(u[:,:,0,:]), np.angle(u[:,:,0,:]))
+    tracker = IndexTracker(ax, np.abs(u[:,:,0,0,:]), np.angle(u[:,:,0,0,:]))
     fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
     plt.show()

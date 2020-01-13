@@ -3,20 +3,14 @@ from PyMRStrain.FiniteElement import *
 from PyMRStrain.FunctionSpace import *
 from PyMRStrain.Function import *
 from PyMRStrain.Image import *
+from PyMRStrain.Math import *
 from PyMRStrain.MPIUtilities import *
 from ImageUtilities import *
 from SpinBasedutils import *
 import numpy as np
-from numpy.fft import *
 import matplotlib.pyplot as plt
 from scipy import interpolate
 from scipy import signal
-
-def FFT(x):
-  return fftshift(fftn(ifftshift(x)))
-
-def iFFT(x):
-  return fftshift(ifftn(ifftshift(x)))
 
 ###################
 # Common Generator
@@ -692,11 +686,11 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   n_t   = parameters["time_steps"]
 
   # Output image
-  size = np.append(image.array_resolution, [image.type_dim(), n_t])
+  size = np.append(image._astute_resolution, [n_t])
   image_0 = np.zeros(size, dtype=complex)
   image_1 = np.zeros(size, dtype=complex)
   image_2 = np.zeros(size, dtype=complex)
-  mask    = np.zeros(np.append(image.array_resolution, n_t), dtype=np.int16)
+  mask    = np.zeros(np.append(size[:-2], n_t), dtype=np.int16)
 
  # Sequence parameters
   T1    = image.T1                     # relaxation
@@ -719,7 +713,8 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   Mxyin = lambda mask, M, M0, alpha, prod, t, T1, ke, phi: mask*(M0*(1 - np.exp(-t/T1)))*prod*np.sin(alpha)*np.exp(1j*phi)
 
   # Check k space bandwidth to avoid folding artifacts
-  pxsz = np.array([2*np.pi/(image.kspace_factor*ke[i]) for i in range(ke.size)])
+  pxsz = np.array([2*np.pi/(image.kspace_factor*k) if k != 0
+                   else image.voxel_size()[i] for i,k in enumerate(ke)])
   res  = np.floor(np.divide(image.FOV,pxsz)).astype(int)
   chck = [image.resolution[i] < res[i] for i in range(ke.size)]
   if np.any(chck):
@@ -756,18 +751,19 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     else:
       phi = image.off_resonance(image._grid[0],image._grid[1])
 
-  # Hamming filter to reduce Gibbs ringing artifacts
-  H = signal.hamming(image.array_resolution[0])
-  H = np.outer(H,H)
-
   # Function space of the displacement field
   V = phantom.V
 
-  # Determine if the image is either 2D or 3D
-  d = input_image.type_dim()
+  # Determine if the image and phantom geometry are 2D or 3D
+  di = input_image.type_dim()   # image geometric dimension
+  dp = V.shape[0]               # phantom (fem) geometric dimension
+
+  # Hamming filter to reduce Gibbs ringing artifacts
+  Hf = [signal.hamming(image.array_resolution[i]) for i in range(di)]
+  H = np.outer(Hf[0],Hf[1])
 
   # Spins positions
-  x = V.dof_coordinates()[::d]
+  x = V.dof_coordinates()[::dp]
 
   # Voxels centers
   c = input_image._grid                   # global voxel coordinates
@@ -775,35 +771,28 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   nr_local_voxels = voxels.size           # Number of local voxels
   nr_voxels = c[0].size                   # Number of global voxels
 
-  # Flattened grid coordinates
-  cx = c[0].flatten()
-  cy = c[1].flatten()
-
   # Voxel width and image resolution
   width = input_image.voxel_size()
-  resolution = input_image.array_resolution
+  resolution = input_image._astute_resolution[0:-1]
 
   # Connectivity (this is done just once)
-  slice = 0
   n = nr_local_voxels
+  getConnectivity = globals()["getConnectivity{:d}".format(dp)]
   s2p = np.array(getConnectivity(x, voxel_coords, voxels,
-                  image.voxel_size(),
-                  nr_local_voxels, nr_voxels))  # pixel-to-spins map
+                  width, nr_local_voxels, nr_voxels))  # pixel-to-spins map
   p2s = [[] for j in range(n)]
   [p2s[pixel].append(spin) for (spin, pixel) in enumerate(s2p)]
 
   # Spins positions with respect to its containing voxel center
-  corners = np.array([cx[s2p],cy[s2p]]).T
-  corners[:,0] -= 0.5*width[0]
-  corners[:,1] -= 0.5*width[1]
-  x_rel = x[:,0:2] - corners
+  corners = np.array([c[i].flatten()[s2p]-0.5*width[i] for i in range(di)]).T
+  x_rel = x[:,0:dp] - corners
 
   # Displacement image
-  u_image = np.zeros(input_image._astute_resolution[[0,1,3]])
+  u_image = np.zeros(input_image._astute_resolution)
 
   # Time stepping
   prod = 1
-  upre = np.zeros([x.shape[0],d])
+  upre = np.zeros([x.shape[0],dp])
   for i in range(n_t):
 
     # Update time
@@ -813,7 +802,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
     # Get displacements in the reference frame and deform mesh
     u = phantom.displacement(i)
-    reshaped_u = u.vector().reshape((-1,2))
+    reshaped_u = u.vector().reshape((-1,dp))
 
     # Displacement in terms of pixels
     x_new = x_rel + reshaped_u - upre
@@ -830,7 +819,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     x_rel[:,:] = subpixel_u
 
     # Fill images
-    for j in range(d):
+    for j in range(di):
         (I, m) = getImage(reshaped_u[:,j],p2s)
         u_image[...,j] = I.reshape(resolution)
     m = m.reshape(resolution)
@@ -838,46 +827,51 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     # Grid to evaluate magnetizations
     imgrid = input_image._grid
 
-    # Complex magnetization data
-    for j in range(image_0.shape[-2]):
+    # Iterates over slices
+    S = input_image.array_resolution
+    s = image.array_resolution
+    for slice in range(resolution[2]):
 
-      # Magnetization expressions
-      tmp0 = Mxy0(m, M, M0, alpha[i], prod, t, T1, ke[j], imgrid[j]-u_image[...,j], u_image[...,j], phi)
-      tmp1 = Mxy1(m, M, M0, alpha[i], prod, t, T1, ke[j], imgrid[j]-u_image[...,j], u_image[...,j], phi)
-      tmp2 = Mxyin(m, M, M0, alpha[i], prod, t, T1, ke[j], phi)
+      # Update mask
+      mask[...,slice,i] = np.abs(iFFT(H*FFT(m)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
+                                        int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1,
+                                        slice]))
 
-      # Check if images should be cropped
-      if np.any(chck):
+      # Complex magnetization data
+      for j in range(image_0.shape[-2]):
 
-        # Images size
-        S = new_image.array_resolution
-        s = image.array_resolution
+        # Magnetization expressions
+        tmp0 = Mxy0(m[...,slice], M, M0, alpha[i], prod, t, T1, ke[j],
+                    imgrid[j][...,slice]-u_image[...,slice,j], u_image[...,slice,j],
+                    phi[...,slice])
+        tmp1 = Mxy1(m[...,slice], M, M0, alpha[i], prod, t, T1, ke[j],
+                    imgrid[j][...,slice]-u_image[...,slice,j], u_image[...,slice,j],
+                    phi[...,slice])
+        tmp2 = Mxyin(m[...,slice], M, M0, alpha[i], prod, t, T1, ke[j],
+                     phi[...,slice])
 
-        # kspace cropping
-        mask_ = iFFT(H*FFT(m)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
-                              int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
-        image_0[...,j,i] = iFFT(H*FFT(tmp0)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
-                                          int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
-        image_1[...,j,i] = iFFT(H*FFT(tmp1)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
-                                          int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
-        image_2[...,j,i] = iFFT(H*FFT(tmp2)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
-                                          int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
+        # Check if images should be cropped
+        if np.any(chck):
 
-      else:
+          # kspace cropping
+          image_0[...,slice,j,i] = iFFT(H*FFT(tmp0)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
+                                            int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
+          image_1[...,slice,j,i] = iFFT(H*FFT(tmp1)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
+                                            int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
+          image_2[...,slice,j,i] = iFFT(H*FFT(tmp2)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
+                                            int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
 
-        mask_ = m
-        image_0[...,j,i] = tmp0
-        image_1[...,j,i] = tmp1
-        image_2[...,j,i] = tmp2
+        else:
+
+          image_0[...,slice,j,i] = tmp0
+          image_1[...,slice,j,i] = tmp1
+          image_2[...,slice,j,i] = tmp2
 
     # Flip angles product
     prod = prod*np.cos(alpha[i])
 
     # Copy previous displcement field
     upre = np.copy(reshaped_u)
-
-    # Save mask
-    mask[...,i] = np.abs(mask_)
 
   return image_0, image_1, image_2, mask
 

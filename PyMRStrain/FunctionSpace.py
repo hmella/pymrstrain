@@ -15,13 +15,13 @@ class FunctionSpace(object):
   # Mesh retribution
   def mesh(self):
     return self.domain
- 
+
   # Return dof coordinates array
   def dof_coordinates(self):
     # Shapes
     [m, n] = self.domain.vertex_coordinates().shape
     l = self.shape[0]
-    
+
     # dofs coordinates
     x = np.zeros((l*m, n))
     for i in range(l):
@@ -40,11 +40,11 @@ class FunctionSpace(object):
     l = self.shape[0]
 
     # vertex to dofmap
-    v2d = self.vertex_to_dof_map().reshape((-1, self.shape[0])) 
+    v2d = self.vertex_to_dof_map().reshape((-1, self.shape[0]))
 
     # Vertices in cells
     c2v = self.domain.cells_connectivity()
-    
+
     # dofs coordinates
     dofmap = np.zeros((m, l*n), dtype=int)
     for i in range(m):
@@ -56,7 +56,7 @@ class FunctionSpace(object):
   def vertex_to_dof_map(self):
     # Dofs in vertices
     ndofs = self.num_dofs()
-    dofs  = np.linspace(0, ndofs-1, ndofs, dtype=int)      
+    dofs  = np.linspace(0, ndofs-1, ndofs, dtype=int)
     return dofs
 
   # Function space shape
