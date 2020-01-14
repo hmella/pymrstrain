@@ -140,6 +140,29 @@ std::vector<std::vector<int>> update_p2s(const std::vector<int> s2p,
     return p2s;
 }
 
+// Updates the spin-to-pixel connectivity using the pixel-to-spins vector
+// (2D case)
+Eigen::VectorXi update_s2p2(Eigen::VectorXi s2p,
+                            const Eigen::MatrixXi u,
+                            const std::vector<int> resolution){
+
+    // Update connectivity
+    s2p += u(Eigen::all,0) + resolution[1]*u(Eigen::all,1);
+
+    return s2p;
+}
+
+// Updates the spin-to-pixel connectivity using the pixel-to-spins vector
+// (3D case)
+Eigen::VectorXi update_s2p3(Eigen::VectorXi s2p,
+                            const Eigen::MatrixXi u,
+                            const std::vector<int> resolution){
+
+    // Update connectivity
+    s2p += u(Eigen::all,0) + resolution[1]*u(Eigen::all,1) + resolution[0]*resolution[1]*u(Eigen::all,2);
+
+    return s2p;
+}
 
 PYBIND11_MODULE(SpinBasedutils, m) {
     m.doc() = "Utilities for spins-based image generation"; // optional module docstring
@@ -147,4 +170,6 @@ PYBIND11_MODULE(SpinBasedutils, m) {
     m.def("getConnectivity3", &getConnectivity3, py::return_value_policy::reference, "Get connectivity between spins and voxels for 3D images");
     m.def("getImage", &getImage, py::return_value_policy::reference, "Calculates the pixel intensity based on the pixel-to-spins connectivity");
     m.def("update_p2s", &update_p2s, py::return_value_policy::reference, "Updates the pixel-to-spin connectivity using the spin-to-pixel vector");
+    m.def("update_s2p2", &update_s2p2, py::return_value_policy::reference, "Updates the pixel-to-spin connectivity using the spin-to-pixel vector");
+    m.def("update_s2p3", &update_s2p3, py::return_value_policy::reference, "Updates the pixel-to-spin connectivity using the spin-to-pixel vector");
 }

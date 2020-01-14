@@ -3,7 +3,7 @@ from scipy.io import savemat
 import os
 
 # Write scalar to vtk
-def write_scalar_vtk(u, path=None, name=None):
+def write_vtk(u, path=None, name=None):
     # Verify if folder exist
     directory = os.path.dirname(path)
     if not os.path.exists(directory):
@@ -19,6 +19,8 @@ def write_scalar_vtk(u, path=None, name=None):
         cell_type = 9
     if mesh.cell=="hexahedron":
         cell_type = 12
+    if mesh.cell=="tetra":
+        cell_type = 4
 
     # Define DATASET type
     element_shape = u.function_space().element_shape()[0]

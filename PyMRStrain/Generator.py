@@ -674,7 +674,6 @@ def get_dense_image(image, phantom, parameters, debug, fem):
 
   return o_image, mask
 
-
 # Generate complementary DENSE images
 def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   """ Generate DENSE images
@@ -793,6 +792,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   # Time stepping
   prod = 1
   upre = np.zeros([x.shape[0],dp])
+
   for i in range(n_t):
 
     # Update time
@@ -804,18 +804,23 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     u = phantom.displacement(i)
     reshaped_u = u.vector().reshape((-1,dp))
 
+    # from PyMRStrain.IO import write_scalar_vtk
+    # write_vtk(u, 'output/u_{:04d}.vtk'.format(i),'u')
+
     # Displacement in terms of pixels
     x_new = x_rel + reshaped_u - upre
     pixel_u = np.floor(np.divide(x_new, width))
     subpixel_u = x_new - np.multiply(pixel_u, width)
 
     # Change spins connectivity according to the new positions
+    # s2p = globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution)
     if di == 2:
       s2p[:] += (resolution[1]*pixel_u[:,1] + pixel_u[:,0]).astype(np.int64)
     elif di == 3:
       s2p[:] += (resolution[1]*pixel_u[:,1]
-             + resolution[1]*resolution[2]*pixel_u[:,2]
+             + resolution[0]*resolution[1]*pixel_u[:,2]
              + pixel_u[:,0]).astype(np.int64)
+
 
     # Update pixel-to-spins connectivity
     p2s = update_p2s(s2p, n)
@@ -879,153 +884,6 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     upre = np.copy(reshaped_u)
 
   return image_0, image_1, image_2, mask
-
-
-# Project vector fields onto images
-def _project2image_vector(displacement, function, image, mesh_resolution, deformed=True):
-
-  # Function space of tag-lines
-  V = function.function_space()
-
-  # Image vector dimension
-  d = image.type_dim()
-
-  # Move the ventricle according with u
-  if deformed:
-    V.mesh().move(displacement)
-
-  # Number of slices
-  number_of_slices = image._astute_resolution[2]
-
-  # Output images
-  o_image = np.zeros(image._astute_resolution,dtype=np.complex)
-  if d is 2:
-    mask_shape = image._astute_resolution[0:d+1]
-  else:
-    mask_shape = image._astute_resolution[0:d]
-
-  # Projection scheme
-  fem2image = image.projection_scheme()
-
-  # Create local image data
-  voxels, voxel_coords = scatter_image(image._grid)
-  local_size = voxels.size
-  if image._modified_resolution:
-    _voxels, _voxel_coords = scatter_image(image._original_grid)
-    _local_size = _voxels.size
-    original_mask = image._modified_resolution
-  else:
-    original_mask = False
-
-  # Constant input arguments
-  dofs = V.vertex_to_dof_map()[::d]    # degrees of freedom
-  x = V.dof_coordinates()[::d]         # updated ventricular coordinates
-  nr_voxels = image._grid[0].size      # number of voxels (global)
-  resolution = image.array_resolution  # image resolution
-  if original_mask:
-    _nr_voxels = image._original_grid[0].size
-    _resolution = image._original_array_resolution
-
-  # Connectivity (this should be done once)
-  slice = 0
-  p2s = getConnectivity(x, voxel_coords, voxels,
-                  image.voxel_size(),
-                  local_size, nr_voxels, slice)  # pixel-to-spins map
-  s2p = -np.ones([x.shape[0],],dtype=np.int64)   # spin-to-pixel map
-  n = len(p2s)
-  for i in range(n):
-      s2p[p2s[i]] = i
-
-  # Fill image
-  for slice in range(number_of_slices):
-
-
-    TEST = 2
-    if TEST == 1:
-        #####################################
-        # connectivity test
-        #####################################
-
-
-        # fig = plt.imshow(I,cmap=plt.get_cmap('gray'))
-        # fig.axes.get_xaxis().set_visible(False)
-        # fig.axes.get_yaxis().set_visible(False)
-        # plt.show()
-
-        #####################################
-
-        # Get mask
-        mask = 0
-        weights = mask + 1e-10
-
-        # Get original mask
-        if original_mask:
-          omask = getMask(x, _voxel_coords, _voxels,
-                          image._original_voxel_size,
-                          _local_size, _nr_voxels, slice)
-
-          # Gather mask
-          omask = gather_image(np.reshape(omask,_resolution))
-
-        else:
-          omask = []
-
-        # Image
-        for j in range(d):
-
-          # Reduce images
-          o_image[...,slice,j] = gather_image(np.reshape(I[j]/weights,resolution))
-
-        # Gather mask
-        mask = gather_image(np.reshape(mask,resolution))
-    else:
-
-        # Get mask
-        if image.interpolation is 'mean':
-          weights = getWeights(x, voxel_coords, voxels,
-                          image.voxel_size(),
-                          local_size, nr_voxels, slice)
-          mask = (weights > 1e-06).astype(float)
-        else:
-          mask = getMask(x, voxel_coords, voxels,
-                        image.voxel_size(),
-                        local_size, nr_voxels, slice)
-          weights = mask
-
-        # Get original mask
-        if original_mask:
-          omask = getMask(x, _voxel_coords, _voxels,
-                          image._original_voxel_size,
-                          _local_size, _nr_voxels, slice)
-
-          # Gather mask
-          omask = gather_image(np.reshape(omask,_resolution))
-
-        else:
-          omask = []
-
-        # Check dofs
-        I = fem2image(mask, x, voxel_coords,
-                     image.voxel_size(),
-                     voxels, dofs, function.vector(),
-                     local_size, nr_voxels, slice)
-        # Image
-        for j in range(d):
-
-          # Reduce images
-          o_image[...,slice,j] = gather_image(np.reshape(I[j]/weights,resolution))
-
-        # Gather mask
-        mask = gather_image(np.reshape(mask,resolution))
-
-
-  # Reset mesh
-  if deformed:
-    displacement.vector()[:] *= -1.0
-    V.mesh().move(displacement)
-    displacement.vector()[:] *= -1.0
-
-  return np.squeeze(o_image), mask, omask
 
 
 # #######################################

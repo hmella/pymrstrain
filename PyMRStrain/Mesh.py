@@ -8,14 +8,14 @@ class Mesh(object):
     def __init__(self, path):
         self.mesh = meshio_read(path)
         self.cell = self.cell_type()
-        self.facet = self.facet_type()
 
     # Cell type
     def cell_type(self):
         cell = [i for i in self.mesh.cell_data.keys() if i in CELL_TYPES_3]
         if cell == []:
             cell = [i for i in self.mesh.cell_data.keys() if i in CELL_TYPES_2]
-        return cells_dict_mesh[cell[0]]
+        # return cells_dict_mesh[cell[0]]
+        return cell[0]
 
     # Facet type
     def facet_type(self):

@@ -5,7 +5,7 @@ from PyMRStrain.Mesh import *
 import numpy as np
 from scipy.ndimage.filters import gaussian_filter
 import matplotlib.pyplot as plt
-from PyMRStrain.IO import write_scalar_vtk
+from PyMRStrain.IO import write_vtk
 
 # NOTE: 1 [cycle] = 2*np.pi [rad]
 

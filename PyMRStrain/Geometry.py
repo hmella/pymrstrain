@@ -64,8 +64,9 @@ def fem_ventricle_geometry(R_en, tau, h, resolution, filename=None):
       geo += '\nSurface{1};'
       geo += '\nLayers{Round(h/lc)};'
       geo += '\n}'
-
-    geo += '\n\nPhysical Volume(1) = {1};'
+      geo += '\n\nPhysical Volume(1) = {1};'
+    else:
+      geo += '\n\nPhysical Surface(1) = {1};'
 
     # Open file
     file = open(folder+'/mesh.geo', 'w')
