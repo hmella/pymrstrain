@@ -6,8 +6,8 @@ import time
 if __name__=="__main__":
 
   # Parameters
-  p = Parameters_2D(decimals=10, time_steps=18)
-  np.save("p.npy", p)
+  # p = Parameters_2D(decimals=10, time_steps=18)
+  # np.save("p.npy", p)
   p=np.load('p.npy',allow_pickle=True).item()
   p["mesh_resolution"] = 0.001
 
