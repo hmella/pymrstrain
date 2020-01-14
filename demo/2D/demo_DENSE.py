@@ -6,10 +6,10 @@ import time
 if __name__=="__main__":
 
   # Parameters
-  # p = Parameters_2D(decimals=10, time_steps=18)
-  # np.save("p.npy", p)
+  p = Parameters_2D(decimals=10, time_steps=18)
+  np.save("p.npy", p)
   p=np.load('p.npy',allow_pickle=True).item()
-  p["mesh_resolution"] = 0.0002
+  p["mesh_resolution"] = 0.001
 
   # Field inhomogeneity
   phi = lambda X, Y: (X+Y)/0.1*0.2
@@ -40,7 +40,7 @@ if __name__=="__main__":
   FE = VectorElement("triangle")
 
   # Mesh and fem space
-  mesh = fem_ventricle_geometry(p['R_en'], p['tau'], p['mesh_resolution'], filename='mesh/mesh.msh')
+  mesh = fem_ventricle_geometry(p['R_en'], p['tau'], p['h'], p['mesh_resolution'], filename='mesh/mesh.msh')
   V = FunctionSpace(mesh, FE)
 
   # Create phantom object

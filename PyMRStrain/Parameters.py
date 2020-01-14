@@ -9,6 +9,7 @@ def Parameters_2D(mesh_resolution=1e-03, time_steps=20, decimals=8):
     dt = t_end/time_steps
 
     # Ventricle geometry
+    h = 0.02
     tau  = np.round(np.random.uniform(0.0075, 0.0125),decimals=decimals)
     # R_en = np.random.uniform(0.01, 0.03)
     R_en = np.round(np.random.uniform(0.02, 0.03),decimals=decimals)
@@ -43,6 +44,7 @@ def Parameters_2D(mesh_resolution=1e-03, time_steps=20, decimals=8):
     parameters = {'t': t,
               'dt': dt,
               't_end': t_end,
+              'h': h,
               'tau': tau,
               'R_en': R_en,
               'R_ep': R_en+tau,
