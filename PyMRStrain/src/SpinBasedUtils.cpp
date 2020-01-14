@@ -123,8 +123,8 @@ return output;
 }
 
 // Updates the pixel-to-spin connectivity using the spin-to-pixel vector
-std::vector<std::vector<int>> update_p2s(const std::vector<int> s2p,
-                                         const size_t nr_voxels){
+std::tuple<std::vector<std::vector<int>>, std::vector<int>> update_p2s(const std::vector<int> s2p,
+                                         const int nr_voxels){
 
     // Pixel-to-spins connectivity
     std::vector<std::vector<int>> p2s(nr_voxels);
@@ -132,12 +132,21 @@ std::vector<std::vector<int>> update_p2s(const std::vector<int> s2p,
     // Number of spins
     const size_t nr_spins = s2p.size();
 
+    // Signal weights
+    std::vector<int> signal_w(nr_voxels);
+
     // Update connectivity
+    // If the spins go outside of its container voxel
+    // then they are not included in the pixel-to-spins
+    // connectivity
     for (size_t i=0; i<nr_spins; i++){
-      p2s[s2p[i]].push_back(i);
+      if ((s2p[i] >= 0) && (s2p[i] < nr_voxels)){
+        p2s[s2p[i]].push_back(i);
+        signal_w[s2p[i]] += 1;
+      }
     }
 
-    return p2s;
+    return std::make_tuple(p2s, signal_w);
 }
 
 // Updates the spin-to-pixel connectivity using the pixel-to-spins vector
@@ -164,12 +173,12 @@ Eigen::VectorXi update_s2p3(Eigen::VectorXi s2p,
     return s2p;
 }
 
-PYBIND11_MODULE(SpinBasedutils, m) {
+PYBIND11_MODULE(SpinBasedUtils, m) {
     m.doc() = "Utilities for spins-based image generation"; // optional module docstring
     m.def("getConnectivity2", &getConnectivity2, py::return_value_policy::reference, "Get connectivity between spins and voxels");
     m.def("getConnectivity3", &getConnectivity3, py::return_value_policy::reference, "Get connectivity between spins and voxels for 3D images");
     m.def("getImage", &getImage, py::return_value_policy::reference, "Calculates the pixel intensity based on the pixel-to-spins connectivity");
     m.def("update_p2s", &update_p2s, py::return_value_policy::reference, "Updates the pixel-to-spin connectivity using the spin-to-pixel vector");
-    m.def("update_s2p2", &update_s2p2, py::return_value_policy::reference, "Updates the pixel-to-spin connectivity using the spin-to-pixel vector");
-    m.def("update_s2p3", &update_s2p3, py::return_value_policy::reference, "Updates the pixel-to-spin connectivity using the spin-to-pixel vector");
+    // m.def("update_s2p2", &update_s2p2, py::return_value_policy::reference, "Updates the pixel-to-spin connectivity using the spin-to-pixel vector");
+    // m.def("update_s2p3", &update_s2p3, py::return_value_policy::reference, "Updates the pixel-to-spin connectivity using the spin-to-pixel vector");
 }

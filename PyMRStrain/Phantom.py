@@ -125,15 +125,13 @@ class DefaultPhantom(PhantomBase):
     t = np.linspace(0.0,self.T,self.time_steps+1)
 
     # Component dofmaps
-    dofmap_x = self.dofmap[0::self.V.element_shape()[0]]
-    dofmap_y = self.dofmap[1::self.V.element_shape()[0]]
+    geo_dim = self.V.element_shape()[0]
+    dofmap = [self.dofmap[i::geo_dim] for i in range(geo_dim)]
 
     # Create base displacement
     mu = (self.R_ep - self.r)/(self.R_ep - self.R_en)
     mu = mu - mu.min()
     mu = mu/mu.max()
-    # mu[mu < 0.0] = 0.0
-    # mu[mu > 1.0] = 1.0
     mu = np.power(mu, self.sigma)
 
     ##########################
@@ -155,23 +153,40 @@ class DefaultPhantom(PhantomBase):
     R_ED = self.r
     R_ES = self.r - d_n
 
+    # Get in-plane displacements
     if self.patient:
       # Abnormality
       # Phi = 0.5*self.xi*(1.0 - (self.cos_*np.cos(self.psi) + self.sin_*np.sin(self.psi)))
       Phi = 0.5*self.xi*(0.5 - 0.5*(self.cos_*np.cos(self.psi) + self.sin_*np.sin(self.psi))) + 0.5
 
       # Create displacement and velocity for patients
-      self.u_real[dofmap_x] = Phi*(R_ES*(self.cos_*np.cos(phi_n) \
+      self.u_real[dofmap[0]] = Phi*(R_ES*(self.cos_*np.cos(phi_n) \
                             - self.sin_*np.sin(phi_n)) - R_ED*self.cos_)
-      self.u_real[dofmap_y] = Phi*(R_ES*(self.sin_*np.cos(phi_n) \
+      self.u_real[dofmap[1]] = Phi*(R_ES*(self.sin_*np.cos(phi_n) \
                             + self.cos_*np.sin(phi_n)) - R_ED*self.sin_)
 
     else:
       # Create displacement and velocity for volunteers
-      self.u_real[dofmap_x] = R_ES*(self.cos_*np.cos(phi_n) \
+      self.u_real[dofmap[0]] = R_ES*(self.cos_*np.cos(phi_n) \
                             - self.sin_*np.sin(phi_n)) - R_ED*self.cos_
-      self.u_real[dofmap_y] = R_ES*(self.sin_*np.cos(phi_n) \
+      self.u_real[dofmap[1]] = R_ES*(self.sin_*np.cos(phi_n) \
                             + self.cos_*np.sin(phi_n)) - R_ED*self.sin_
+
+    # If the phantom is 3D get longitudinal displacement
+    if geo_dim == 3:
+      # Normalize coordinates
+      x = np.copy(self.x[:,2])
+      s_max = x.max()
+      s_min = x.min()
+      x = (x - s_max)/(s_max - s_min)
+
+      # Scale in-plane components (keeps displacement on top but
+      # increases displacement on bottom)
+      self.u_real[dofmap[0]] *= -0.5*x + 1
+      self.u_real[dofmap[1]] *= -0.5*x + 1
+
+      # Define through-plane displacement
+      self.u_real[dofmap[2]] = -0.5*self.x[:,2]*np.abs(x) + 0.005
 
     # # # # Inclusion
     # # # f = Function(self.V)

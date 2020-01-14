@@ -20,7 +20,7 @@ def write_vtk(u, path=None, name=None):
     if mesh.cell=="hexahedron":
         cell_type = 12
     if mesh.cell=="tetra":
-        cell_type = 4
+        cell_type = 10
 
     # Define DATASET type
     element_shape = u.function_space().element_shape()[0]

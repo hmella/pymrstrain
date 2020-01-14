@@ -1,12 +1,13 @@
 from PyMRStrain.Geometry import *
-from PyMRStrain.FiniteElement import *
-from PyMRStrain.FunctionSpace import *
+# from PyMRStrain.FiniteElement import *
+# from PyMRStrain.FunctionSpace import *
 from PyMRStrain.Function import *
 from PyMRStrain.Image import *
-from PyMRStrain.Math import *
+from PyMRStrain.Math import FFT, iFFT
 from PyMRStrain.MPIUtilities import *
 from ImageUtilities import *
-from SpinBasedutils import *
+from SpinBasedUtils import *
+from PyMRStrain.PySpinBasedUtils import *
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import interpolate
@@ -605,75 +606,6 @@ def get_PCSPAMM_image(image, phantom, parameters, debug=False):
   return image_0, image_1, mask
 
 
-#######################################
-#   DENSE Images
-#######################################
-# Generate DENSE images
-def get_dense_image(image, phantom, parameters, debug, fem):
-  """ Generate DENSE images
-  """
-  # Time-steping parameters
-  t     = parameters["t"]
-  dt    = parameters["dt"]
-  t_end = parameters["t_end"]
-  n     = parameters["time_steps"]
-
-  # Output image
-  o_image = np.zeros(np.append(image.array_resolution, [image.type_dim(), n]), dtype=complex)
-  mask    = np.zeros(np.append(image.array_resolution, n), dtype=np.int16)
-
- # Sequence parameters
-  T1    = image.T1                     # relaxation
-  alpha = image.flip_angle             # flip angle
-  ke    = image.encoding_frequency     # encoding frequency
-  M0    = 1.0                          # thermal equilibrium magnetization
-  M     = M0
-
-  # Flip angles
-  if isinstance(alpha,float) or isinstance(alpha,int):
-    alpha = alpha*np.ones([n],dtype=np.float)
-
-  # Check complementary acquisition
-  if image.complementary:
-    comp = -1.0
-  else:
-    comp = 1.0
-
-  # Magnetization expression
-  Mxy = lambda mask, M, M0, alpha, prod, t, T1, ke, X, u: mask*(comp*0.5*M*np.sin(alpha)*np.exp(-t/T1)*np.exp(-1j*ke*u*mask) +
-                                                          M0*np.sin(alpha)*(1 - np.exp(-t/T1))*np.exp(-1j*ke*(X+u*mask)))*prod
-
-  # Mxy = lambda mask, M, M0, alpha, t, T1, ke, X, u: mask*(comp*0.5*M*np.sin(alpha)*np.exp(-t/T1)*np.exp(-1j*ke*u*mask) +
-  #                                                         M0*np.sin(alpha)*(1 - np.exp(-t/T1))*np.exp(-1j*ke*(X+u*mask)) +
-  #                                                         comp*0.5*M*np.sin(alpha)*np.exp(-t/T1)*np.exp(-1j*ke*(2*X+u*mask)))
-
-  # Time stepping
-  prod = 1
-  for i in range(n):
-
-    # Update time
-    t += dt
-
-    if rank==0 and debug: print("- Time: {:.2f}".format(t))
-
-    # Get displacements in the reference frame
-    u = phantom.displacement(i)
-
-    # Project to fem-image in the deformed frame
-    u_image, m = _project2image_vector(u, u, image, parameters["mesh_resolution"])
-
-    # Complex magnetization data
-    for j in range(o_image.shape[-2]):
-      o_image[...,j,i] =  Mxy(m, M, M0, alpha[i], prod, t, T1, ke[j], image._grid[j], u_image[...,j])
-
-    # Save mask
-    mask[...,i] = m
-
-    # Flip angles product
-    prod = prod*np.cos(alpha[i])
-
-  return o_image, mask
-
 # Generate complementary DENSE images
 def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   """ Generate DENSE images
@@ -780,7 +712,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   s2p = np.array(getConnectivity(x, voxel_coords, voxels,
                   width, nr_local_voxels, nr_voxels))  # pixel-to-spins map
   p2s = [[] for j in range(n)]
-  [p2s[pixel].append(spin) for (spin, pixel) in enumerate(s2p)]
+  [p2s[pixel].append(spin) for (spin, pixel) in enumerate(s2p) if pixel >= 0]
 
   # Spins positions with respect to its containing voxel center
   corners = np.array([c[i].flatten()[s2p]-0.5*width[i] for i in range(di)]).T
@@ -792,7 +724,6 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   # Time stepping
   prod = 1
   upre = np.zeros([x.shape[0],dp])
-
   for i in range(n_t):
 
     # Update time
@@ -804,8 +735,8 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     u = phantom.displacement(i)
     reshaped_u = u.vector().reshape((-1,dp))
 
-    # from PyMRStrain.IO import write_scalar_vtk
-    # write_vtk(u, 'output/u_{:04d}.vtk'.format(i),'u')
+    # from PyMRStrain.IO import write_vtk
+    # write_vtk(u, path="output/u_{:04d}.vtk".format(i), name='u')
 
     # Displacement in terms of pixels
     x_new = x_rel + reshaped_u - upre
@@ -813,17 +744,10 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     subpixel_u = x_new - np.multiply(pixel_u, width)
 
     # Change spins connectivity according to the new positions
-    # s2p = globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution)
-    if di == 2:
-      s2p[:] += (resolution[1]*pixel_u[:,1] + pixel_u[:,0]).astype(np.int64)
-    elif di == 3:
-      s2p[:] += (resolution[1]*pixel_u[:,1]
-             + resolution[0]*resolution[1]*pixel_u[:,2]
-             + pixel_u[:,0]).astype(np.int64)
-
+    s2p = globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution)
 
     # Update pixel-to-spins connectivity
-    p2s = update_p2s(s2p, n)
+    (p2s, sigweigths) = update_p2s(s2p, n)
 
     # Update relative spins positions
     x_rel[:,:] = subpixel_u
@@ -833,6 +757,9 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
         (I, m) = getImage(reshaped_u[:,j],p2s)
         u_image[...,j] = I.reshape(resolution)
     m = m.reshape(resolution)
+
+    # Reshape signal weights
+    sigweigths = np.array(sigweigths).reshape(resolution)
 
     # Grid to evaluate magnetizations
     imgrid = input_image._grid
@@ -853,12 +780,12 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
         # Magnetization expressions
         tmp0 = Mxy0(m[...,slice], M, M0, alpha[i], prod, t, T1, ke[j],
                     imgrid[j][...,slice]-u_image[...,slice,j], u_image[...,slice,j],
-                    phi[...,slice])
+                    phi[...,slice])*sigweigths[...,slice]
         tmp1 = Mxy1(m[...,slice], M, M0, alpha[i], prod, t, T1, ke[j],
                     imgrid[j][...,slice]-u_image[...,slice,j], u_image[...,slice,j],
-                    phi[...,slice])
+                    phi[...,slice])*sigweigths[...,slice]
         tmp2 = Mxyin(m[...,slice], M, M0, alpha[i], prod, t, T1, ke[j],
-                     phi[...,slice])
+                     phi[...,slice])*sigweigths[...,slice]
 
         # Check if images should be cropped
         if np.any(chck):

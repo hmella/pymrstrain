@@ -9,7 +9,7 @@ if __name__=="__main__":
   p = Parameters_2D(decimals=10, time_steps=18)
   np.save("p.npy", p)
   p=np.load('p.npy',allow_pickle=True).item()
-  p["mesh_resolution"] = 0.0005
+  p["mesh_resolution"] = 0.0015
 
   # Field inhomogeneity
   phi = lambda X, Y: (X+Y)/0.1*0.2
@@ -19,12 +19,12 @@ if __name__=="__main__":
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
   N = 33                  # resolution
   I0 = DENSEImage(FOV=np.array([0.1, 0.1, 0.008]),
-            resolution=np.array([N, N, 1]),
+            resolution=np.array([N, N, 2]),
             encoding_frequency=np.array([ke,ke,0]),
             T1=0.85,
             flip_angle=15*np.pi/180,
             off_resonance=phi,
-            kspace_factor=16.5)
+            kspace_factor=16)
 
   # Generator
   g0 = Generator(p, I0)
@@ -33,9 +33,9 @@ if __name__=="__main__":
   FE = VectorElement("tetrahedron")
 
   # Mesh and fem space
-  p['h'] = 0.008 - 1e-04
-  # mesh = Mesh('mesh/mesh.msh')
-  mesh = fem_ventricle_geometry(p['R_en'], p['tau'], p['h'], p['mesh_resolution'], filename='mesh/mesh.msh')
+  p['h'] = 0.004 - 1e-04
+  mesh = Mesh('mesh/mesh.msh')
+  # mesh = fem_ventricle_geometry(p['R_en'], p['tau'], p['h'], p['mesh_resolution'], filename='mesh/mesh.msh')
   V = FunctionSpace(mesh, FE)
 
   # Create phantom object
@@ -49,7 +49,7 @@ if __name__=="__main__":
   print(end-start)
 
   # Add noise to images
-  sigma = 0.2e-02
+  sigma = 0.4e-02
   un0 = add_noise_to_DENSE_(u0, mask, sigma=sigma)
   un1 = add_noise_to_DENSE_(u1, mask, sigma=sigma)
 
@@ -81,10 +81,14 @@ if __name__=="__main__":
   # plt.savefig('DENSE')
   # plt.show()
 
-  # fig = plt.imshow(np.angle(u[...,0,0,7]),cmap=plt.get_cmap('gray'))
-  # fig.axes.get_xaxis().set_visible(False)
-  # fig.axes.get_yaxis().set_visible(False)
-  # plt.savefig('new')
+  # fig, ax = plt.subplots(1,2)
+  # fig0 = ax[0].imshow(np.abs(u[...,0,0,6]),cmap=plt.get_cmap('gray'))
+  # fig1 = ax[1].imshow(np.angle(u[...,0,0,6]),cmap=plt.get_cmap('gray'))
+  # fig0.axes.get_xaxis().set_visible(False)
+  # fig0.axes.get_yaxis().set_visible(False)
+  # fig1.axes.get_xaxis().set_visible(False)
+  # fig1.axes.get_yaxis().set_visible(False)
+  # plt.savefig('moving_slice_dir')
   # plt.show()
 
   # fig = plt.imshow(np.angle(u[...,0,10]*np.conj(-uin[...,0,10])),cmap=plt.get_cmap('gray'),vmin=-np.pi,vmax=np.pi)
@@ -102,6 +106,6 @@ if __name__=="__main__":
   # Plot
   if rank==0:
     fig, ax = plt.subplots(1, 2)
-    tracker = IndexTracker(ax, np.abs(u[:,:,0,0,:]), np.angle(u[:,:,0,0,:]))
+    tracker = IndexTracker(ax, np.abs(u[:,:,1,0,:]), np.angle(u[:,:,1,0,:]))
     fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
     plt.show()

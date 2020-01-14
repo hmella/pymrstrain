@@ -48,7 +48,7 @@ ext_modules = [
         language='c++'
     ),
     Extension(
-        'SpinBasedutils',
+        'SpinBasedUtils',
         ['PyMRStrain/src/SpinBasedUtils.cpp'],
         include_dirs=[
             # Path to pybind11 headers
