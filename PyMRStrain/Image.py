@@ -6,7 +6,7 @@ import numpy as np
 ###################
 class ImageBase(object):
   def __init__(self,
-               FOV=np.array([1.0,1.0,0.008]),
+               FOV=np.array([1.0,1.0,0.04]),
                resolution=np.array([30, 30, 1]),
                center=np.array([0.0, 0.0, 0.0]),
                encoding_direction=[0, 1],
@@ -78,8 +78,10 @@ class ImageBase(object):
     # np.meshgrid generation
     X = [np.linspace(-0.5*self.FOV[i], 0.5*self.FOV[i], resolution[i]) + self.center[i] for i in range(d)]
 
-    if d < 3:
-      X.append(np.array([0]))
+    if d == 3 and resolution[2] == 1:
+      X[2] = self.center[2]
+    elif d < 3:
+      X.append(self.center[2])
     grid = np.meshgrid(X[0], X[1], X[2], indexing='xy', sparse=sparse)
 
     return grid

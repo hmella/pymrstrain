@@ -9,7 +9,7 @@ if __name__=="__main__":
   # p = Parameters_2D(decimals=10, time_steps=18)
   # np.save("p.npy", p)
   p=np.load('p.npy',allow_pickle=True).item()
-  p["mesh_resolution"] = 0.001
+  p["mesh_resolution"] = 0.002
 
   # Field inhomogeneity
   phi = lambda X, Y: (X+Y)/0.1*0.2
@@ -18,28 +18,30 @@ if __name__=="__main__":
   ke = 0.12               # encoding frequency [cycles/mm]
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
   N = 100                 # resolution
-  # I0 = DENSEImage(FOV=np.array([0.1, 0.1, 0.008]),
-  #           resolution=np.array([N, N, 1]),
-  #           encoding_frequency=np.array([ke,ke,0]),
+  I0 = DENSEImage(FOV=np.array([0.1, 0.1, 0.008]),
+            resolution=np.array([N, N, 1]),
+            encoding_frequency=np.array([ke,ke,0]),
+            T1=0.85,
+            flip_angle=15*np.pi/180,
+            off_resonance=phi,
+            kspace_factor=15)
+  # I0 = DENSEImage(FOV=np.array([0.1, 0.1]),
+  #           resolution=np.array([N, N]),
+  #           encoding_frequency=np.array([ke,ke]),
   #           T1=0.85,
   #           flip_angle=15*np.pi/180,
   #           off_resonance=phi,
   #           kspace_factor=16.5)
-  I0 = DENSEImage(FOV=np.array([0.1, 0.1]),
-            resolution=np.array([N, N]),
-            encoding_frequency=np.array([ke,ke]),
-            T1=0.85,
-            flip_angle=15*np.pi/180,
-            off_resonance=phi,
-            kspace_factor=16.5)
 
   # Generator
   g0 = Generator(p, I0)
 
   # Element
-  FE = VectorElement("triangle")
+  FE = VectorElement("tetrahedron")
 
   # Mesh and fem space
+  p['h'] = 0.005
+  # mesh = Mesh('mesh/mesh.msh')
   mesh = fem_ventricle_geometry(p['R_en'], p['tau'], p['h'], p['mesh_resolution'], filename='mesh/mesh.msh')
   V = FunctionSpace(mesh, FE)
 

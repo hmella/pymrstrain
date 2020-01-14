@@ -810,7 +810,12 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     subpixel_u = x_new - np.multiply(pixel_u, width)
 
     # Change spins connectivity according to the new positions
-    s2p[:] += (resolution[1]*pixel_u[:,1] + pixel_u[:,0]).astype(np.int64)
+    if di == 2:
+      s2p[:] += (resolution[1]*pixel_u[:,1] + pixel_u[:,0]).astype(np.int64)
+    elif di == 3:
+      s2p[:] += (resolution[1]*pixel_u[:,1]
+             + resolution[1]*resolution[2]*pixel_u[:,2]
+             + pixel_u[:,0]).astype(np.int64)
 
     # Update pixel-to-spins connectivity
     p2s = update_p2s(s2p, n)
