@@ -39,7 +39,7 @@ class ImageBase(object):
 
   # Pixel size
   def voxel_size(self):
-    return self.FOV/(self.resolution-1)
+    return self.FOV/self.resolution
 
   # Practical resolution
   # OBS: resolution of the image is intended to be the number of x-coordinates
@@ -75,14 +75,17 @@ class ImageBase(object):
     # Image dimension
     d = resolution.size
 
-    # np.meshgrid generation
-    X = [np.linspace(-0.5*self.FOV[i], 0.5*self.FOV[i], resolution[i]) + self.center[i] for i in range(d)]
+    # Pixel size
+    pxsz = self.voxel_size()
 
-    if d == 3 and resolution[2] == 1:
-      X[2] = np.array(self.center[2])
-    elif d < 3:
-      X.append(np.array(self.center[2]))
-    grid = np.meshgrid(X[0], X[1], X[2], indexing='xy', sparse=sparse)
+    # np.meshgrid generation
+    X = [pxsz[i]*np.linspace(0,resolution[i]-1,resolution[i]) + self.center[i] for i in range(d)]
+    X = [X[i] - X[i].mean() for i in range(d)]
+
+    if d == 2:
+      grid = np.meshgrid(X[0], X[1], indexing='xy', sparse=sparse)
+    elif d == 3:
+      grid = np.meshgrid(X[0], X[1], X[2], indexing='xy', sparse=sparse)
 
     return grid
 

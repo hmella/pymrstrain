@@ -735,8 +735,8 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     u = phantom.displacement(i)
     reshaped_u = u.vector().reshape((-1,dp))
 
-    # from PyMRStrain.IO import write_vtk
-    # write_vtk(u, path="output/u_{:04d}.vtk".format(i), name='u')
+    from PyMRStrain.IO import write_vtk
+    write_vtk(u, path="output/u_{:04d}.vtk".format(i), name='u')
 
     # Displacement in terms of pixels
     x_new = x_rel + reshaped_u - upre
