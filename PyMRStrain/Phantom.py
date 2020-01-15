@@ -188,6 +188,10 @@ class DefaultPhantom(PhantomBase):
       # Define through-plane displacement
       self.u_real[dofmap[2]] = -0.5*self.x[:,2]*np.abs(x) + 0.005
 
+      # from PyMRStrain.IO import write_vtk
+      # write_vtk(u, path="output/u_{:04d}.vtk".format(i), name='u')
+
+
     # # # # Inclusion
     # # # f = Function(self.V)
     # # # R = np.sqrt(np.power(self.x[:,0]-0.4*(self.R_en+self.R_ep),2) + np.power(self.x[:,1],2))

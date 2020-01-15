@@ -99,24 +99,24 @@ std::vector<int> getConnectivity3(const Eigen::MatrixXd &x,
 // Calculates the pixel intensity of the images based on the pixel-to-spins
 // connectivity. The intensity is estimated using the mean of all the spins
 // inside a fgiven pixel
-std::vector<Eigen::VectorXd> getImage(const Eigen::MatrixXd u,
+std::vector<Eigen::VectorXd> getImage(const Eigen::VectorXd u,
                           const std::vector<std::vector<int>> p2s){
 
-// Number of pixels
-const size_t nr_voxels = p2s.size();
+    // Number of voxels
+    const size_t nr_voxels = p2s.size();
 
-// Output
-std::vector<Eigen::VectorXd> output(2);
-output[0] = Eigen::VectorXd::Zero(nr_voxels);
-output[1] = Eigen::VectorXd::Zero(nr_voxels);
+    // Output
+    std::vector<Eigen::VectorXd> output(2);
+    output[0] = Eigen::VectorXd::Zero(nr_voxels);
+    output[1] = Eigen::VectorXd::Zero(nr_voxels);
 
-// Number of pixels
-for (size_t i=0; i<nr_voxels; i++){
-    if (!p2s[i].empty()){
-        output[0](i) = u(p2s[i],Eigen::all).mean();
-        output[1](i) = 1;
+    // Number of pixels
+    for (size_t i=0; i<nr_voxels; i++){
+        if (!p2s[i].empty()){
+            output[0](i) = u(p2s[i]).mean();
+            output[1](i) = 1;
+        }
     }
-}
 
 return output;
 

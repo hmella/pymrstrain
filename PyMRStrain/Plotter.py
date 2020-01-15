@@ -12,9 +12,9 @@ class IndexTracker:
     rows, cols, self.slices = X.shape
     self.ind = 0
     self.im_X = self.ax[0].imshow(self.X[:, :, self.ind], cmap=plt.get_cmap('Greys_r'),
-                interpolation='nearest', vmin=0, vmax=2)
+                interpolation='nearest', vmin=x_min, vmax=x_max)
     self.im_Y = self.ax[1].imshow(self.Y[:, :, self.ind], cmap=plt.get_cmap('Greys_r'),
-                interpolation='nearest', vmin=0, vmax=2)
+                interpolation='nearest', vmin=y_min, vmax=y_max)
     self.update()
 
   def onscroll(self, event):

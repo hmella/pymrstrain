@@ -717,7 +717,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   [p2s[pixel].append(spin) for (spin, pixel) in enumerate(s2p) if pixel >= 0]
 
   # Spins positions with respect to its containing voxel center
-  corners = np.array([c[i].flatten()[s2p]-0.5*width[i] for i in range(di)]).T
+  corners = np.array([c[i].flatten('F')[s2p]-0.5*width[i] for i in range(di)]).T
   x_rel = x[:,0:dp] - corners
 
   # Displacement image
@@ -737,16 +737,13 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     u = phantom.displacement(i)
     reshaped_u = u.vector().reshape((-1,dp))
 
-    from PyMRStrain.IO import write_vtk
-    write_vtk(u, path="output/u_{:04d}.vtk".format(i), name='u')
-
     # Displacement in terms of pixels
     x_new = x_rel + reshaped_u - upre
     pixel_u = np.floor(np.divide(x_new, width))
     subpixel_u = x_new - np.multiply(pixel_u, width)
 
     # Change spins connectivity according to the new positions
-    s2p = globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution)
+    globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution)
 
     # Update pixel-to-spins connectivity
     (p2s, sigweigths) = update_p2s(s2p, n)
@@ -757,34 +754,36 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     # Fill images
     for j in range(di):
         (I, m) = getImage(reshaped_u[:,j],p2s)
-        u_image[...,j] = I.reshape(resolution)
-    m = m.reshape(resolution)
+        u_image[...,j] = I.reshape(resolution,order='F')
+    m = m.reshape(resolution,order='F')
 
     # Reshape signal weights
-    sigweigths = np.array(sigweigths).reshape(resolution)
+    sigweigths = np.array(sigweigths).reshape(resolution,order='F')
 
     # Grid to evaluate magnetizations
-    imgrid = input_image._grid
+    X = input_image._grid
 
-    # Iterates over slices
+    # Resolutions and cropping ranges
     S = input_image.array_resolution
     s = image.array_resolution
+    r = [int(0.5*(S[0]-s[0])), int(0.5*(S[0]-s[0])+s[0])]
+    c = [int(0.5*(S[1]-s[1])), int(0.5*(S[1]-s[1])+s[1])]
+
+    # Iterates over slices
     for slice in range(resolution[2]):
 
       # Update mask
-      mask[...,slice,i] = np.abs(iFFT(H*FFT(m,axes=[0,1])[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
-                                        int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1,
-                                        slice]))
+      mask[...,slice,i] = np.abs(iFFT(H*FFT(m)[r[0]:r[1]:1, c[0]:c[1]:1, slice]))
 
       # Complex magnetization data
       for j in range(image_0.shape[-2]):
 
         # Magnetization expressions
         tmp0 = Mxy0(m[...,slice], M, M0, alpha[i], prod, t, T1, ke[j],
-                    imgrid[j][...,slice]-u_image[...,slice,j], u_image[...,slice,j],
+                    X[j][...,slice]-u_image[...,slice,j], u_image[...,slice,j],
                     phi[...,slice])*sigweigths[...,slice]
         tmp1 = Mxy1(m[...,slice], M, M0, alpha[i], prod, t, T1, ke[j],
-                    imgrid[j][...,slice]-u_image[...,slice,j], u_image[...,slice,j],
+                    X[j][...,slice]-u_image[...,slice,j], u_image[...,slice,j],
                     phi[...,slice])*sigweigths[...,slice]
         tmp2 = Mxyin(m[...,slice], M, M0, alpha[i], prod, t, T1, ke[j],
                      phi[...,slice])*sigweigths[...,slice]
@@ -793,12 +792,9 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
         if np.any(chck):
 
           # kspace cropping
-          image_0[...,slice,j,i] = iFFT(H*FFT(tmp0)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
-                                            int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
-          image_1[...,slice,j,i] = iFFT(H*FFT(tmp1)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
-                                            int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
-          image_2[...,slice,j,i] = iFFT(H*FFT(tmp2)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
-                                            int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
+          image_0[...,slice,j,i] = iFFT(H*FFT(tmp0)[r[0]:r[1]:1, c[0]:c[1]:1])
+          image_1[...,slice,j,i] = iFFT(H*FFT(tmp1)[r[0]:r[1]:1, c[0]:c[1]:1])
+          image_2[...,slice,j,i] = iFFT(H*FFT(tmp2)[r[0]:r[1]:1, c[0]:c[1]:1])
 
         else:
 
