@@ -1,7 +1,7 @@
 from numpy.fft import fftshift, fftn, ifftn, ifftshift
 
-def FFT(x):
-  return fftshift(fftn(ifftshift(x)))
+def FFT(x, axes=None):
+  return fftshift(fftn(ifftshift(x,axes=axes),axes=axes),axes=axes)
 
-def iFFT(x):
-  return fftshift(ifftn(ifftshift(x)))
+def iFFT(x, axes=None):
+  return fftshift(ifftn(ifftshift(x,axes=axes),axes=axes),axes=axes)

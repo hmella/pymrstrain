@@ -6,7 +6,7 @@ import time
 if __name__=="__main__":
 
   # Parameters
-  # p = Parameters_2D(decimals=10, time_steps=18)
+  # p = Parameters_2D(decimals=10, time_steps=20)
   # np.save("p.npy", p)
   p=np.load('p.npy',allow_pickle=True).item()
   p["mesh_resolution"] = 0.002
@@ -18,7 +18,7 @@ if __name__=="__main__":
   ke = 0.12               # encoding frequency [cycles/mm]
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
   N = 33                  # resolution
-  I0 = DENSEImage(FOV=np.array([0.1, 0.1, 0.12]),
+  I0 = DENSEImage(FOV=np.array([0.1, 0.1, 0.012]),
             resolution=np.array([N, N, 3]),
             encoding_frequency=np.array([ke,ke,0]),
             T1=0.85,
@@ -33,9 +33,9 @@ if __name__=="__main__":
   FE = VectorElement("tetrahedron")
 
   # Mesh and fem space
-  p['h'] = 0.004 - 1e-04
-  mesh = Mesh('mesh/mesh.msh')
-  # mesh = fem_ventricle_geometry(p['R_en'], p['tau'], p['h'], p['mesh_resolution'], filename='mesh/mesh.msh')
+  p['h'] = 0.003
+  # mesh = Mesh('mesh/mesh.msh')
+  mesh = fem_ventricle_geometry(p['R_en'], p['tau'], p['h'], p['mesh_resolution'], filename='mesh/mesh.msh')
   V = FunctionSpace(mesh, FE)
 
   # Create phantom object
@@ -66,9 +66,13 @@ if __name__=="__main__":
   # plt.savefig('1_slice')
   # plt.show()
 
+  # grids = I0._grid
+  # print(grids[2])
+
   # Plot
   if rank==0:
     fig, ax = plt.subplots(1, 2)
-    tracker = IndexTracker(ax, np.abs(u[:,:,0,0,:]), np.angle(u[:,:,0,0,:]))
+    # tracker = IndexTracker(ax, np.abs(u[:,:,0,0,:]), np.abs(u[:,:,1,0,:]))
+    tracker = IndexTracker(ax, np.abs(u[16,:,:,0,:]), np.abs(u[16,:,:,0,:]))
     fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
     plt.show()

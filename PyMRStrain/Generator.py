@@ -656,6 +656,8 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
       elif (image.resolution[i] % 2 != 0) and (res[i] % 2 == 0):
         res[i] += 1
 
+    print(res)
+
     # Create a new image object
     new_image = DENSEImage(FOV=image.FOV,
             resolution=res,
@@ -770,7 +772,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     for slice in range(resolution[2]):
 
       # Update mask
-      mask[...,slice,i] = np.abs(iFFT(H*FFT(m)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
+      mask[...,slice,i] = np.abs(iFFT(H*FFT(m,axes=[0,1])[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
                                         int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1,
                                         slice]))
 
