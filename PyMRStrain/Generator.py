@@ -314,7 +314,7 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
   pxsz = np.array([2*np.pi/(4.5*ke[i]) for i in range(ke.size)])
   res  = np.floor(np.divide(image.FOV,pxsz)).astype(int)
   chck = [image.resolution[i] < res[i] for i in range(ke.size)]
-  if np.any(chck):
+  if incr_bw:
     # Check if resolutions are even or odd
     for i in range(res.size):
       if (image.resolution[i] % 2 == 0) and (res[i] % 2 != 0):
@@ -403,7 +403,7 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
       taglines[np.isnan(taglines)] = 0
 
     # Save mask
-    if np.any(chck):
+    if incr_bw:
       _mask = original_m
     else:
       _mask = m
@@ -432,7 +432,7 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
       tmp1 =  Mxy1(m, M, M0, alpha[i], prod, beta, t, T1, taglines[...,j], phi)
 
       # Check if images should be cropped
-      if np.any(chck):
+      if incr_bw:
 
         # Images size
         S = new_image.array_resolution
@@ -616,23 +616,12 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   t_end = parameters["t_end"]
   n_t   = parameters["time_steps"]
 
-  # Output image
-  size = np.append(image._astute_resolution, [n_t])
-  image_0 = np.zeros(size, dtype=complex)
-  image_1 = np.zeros(size, dtype=complex)
-  image_2 = np.zeros(size, dtype=complex)
-  mask    = np.zeros(np.append(size[:-2], n_t), dtype=np.int16)
-
  # Sequence parameters
   T1    = image.T1                     # relaxation
   alpha = image.flip_angle             # flip angle
   ke    = image.encoding_frequency     # encoding frequency
   M0    = 1.0                          # thermal equilibrium magnetization
   M     = M0
-
-  # Flip angles
-  if isinstance(alpha,float) or isinstance(alpha,int):
-    alpha = alpha*np.ones([n_t],dtype=np.float)
 
   # Magnetization expressions
   Mxy0 = lambda mask, M, M0, alpha, prod, t, T1, ke, X, u, phi: mask*(+0.5*M*np.exp(-t/T1)*np.exp(-1j*ke*u) +
@@ -643,53 +632,33 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
                                                           M0*(1 - np.exp(-t/T1))*np.exp(-1j*ke*(X+u)))*prod*np.sin(alpha)*np.exp(1j*phi)
   Mxyin = lambda mask, M, M0, alpha, prod, t, T1, ke, phi: mask*(M0*(1 - np.exp(-t/T1)))*prod*np.sin(alpha)*np.exp(1j*phi)
 
+  # Function space of the displacement field
+  V = phantom.V
+
+  # Determine if the image and phantom geometry are 2D or 3D
+  di = image.type_dim()                      # image geometric dimension
+  dp = V.shape[0]                            # phantom (fem) geometric dimension
+  dk = np.sum(int(k/k) for k in ke if k!= 0) # Number of encoding directions
+
+  # Output image
+  size = np.append(image.resolution, [dk, n_t])
+  image_0 = np.zeros(size, dtype=complex)
+  image_1 = np.zeros(size, dtype=complex)
+  image_2 = np.zeros(size, dtype=complex)
+  mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.int16)
+
+  # Flip angles
+  if isinstance(alpha,float) or isinstance(alpha,int):
+    alpha = alpha*np.ones([n_t],dtype=np.float)
+
   # Check k space bandwidth to avoid folding artifacts
-  pxsz = np.array([2*np.pi/(image.kspace_factor*k) if k != 0
-                   else image.voxel_size()[i] for i,k in enumerate(ke)])
-  res  = np.floor(np.divide(image.FOV,pxsz)).astype(int)
-  chck = [image.resolution[i] < res[i] for i in range(ke.size)]
-  if np.any(chck):
-    # Check if resolutions are even or odd
-    for i in range(res.size):
-      if (image.resolution[i] % 2 == 0) and (res[i] % 2 != 0):
-        res[i] += 1
-      elif (image.resolution[i] % 2 != 0) and (res[i] % 2 == 0):
-        res[i] += 1
-
-    print(res)
-
-    # Create a new image object
-    new_image = DENSEImage(FOV=image.FOV,
-            resolution=res,
-            encoding_frequency=ke,
-            T1=T1,
-            flip_angle=alpha,
-            off_resonance=image.off_resonance,
-            interpolation=image.interpolation)
-    new_image._modified_resolution = True
-    new_image._original_resolution = image.resolution
-    new_image._original_grid = image._grid
-    new_image._original_array_resolution = image.array_resolution
-    new_image._original_voxel_size = image.voxel_size()
-    input_image = new_image
-  else:
-    input_image = image
+  res, incr_bw, D = check_kspace_bw(image)
 
   # Off resonance
   if not image.off_resonance:
     phi = np.zeros(image.array_resolution)
   else:
-    if np.any(chck):
-      phi = image.off_resonance(new_image._grid[0],new_image._grid[1])
-    else:
-      phi = image.off_resonance(image._grid[0],image._grid[1])
-
-  # Function space of the displacement field
-  V = phantom.V
-
-  # Determine if the image and phantom geometry are 2D or 3D
-  di = input_image.type_dim()   # image geometric dimension
-  dp = V.shape[0]               # phantom (fem) geometric dimension
+    phi = image.off_resonance(D["grid"][0],D["grid"][1])
 
   # Hamming filter to reduce Gibbs ringing artifacts
   Hf = [signal.hamming(image.array_resolution[i]) for i in range(di)]
@@ -699,14 +668,13 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   x = V.dof_coordinates()[::dp]
 
   # Voxels centers
-  c = input_image._grid                   # global voxel coordinates
-  voxels, voxel_coords = scatter_image(c) # local indices and voxel coordinates
-  nr_local_voxels = voxels.size           # Number of local voxels
-  nr_voxels = c[0].size                   # Number of global voxels
+  voxels, voxel_coords = scatter_image(D['grid']) # local indices and voxel coordinates
+  nr_local_voxels = voxels.size                   # Number of local voxels
+  nr_voxels = D['grid'][0].size                           # Number of global voxels
 
   # Voxel width and image resolution
-  width = input_image.voxel_size()
-  resolution = input_image._astute_resolution[0:-1]
+  width = D['voxel_size']
+  resolution = D['array_resolution']
 
   # Connectivity (this is done just once)
   n = nr_local_voxels
@@ -719,11 +687,20 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   # Spins positions with respect to its containing voxel center
   # Obs: the option -order='F'- is included to make the grid of the
   # Z coordinate at the end of the flattened array
-  corners = np.array([c[i].flatten('F')[s2p]-0.5*width[i] for i in range(di)]).T
+  corners = np.array([D['grid'][i].flatten('F')[s2p]-0.5*width[i] for i in range(di)]).T
   x_rel = x[:,0:dp] - corners
 
   # Displacement image
-  u_image = np.zeros(input_image._astute_resolution)
+  u_image = np.zeros(np.append(resolution, dk))
+
+  # Grid to evaluate magnetizations
+  X = D['grid']
+
+  # Resolutions and cropping ranges
+  S = resolution
+  s = image.array_resolution
+  r = [int(0.5*(S[0]-s[0])), int(0.5*(S[0]-s[0])+s[0])]
+  c = [int(0.5*(S[1]-s[1])), int(0.5*(S[1]-s[1])+s[1])]
 
   # Time stepping
   prod = 1
@@ -756,7 +733,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
     # using this option. Therefore the reshape must be performed accordingly
-    for j in range(di):
+    for j in range(dk):
         (I, m) = getImage(reshaped_u[:,j],p2s)
         u_image[...,j] = I.reshape(resolution,order='F')
     m = m.reshape(resolution,order='F')
@@ -765,15 +742,6 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     # Obs: the option -order='F'- is included because the grid was flattened
     # using this option. Therefore the reshape must be performed accordingly
     sigweigths = np.array(sigweigths).reshape(resolution,order='F')
-
-    # Grid to evaluate magnetizations
-    X = input_image._grid
-
-    # Resolutions and cropping ranges
-    S = input_image.array_resolution
-    s = image.array_resolution
-    r = [int(0.5*(S[0]-s[0])), int(0.5*(S[0]-s[0])+s[0])]
-    c = [int(0.5*(S[1]-s[1])), int(0.5*(S[1]-s[1])+s[1])]
 
     # Iterates over slices
     for slice in range(resolution[2]):
@@ -795,7 +763,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
                      phi[...,slice])*sigweigths[...,slice]
 
         # Check if images should be cropped
-        if np.any(chck):
+        if incr_bw:
 
           # kspace cropping
           image_0[...,slice,j,i] = iFFT(H*FFT(tmp0)[r[0]:r[1]:1, c[0]:c[1]:1])

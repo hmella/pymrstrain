@@ -123,7 +123,8 @@ return output;
 }
 
 // Updates the pixel-to-spin connectivity using the spin-to-pixel vector
-std::tuple<std::vector<std::vector<int>>, std::vector<int>> update_p2s(const std::vector<int> s2p,
+std::tuple<std::vector<std::vector<int>>,
+           std::vector<int>> update_p2s(const std::vector<int> s2p,
                                          const int nr_voxels){
 
     // Pixel-to-spins connectivity

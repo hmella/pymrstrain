@@ -33,6 +33,12 @@ class ImageBase(object):
     self._modified_resolution = False
     self.kspace_factor = kspace_factor
 
+  # Flip angles
+  def flip_angle_t(self, alpha):
+    if isinstance(alpha,float) or isinstance(alpha,int):
+      alpha = alpha*np.ones([n_t],dtype=np.float)
+    return alpha
+
   # Geometric dimension
   def geometric_dimension(self):
     return self.resolution.size

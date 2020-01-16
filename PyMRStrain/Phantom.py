@@ -96,7 +96,7 @@ class PhantomBase:
 #########################################################
 # Phantom Class
 class DefaultPhantom(PhantomBase):
-  def __init__(self, p, function_space=None, t=0.0, T=1.0, time_steps=30, patient=False):
+  def __init__(self, p, function_space=None, patient=False, write_vtk=False):
 
     # Init parameters
     self.sigma = p['sigma']
@@ -112,8 +112,9 @@ class DefaultPhantom(PhantomBase):
     self.psi = p['psi']
     self.xi  = p['xi']
     self.patient = patient
-    self.T = T
+    self.T = p["t_end"]
     self.time_steps = p["time_steps"]
+    self.write_vtk = write_vtk
 
     # Init parameters from base class
     super().__init__(function_space.mesh(), function_space)
@@ -188,10 +189,6 @@ class DefaultPhantom(PhantomBase):
       # Define through-plane displacement
       self.u_real[dofmap[2]] = -0.5*self.x[:,2]*np.abs(x) + 0.005
 
-      # from PyMRStrain.IO import write_vtk
-      # write_vtk(u, path="output/u_{:04d}.vtk".format(i), name='u')
-
-
     # # # # Inclusion
     # # # f = Function(self.V)
     # # # R = np.sqrt(np.power(self.x[:,0]-0.4*(self.R_en+self.R_ep),2) + np.power(self.x[:,1],2))
@@ -220,6 +217,11 @@ class DefaultPhantom(PhantomBase):
   # Displacement
   def displacement(self, i):
     self.get_data(i)
+
+    # Export generated displacement field
+    if self.write_vtk:
+        write_vtk(self.u, path="output/u_{:04d}.vtk".format(i), name='u')
+
     return self.u
 
   # Velocity

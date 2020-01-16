@@ -3,13 +3,18 @@ from PyMRStrain.Mesh import *
 import os
 
 
-def fem_ventricle_geometry(R_en, tau, h, resolution, filename=None):
+def fem_ventricle_geometry(parameters, filename=None):
     ''' Generate a 2D geometry of the left-ventricle
     Input: - R_en (float): endocardium radius
            - R_ep (float): epicardium radius
            - tau  (float):
 
     '''
+    R_en = parameters['R_en']
+    tau  = parameters['tau']
+    h    = parameters['h']
+    lc   = parameters['mesh_resolution']
+
     # Verify if folder exist
     folder = os.path.dirname(filename)
     if not os.path.exists(folder):
@@ -17,7 +22,7 @@ def fem_ventricle_geometry(R_en, tau, h, resolution, filename=None):
 
     # Write dimensions for mesh generation
     file = open(folder+"/dimensions", "w")
-    file.write("lc  = {:.5f};\n".format(resolution))
+    file.write("lc  = {:.5f};\n".format(lc))
     file.write("tau = {:.5f};\n".format(tau))
     file.write("Ren = {:.5f};\n".format(R_en))
     file.write("Rep = {:.5f};".format(R_en+tau))

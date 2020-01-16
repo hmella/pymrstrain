@@ -24,7 +24,7 @@ if __name__=="__main__":
             T1=0.85,
             flip_angle=15*np.pi/180,
             off_resonance=phi,
-            kspace_factor=6.5)
+            kspace_factor=15)
 
   # Generator
   g0 = Generator(p, I0)
@@ -33,13 +33,13 @@ if __name__=="__main__":
   FE = VectorElement("tetrahedron")
 
   # Mesh and fem space
-  p['h'] = 0.003
+  p['h'] = 0.005
   # mesh = Mesh('mesh/mesh.msh')
-  mesh = fem_ventricle_geometry(p['R_en'], p['tau'], p['h'], p['mesh_resolution'], filename='mesh/mesh.msh')
+  mesh = fem_ventricle_geometry(p, filename='mesh/mesh.msh')
   V = FunctionSpace(mesh, FE)
 
   # Create phantom object
-  phantom = DefaultPhantom(p, function_space=V, patient=True)
+  phantom = DefaultPhantom(p, function_space=V, patient=True, write_vtk=False)
 
   # Generation
   g0.phantom = phantom
@@ -75,6 +75,6 @@ if __name__=="__main__":
     plt.show()
 
     fig, ax = plt.subplots(1, 2)
-    tracker = IndexTracker(ax, np.abs(u[:,:,1,0,:]), np.angle(u[:,:,1,0,:]))
+    tracker = IndexTracker(ax, np.abs(u[:,:,1,0,:]), np.abs(u[:,:,2,0,:]))
     fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
     plt.show()
