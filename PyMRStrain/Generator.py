@@ -717,6 +717,8 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   [p2s[pixel].append(spin) for (spin, pixel) in enumerate(s2p) if pixel >= 0]
 
   # Spins positions with respect to its containing voxel center
+  # Obs: the option -order='F'- is included to make the grid of the
+  # Z coordinate at the end of the flattened array
   corners = np.array([c[i].flatten('F')[s2p]-0.5*width[i] for i in range(di)]).T
   x_rel = x[:,0:dp] - corners
 
@@ -752,12 +754,16 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     x_rel[:,:] = subpixel_u
 
     # Fill images
+    # Obs: the option -order='F'- is included because the grid was flattened
+    # using this option. Therefore the reshape must be performed accordingly
     for j in range(di):
         (I, m) = getImage(reshaped_u[:,j],p2s)
         u_image[...,j] = I.reshape(resolution,order='F')
     m = m.reshape(resolution,order='F')
 
     # Reshape signal weights
+    # Obs: the option -order='F'- is included because the grid was flattened
+    # using this option. Therefore the reshape must be performed accordingly
     sigweigths = np.array(sigweigths).reshape(resolution,order='F')
 
     # Grid to evaluate magnetizations
