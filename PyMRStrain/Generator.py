@@ -651,8 +651,15 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   if isinstance(alpha,float) or isinstance(alpha,int):
     alpha = alpha*np.ones([n_t],dtype=np.float)
 
+  # Spins positions
+  x = V.dof_coordinates()[::dp]
+
   # Check k space bandwidth to avoid folding artifacts
-  res, incr_bw, D = check_kspace_bw(image)
+  res, incr_bw, D = check_kspace_bw(image, x)
+
+  # Check if the number of slices needs to be increased
+  # for the generation of the connectivity
+  Xf, voxels_tst = check_nb_slices(D['grid'], x, D['voxel_size'], res)
 
   # Off resonance
   if not image.off_resonance:
@@ -664,30 +671,39 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   Hf = [signal.hamming(image.array_resolution[i]) for i in range(di)]
   H = np.outer(Hf[0],Hf[1])
 
-  # Spins positions
-  x = V.dof_coordinates()[::dp]
-
   # Voxels centers
   voxels, voxel_coords = scatter_image(D['grid']) # local indices and voxel coordinates
   nr_local_voxels = voxels.size                   # Number of local voxels
-  nr_voxels = D['grid'][0].size                           # Number of global voxels
+  nr_voxels = D['grid'][0].size                   # Number of global voxels
 
   # Voxel width and image resolution
   width = D['voxel_size']
   resolution = D['array_resolution']
 
   # Connectivity (this is done just once)
+  # voxel_coords = [X.flatten('F') for X in Xf]
+  # nr_voxels = voxel_coords[0].size
+  # s2p = globals()["getConnectivity{:d}".format(dp)](x, voxel_coords,
+  #                                       voxels_tst, width, nr_voxels)
+  # s2p = np.array(s2p)
+  # s2p = s2p - res[0]*res[1]*2
+
   n = nr_local_voxels
-  getConnectivity = globals()["getConnectivity{:d}".format(dp)]
-  s2p = np.array(getConnectivity(x, voxel_coords, voxels,
-                  width, nr_local_voxels, nr_voxels))  # pixel-to-spins map
+  voxel_coords = [X.flatten('F') for X in D['grid']]
+  s2p = globals()["getConnectivity{:d}".format(dp)](x, voxel_coords,
+                                           voxels, width, nr_voxels)
+  s2p = np.array(s2p)
+
+  # TODO: here is the problem!
   p2s = [[] for j in range(n)]
-  [p2s[pixel].append(spin) for (spin, pixel) in enumerate(s2p) if pixel >= 0]
+  [p2s[pixel].append(spin) for (spin, pixel) in enumerate(s2p) if (pixel >= 0 and pixel < n)]
+  print(s2p[s2p==0])
 
   # Spins positions with respect to its containing voxel center
   # Obs: the option -order='F'- is included to make the grid of the
   # Z coordinate at the end of the flattened array
-  corners = np.array([D['grid'][i].flatten('F')[s2p]-0.5*width[i] for i in range(di)]).T
+  # corners = np.array([D['grid'][i].flatten('F')[s2p]-0.5*width[i] for i in range(di)]).T
+  corners = np.array([Xf[j].flatten('F')[s2p]-0.5*width[j] for j in range(di)]).T
   x_rel = x[:,0:dp] - corners
 
   # Displacement image

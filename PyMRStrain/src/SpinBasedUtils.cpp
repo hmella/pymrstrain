@@ -55,23 +55,22 @@ std::vector<int> getConnectivity2(const Eigen::MatrixXd &x,
 // a specific voxel
 std::vector<int> getConnectivity3(const Eigen::MatrixXd &x,
                         const std::vector<Eigen::VectorXd> &x_i,
-                        const std::vector<int> &local_voxels,
+                        const std::vector<int> &voxels,
                         const std::vector<double> &voxel_size,
-                        const size_t &local_size,
-                        const size_t &size) {
+                        const int &nr_voxels) {
 
   // Number of DOFs in ventricle
-  const size_t M = x.rows();
+  const int nr_spins = x.rows();
 
-  // Vector for group of voxels
-  std::vector<int> V(M);
+  // Vector for spin-to-pixel connectivity
+  std::vector<int> s2p(nr_spins);
 
   // Positions, counter and iterators
   // (OBS: indices i and j represents row and col positions. However,
   //       these indices are flipped with respect to the spatial
   //       coordinates of the image 'x_i'. This mean that 'i' is varying
   //       across the y-coordinate and 'j' across x-coordinate.
-  size_t i, k;
+  int i, k;
 
   // Voxel half-width
   const double dx = 0.5*voxel_size[0];
@@ -79,21 +78,22 @@ std::vector<int> getConnectivity3(const Eigen::MatrixXd &x,
   const double dz = 0.5*voxel_size[2];
 
   // Iterates over voxels to perform logical operations
-  for (k=0; k<M; k++) {
-    // Loop over ventricle dofs (Is inside?)
-    for (i=0; i<local_size; i++) {
+  for (k=0; k<nr_spins; k++) {
+
+    // Loop over voxels (Is inside?)
+    for (i=0; i<nr_voxels; i++) {
 
       // Stores the spins that are inside of the pixel
       if ((std::abs(x(k,0) - x_i[0](i)) <= dx) &&
           (std::abs(x(k,1) - x_i[1](i)) <= dy) &&
           (std::abs(x(k,2) - x_i[2](i)) <= dz)){
-        V[k] = i;
+        s2p[k] = voxels[i];
         break;
       }
     }
   }
 
-  return V;
+  return s2p;
 }
 
 // Calculates the pixel intensity of the images based on the pixel-to-spins
@@ -145,6 +145,10 @@ std::tuple<std::vector<std::vector<int>>,
             p2s[s2p[i]].push_back(i);
             signal_w[s2p[i]] += 1;
         }
+        // else{
+        //   py::print(s2p[i]);
+        // }
+
     }
 
     return std::make_tuple(p2s, signal_w);

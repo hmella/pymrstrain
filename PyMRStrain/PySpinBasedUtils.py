@@ -4,7 +4,7 @@ from PyMRStrain.Image import *
 # Check if the kspace bandwidth needs to be modified
 # to avoid artifacts during the generation and to
 # reproduce the behavior of the scanner
-def check_kspace_bw(image):
+def check_kspace_bw(image, x):
 
   # Encoding frequency
   ke = image.encoding_frequency
@@ -47,10 +47,47 @@ def check_kspace_bw(image):
   D = {"voxel_size": image.FOV/res,
        "grid":       new_image._grid,
        "astute_resolution": new_image._astute_resolution,
-       "array_resolution":  new_image.array_resolution}
+       "array_resolution":  new_image.array_resolution,
+       "inc_grid_slice_dir": []}
   del new_image
 
   return res, incr_bw, D
+
+#
+def check_nb_slices(grid, x, voxel_size, res):
+
+  # Flatten grid
+  Xf = [x.flatten('F') for x in grid]
+
+  # Min and max position in the slice direction
+  Z = np.array([Xf[2].min(), Xf[2].max()])
+  z = np.array([x[:,2].min(), x[:,2].max()])
+  N = (z - Z)/voxel_size[2]
+  sign = [-1, 1]
+  N = [int(np.ceil(np.abs(N[i]))) if sign[i]*N[i] > 0 else 0 for i in range(len(N))]
+  print(res[2], N)
+
+  # Number of additional slices
+  r_slice = res[0]*res[1]
+  for i in range(len(N)):
+    for j in range(N[i]):
+      for k in range(3):
+        if k < 2:
+          Xf[k] = np.append(Xf[k], Xf[k][0:r_slice], axis=0)
+        else:
+          print(Z[i]*np.ones([r_slice,]) + (j+1)*voxel_size[k]*(-1)**(i+1))
+          Xf[k] = np.insert(Xf[k], i*Xf[k].size, Z[i]*np.ones([r_slice,]) + (j+1)*voxel_size[i]*(-1)**(i+1))
+
+  # List of voxels
+  voxels = np.array([i for i in range(Xf[0].size)])
+  # voxels = voxels - r_slice*N[0]
+
+  # Reshape output
+  resolution = [res[0], res[1], res[2]+sum(N)]
+  Xf = [x.reshape(resolution, order='F') for x in Xf]
+
+  return Xf, voxels
+
 
 # Two dimensional meshgrids
 def update_s2p2(s2p, pixel_u, resolution):
@@ -59,6 +96,6 @@ def update_s2p2(s2p, pixel_u, resolution):
 
 # Three dimensional images with number of slices greater than 1
 def update_s2p3(s2p, pixel_u, resolution):
-        s2p[:] += (resolution[1]*pixel_u[:,0]             # jump betwen rows
-               + resolution[1]*resolution[0]*pixel_u[:,2] # jump betwen slices
-               + pixel_u[:,1]).astype(np.int64)           # jump between columns
+    s2p[:] += (resolution[1]*pixel_u[:,0]             # jump betwen rows
+           + resolution[1]*resolution[0]*pixel_u[:,2] # jump betwen slices
+           + pixel_u[:,1]).astype(np.int64)           # jump between columns

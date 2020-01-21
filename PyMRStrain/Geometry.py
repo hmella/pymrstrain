@@ -67,7 +67,7 @@ def fem_ventricle_geometry(parameters, filename=None):
     if h != 0:
       geo += '\nExtrude {0, 0, h} {'
       geo += '\nSurface{1};'
-      geo += '\nLayers{Round(h/lc)};'
+      geo += '\nLayers{Round(h/(0.25*lc))};'
       geo += '\n}'
       geo += '\n\nPhysical Volume(1) = {1};'
     else:
