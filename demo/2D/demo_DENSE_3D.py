@@ -9,7 +9,7 @@ if __name__=="__main__":
   # p = Parameters_2D(decimals=10, time_steps=20)
   # np.save("p.npy", p)
   p=np.load('p.npy',allow_pickle=True).item()
-  p["mesh_resolution"] = 0.002
+  p["mesh_resolution"] = 0.001
 
   # Field inhomogeneity
   phi = lambda X, Y: 0*(X+Y)/0.1*0.2
@@ -24,7 +24,8 @@ if __name__=="__main__":
             T1=0.85,
             flip_angle=15*np.pi/180,
             off_resonance=phi,
-            kspace_factor=8)
+            kspace_factor=8,
+            slice_following=True)
 
   # Generator
   g0 = Generator(p, I0)
@@ -50,7 +51,7 @@ if __name__=="__main__":
   print(end-start)
 
   # Add noise to images
-  sigma = 0.5e-12
+  sigma = 0.5e-32
   un0 = add_noise_to_DENSE_(u0, mask, sigma=sigma)
   un1 = add_noise_to_DENSE_(u1, mask, sigma=sigma)
 

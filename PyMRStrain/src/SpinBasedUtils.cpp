@@ -10,10 +10,8 @@ namespace py = pybind11;
 // a specific voxel
 std::vector<int> getConnectivity2(const Eigen::MatrixXd &x,
                         const std::vector<Eigen::VectorXd> &x_i,
-                        const std::vector<int> &local_voxels,
                         const std::vector<double> &voxel_size,
-                        const size_t &local_size,
-                        const size_t &size) {
+                        const size_t &nr_voxels) {
 
   // Number of DOFs in ventricle
   const size_t M = x.rows();
@@ -35,7 +33,7 @@ std::vector<int> getConnectivity2(const Eigen::MatrixXd &x,
   // Iterates over voxels to perform logical operations
   for (k=0; k<M; k++) {
     // Loop over ventricle dofs (Is inside?)
-    for (i=0; i<local_size; i++) {
+    for (i=0; i<nr_voxels; i++) {
 
       // Stores the spins that are inside of the pixel
       if ((std::abs(x(k,0) - x_i[0](i)) <= dx) &&
@@ -55,15 +53,15 @@ std::vector<int> getConnectivity2(const Eigen::MatrixXd &x,
 // a specific voxel
 std::vector<int> getConnectivity3(const Eigen::MatrixXd &x,
                         const std::vector<Eigen::VectorXd> &x_i,
-                        const std::vector<int> &voxels,
-                        const std::vector<double> &voxel_size,
-                        const int &nr_voxels) {
+                        const std::vector<double> &voxel_size) {
 
-  // Number of DOFs in ventricle
+  // Number of spins and voxels
   const int nr_spins = x.rows();
+  const int nr_voxels = x_i[0].size();
 
   // Vector for spin-to-pixel connectivity
   std::vector<int> s2p(nr_spins);
+  std::fill(s2p.begin(), s2p.end(), -1);
 
   // Positions, counter and iterators
   // (OBS: indices i and j represents row and col positions. However,
@@ -87,7 +85,7 @@ std::vector<int> getConnectivity3(const Eigen::MatrixXd &x,
       if ((std::abs(x(k,0) - x_i[0](i)) <= dx) &&
           (std::abs(x(k,1) - x_i[1](i)) <= dy) &&
           (std::abs(x(k,2) - x_i[2](i)) <= dz)){
-        s2p[k] = voxels[i];
+        s2p[k] = i;
         break;
       }
     }
@@ -125,13 +123,14 @@ return output;
 // Updates the pixel-to-spin connectivity using the spin-to-pixel vector
 std::tuple<std::vector<std::vector<int>>,
            std::vector<int>> update_p2s(const std::vector<int> s2p,
-                                         const int nr_voxels){
+                                        const int nr_voxels){
 
     // Pixel-to-spins connectivity
     std::vector<std::vector<int>> p2s(nr_voxels);
 
     // Number of spins
     const size_t nr_spins = s2p.size();
+    // const size_t nr_spins = belong.size();
 
     // Signal weights
     std::vector<int> signal_w(nr_voxels);
@@ -145,10 +144,10 @@ std::tuple<std::vector<std::vector<int>>,
             p2s[s2p[i]].push_back(i);
             signal_w[s2p[i]] += 1;
         }
-        // else{
-        //   py::print(s2p[i]);
+        // if ((s2p[belong[i]] >= 0) && (s2p[belong[i]] < nr_voxels)){
+        //     p2s[s2p[belong[i]]].push_back(belong[i]);
+        //     signal_w[s2p[belong[i]]] += 1;
         // }
-
     }
 
     return std::make_tuple(p2s, signal_w);

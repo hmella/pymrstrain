@@ -1,6 +1,25 @@
 import numpy as np
 from PyMRStrain.Image import *
 
+
+# Two dimensional meshgrids
+def update_s2p2(s2p, pixel_u, resolution):
+    s2p[:] += (resolution[1]*pixel_u[:,1] + pixel_u[:,0]).astype(np.int64)
+    # return s2p
+
+
+# Three dimensional images with number of slices greater than 1
+def update_s2p3(s2p, pixel_u, resolution, belong):
+    # for i in range(len(s2p)):
+    #     if s2p[i] >= 0 and s2p[i] < nr_pixels:
+    #         s2p[i] += (resolution[1]*pixel_u[i,0]             # jump betwen rows
+    #                + resolution[1]*resolution[0]*pixel_u[i,2] # jump betwen slices
+    #                + pixel_u[i,1]).astype(np.int64)           # jump between columns
+    s2p[belong] += (resolution[1]*pixel_u[belong,0]             # jump betwen rows
+           + resolution[1]*resolution[0]*pixel_u[belong,2] # jump betwen slices
+           + pixel_u[belong,1]).astype(np.int64)           # jump between columns
+
+
 # Check if the kspace bandwidth needs to be modified
 # to avoid artifacts during the generation and to
 # reproduce the behavior of the scanner
@@ -65,7 +84,6 @@ def check_nb_slices(grid, x, voxel_size, res):
   N = (z - Z)/voxel_size[2]
   sign = [-1, 1]
   N = [int(np.ceil(np.abs(N[i]))) if sign[i]*N[i] > 0 else 0 for i in range(len(N))]
-  print(res[2], N)
 
   # Number of additional slices
   r_slice = res[0]*res[1]
@@ -75,27 +93,14 @@ def check_nb_slices(grid, x, voxel_size, res):
         if k < 2:
           Xf[k] = np.append(Xf[k], Xf[k][0:r_slice], axis=0)
         else:
-          print(Z[i]*np.ones([r_slice,]) + (j+1)*voxel_size[k]*(-1)**(i+1))
-          Xf[k] = np.insert(Xf[k], i*Xf[k].size, Z[i]*np.ones([r_slice,]) + (j+1)*voxel_size[i]*(-1)**(i+1))
+          Xf[k] = np.insert(Xf[k], i*Xf[k].size, Z[i]*np.ones([r_slice,]) + (j+1)*voxel_size[k]*(-1)**(i+1), axis=0)
 
-  # List of voxels
-  voxels = np.array([i for i in range(Xf[0].size)])
-  # voxels = voxels - r_slice*N[0]
+  # Slice location factor and number of voxels
+  SL = r_slice*N[0]
+  nr_voxels = Xf[0].size
 
   # Reshape output
   resolution = [res[0], res[1], res[2]+sum(N)]
   Xf = [x.reshape(resolution, order='F') for x in Xf]
 
-  return Xf, voxels
-
-
-# Two dimensional meshgrids
-def update_s2p2(s2p, pixel_u, resolution):
-    s2p[:] += (resolution[1]*pixel_u[:,1] + pixel_u[:,0]).astype(np.int64)
-    # return s2p
-
-# Three dimensional images with number of slices greater than 1
-def update_s2p3(s2p, pixel_u, resolution):
-    s2p[:] += (resolution[1]*pixel_u[:,0]             # jump betwen rows
-           + resolution[1]*resolution[0]*pixel_u[:,2] # jump betwen slices
-           + pixel_u[:,1]).astype(np.int64)           # jump between columns
+  return Xf, SL

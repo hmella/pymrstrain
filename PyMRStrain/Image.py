@@ -15,7 +15,8 @@ class ImageBase(object):
                M0=1.0, M=1.0,
                off_resonance=[],
                interpolation='mean',
-               kspace_factor=6.5):
+               kspace_factor=6.5,
+               slice_following = False):
     self.FOV = FOV
     self.resolution = resolution
     self.array_resolution = self._array_resolution()
@@ -32,6 +33,7 @@ class ImageBase(object):
     self.interpolation = interpolation
     self._modified_resolution = False
     self.kspace_factor = kspace_factor
+    self.slice_following = slice_following
 
   # Flip angles
   def flip_angle_t(self, alpha):

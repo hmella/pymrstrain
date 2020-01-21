@@ -1,6 +1,4 @@
 from PyMRStrain.Geometry import *
-# from PyMRStrain.FiniteElement import *
-# from PyMRStrain.FunctionSpace import *
 from PyMRStrain.Function import *
 from PyMRStrain.Image import *
 from PyMRStrain.Math import FFT, iFFT
@@ -657,10 +655,6 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   # Check k space bandwidth to avoid folding artifacts
   res, incr_bw, D = check_kspace_bw(image, x)
 
-  # Check if the number of slices needs to be increased
-  # for the generation of the connectivity
-  Xf, voxels_tst = check_nb_slices(D['grid'], x, D['voxel_size'], res)
-
   # Off resonance
   if not image.off_resonance:
     phi = np.zeros(image.array_resolution)
@@ -671,40 +665,35 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   Hf = [signal.hamming(image.array_resolution[i]) for i in range(di)]
   H = np.outer(Hf[0],Hf[1])
 
-  # Voxels centers
-  voxels, voxel_coords = scatter_image(D['grid']) # local indices and voxel coordinates
-  nr_local_voxels = voxels.size                   # Number of local voxels
-  nr_voxels = D['grid'][0].size                   # Number of global voxels
-
-  # Voxel width and image resolution
+  # Grid, voxel width, image resolution and number of voxels
+  Xf = D['grid']
   width = D['voxel_size']
   resolution = D['array_resolution']
+  nr_voxels = Xf[0].size
+
+  # Check if the number of slices needs to be increased
+  # for the generation of the connectivity when generating
+  # Slice-Following (SF) images
+  if image.slice_following:
+      Xf, SL = check_nb_slices(D['grid'], x, D['voxel_size'], res)
 
   # Connectivity (this is done just once)
-  # voxel_coords = [X.flatten('F') for X in Xf]
-  # nr_voxels = voxel_coords[0].size
-  # s2p = globals()["getConnectivity{:d}".format(dp)](x, voxel_coords,
-  #                                       voxels_tst, width, nr_voxels)
-  # s2p = np.array(s2p)
-  # s2p = s2p - res[0]*res[1]*2
-
-  n = nr_local_voxels
-  voxel_coords = [X.flatten('F') for X in D['grid']]
-  s2p = globals()["getConnectivity{:d}".format(dp)](x, voxel_coords,
-                                           voxels, width, nr_voxels)
+  voxel_coords = [X.flatten('F') for X in Xf]
+  s2p = globals()["getConnectivity{:d}".format(dp)](x, voxel_coords, width)
   s2p = np.array(s2p)
-
-  # TODO: here is the problem!
-  p2s = [[] for j in range(n)]
-  [p2s[pixel].append(spin) for (spin, pixel) in enumerate(s2p) if (pixel >= 0 and pixel < n)]
-  print(s2p[s2p==0])
 
   # Spins positions with respect to its containing voxel center
   # Obs: the option -order='F'- is included to make the grid of the
   # Z coordinate at the end of the flattened array
-  # corners = np.array([D['grid'][i].flatten('F')[s2p]-0.5*width[i] for i in range(di)]).T
   corners = np.array([Xf[j].flatten('F')[s2p]-0.5*width[j] for j in range(di)]).T
   x_rel = x[:,0:dp] - corners
+
+  if image.slice_following:
+      # List of spins inside the image
+      aaaa = [j for j in range(s2p.size)]
+  else:
+      # List of spins inside the image
+      aaaa = [j for j in range(s2p.size) if s2p[j] != -1]
 
   # Displacement image
   u_image = np.zeros(np.append(resolution, dk))
@@ -738,10 +727,24 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     subpixel_u = x_new - np.multiply(pixel_u, width)
 
     # Change spins connectivity according to the new positions
-    globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution)
+    globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution, aaaa)
 
     # Update pixel-to-spins connectivity
-    (p2s, sigweigths) = update_p2s(s2p, n)
+    if image.slice_following:
+      (p2s, sigweigths) = update_p2s(s2p - SL, nr_voxels)
+    else:
+      (p2s, sigweigths) = update_p2s(s2p, nr_voxels)
+
+    # # Debug
+    # from PyMRStrain.FiniteElement import FiniteElement
+    # from PyMRStrain.FunctionSpace import FunctionSpace
+    # from PyMRStrain.IO import write_vtk
+    # FE = FiniteElement("tetrahedron")
+    # VV = FunctionSpace(V.mesh(), FE)
+    # uu = Function(VV)
+    # uu.vector()[:] = 0
+    # uu.vector()[np.array(aaaa)] = s2p[aaaa]
+    # write_vtk([u,uu], path='output/uu_{:04d}.vtu'.format(i), name=['u','p'])
 
     # Update relative spins positions
     x_rel[:,:] = subpixel_u
@@ -750,7 +753,8 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     # Obs: the option -order='F'- is included because the grid was flattened
     # using this option. Therefore the reshape must be performed accordingly
     for j in range(dk):
-        (I, m) = getImage(reshaped_u[:,j],p2s)
+        # (I, m) = getImage(reshaped_u[:,j],p2s)
+        (I, m) = getImage(u.vector().reshape((-1,dp))[:,j], p2s)
         u_image[...,j] = I.reshape(resolution,order='F')
     m = m.reshape(resolution,order='F')
 

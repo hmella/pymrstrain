@@ -26,7 +26,7 @@ class FiniteElement(FiniteElementBase):
 
   # Shape of finite element
   def shape(self):
-    return (self.dimension(),)
+    return (1,)
 
   # Number of dofs per cell
   def get_dofs_per_cell(self):
