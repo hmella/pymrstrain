@@ -179,15 +179,15 @@ class DefaultPhantom(PhantomBase):
       x = np.copy(self.x[:,2])
       s_max = x.max()
       s_min = x.min()
-      x = (x - s_max)/(s_max - s_min)
+      x = -(x - s_max)/(s_max - s_min) # x=0 at top, x=1 at bottom
 
       # Scale in-plane components (keeps displacement on top but
       # increases displacement on bottom)
-      self.u_real[dofmap[0]] *= -0.5*x + 1
-      self.u_real[dofmap[1]] *= -0.5*x + 1
+      self.u_real[dofmap[0]] *= 0.5*x + 1
+      self.u_real[dofmap[1]] *= 0.5*x + 1
 
       # Define through-plane displacement
-      self.u_real[dofmap[2]] = -0.5*self.x[:,2]*np.abs(x) + 0.0032
+      self.u_real[dofmap[2]] = -0.2*(self.x[:,2])*np.abs(x-0.75)# + 0.0035
 
     # # # # Inclusion
     # # # f = Function(self.V)
