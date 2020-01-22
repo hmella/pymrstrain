@@ -3,9 +3,10 @@ from PyMRStrain.Function import *
 from PyMRStrain.Image import *
 from PyMRStrain.Math import FFT, iFFT
 from PyMRStrain.MPIUtilities import *
+from PyMRStrain.PySpinBasedUtils import *
+from PyMRStrain.Magnetizations import DENSEMagnetizations
 from ImageUtilities import *
 from SpinBasedUtils import *
-from PyMRStrain.PySpinBasedUtils import *
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import interpolate
@@ -621,14 +622,8 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   M0    = 1.0                          # thermal equilibrium magnetization
   M     = M0
 
-  # Magnetization expressions
-  Mxy0 = lambda mask, M, M0, alpha, prod, t, T1, ke, X, u, phi: mask*(+0.5*M*np.exp(-t/T1)*np.exp(-1j*ke*u) +
-                                                          0.5*M*np.exp(-t/T1)*np.exp(-1j*ke*(2*X+u)) +
-                                                          M0*(1 - np.exp(-t/T1))*np.exp(-1j*ke*(X+u)))*prod*np.sin(alpha)*np.exp(1j*phi)
-  Mxy1 = lambda mask, M, M0, alpha, prod, t, T1, ke, X, u, phi: mask*(-0.5*M*np.exp(-t/T1)*np.exp(-1j*ke*u) +
-                                                          -0.5*M*np.exp(-t/T1)*np.exp(-1j*ke*(2*X+u)) +
-                                                          M0*(1 - np.exp(-t/T1))*np.exp(-1j*ke*(X+u)))*prod*np.sin(alpha)*np.exp(1j*phi)
-  Mxyin = lambda mask, M, M0, alpha, prod, t, T1, ke, phi: mask*(M0*(1 - np.exp(-t/T1)))*prod*np.sin(alpha)*np.exp(1j*phi)
+  # DENSE magnetizations
+  Mxy0, Mxy1, Mxyin = DENSEMagnetizations()
 
   # Function space of the displacement field
   V = phantom.V
@@ -677,6 +672,12 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   if image.slice_following:
       Xf, SL = check_nb_slices(D['grid'], x, D['voxel_size'], res)
 
+  # TODO: scatter spins before building the connectivity
+  TEST = False
+  if TEST:
+      x, loc_spins = ScatterSpins(x)
+      print(rank, x.shape)
+
   # Connectivity (this is done just once)
   voxel_coords = [X.flatten('F') for X in Xf]
   s2p = globals()["getConnectivity{:d}".format(dp)](x, voxel_coords, width)
@@ -688,11 +689,10 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   corners = np.array([Xf[j].flatten('F')[s2p]-0.5*width[j] for j in range(di)]).T
   x_rel = x[:,0:dp] - corners
 
+  # List of spins inside the image
   if image.slice_following:
-      # List of spins inside the image
       aaaa = [j for j in range(s2p.size)]
   else:
-      # List of spins inside the image
       aaaa = [j for j in range(s2p.size) if s2p[j] != -1]
 
   # Displacement image
@@ -719,7 +719,10 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
     # Get displacements in the reference frame and deform mesh
     u = phantom.displacement(i)
-    reshaped_u = u.vector().reshape((-1,dp))
+    if TEST:
+        reshaped_u = u.vector().reshape((-1,dp))[loc_spins,:]
+    else:
+        reshaped_u = u.vector().reshape((-1,dp))
 
     # Displacement in terms of pixels
     x_new = x_rel + reshaped_u - upre
@@ -735,26 +738,32 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     else:
       (p2s, sigweigths) = update_p2s(s2p, nr_voxels)
 
-    # # Debug
-    # from PyMRStrain.FiniteElement import FiniteElement
-    # from PyMRStrain.FunctionSpace import FunctionSpace
-    # from PyMRStrain.IO import write_vtk
-    # FE = FiniteElement("tetrahedron")
-    # VV = FunctionSpace(V.mesh(), FE)
-    # uu = Function(VV)
-    # uu.vector()[:] = 0
-    # uu.vector()[np.array(aaaa)] = s2p[aaaa]
-    # write_vtk([u,uu], path='output/uu_{:04d}.vtu'.format(i), name=['u','p'])
+    # TODO: gather parallel results
+    # (p2s, sigweigths) = (gather_image(np.array(p2s)),
+    #                      gather_image(np.array(sigweigths)))
+
+    # Debug
+    from PyMRStrain.FiniteElement import FiniteElement
+    from PyMRStrain.FunctionSpace import FunctionSpace
+    from PyMRStrain.IO import write_vtk
+    FE = FiniteElement("tetrahedron")
+    VV = FunctionSpace(V.mesh(), FE)
+    uu = Function(VV)
+    uu.vector()[:] = 0
+    uu.vector()[np.array(aaaa)] = s2p[aaaa]
+    write_vtk([u,uu], path='output/uu_{:04d}.vtu'.format(i), name=['u','p'])
 
     # Update relative spins positions
     x_rel[:,:] = subpixel_u
+
+    # Copy previous displcement field
+    upre = np.copy(reshaped_u)
 
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
     # using this option. Therefore the reshape must be performed accordingly
     for j in range(dk):
-        # (I, m) = getImage(reshaped_u[:,j],p2s)
-        (I, m) = getImage(u.vector().reshape((-1,dp))[:,j], p2s)
+        (I, m) = getImage(reshaped_u[:,j], p2s)
         u_image[...,j] = I.reshape(resolution,order='F')
     m = m.reshape(resolution,order='F')
 
@@ -798,9 +807,6 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
     # Flip angles product
     prod = prod*np.cos(alpha[i])
-
-    # Copy previous displcement field
-    upre = np.copy(reshaped_u)
 
   return image_0, image_1, image_2, mask
 

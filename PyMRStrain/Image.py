@@ -88,7 +88,7 @@ class ImageBase(object):
 
     # np.meshgrid generation
     X = [pxsz[i]*np.linspace(0,resolution[i]-1,resolution[i]) + self.center[i] for i in range(d)]
-    X = [X[i] - X[i].mean() for i in range(d)]
+    X = [X[i] - X[i].mean() if i<2 else X[i] for i in range(d)]
 
     if d == 2:
       grid = np.meshgrid(X[0], X[1], indexing='xy', sparse=sparse)

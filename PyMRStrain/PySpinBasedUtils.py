@@ -49,6 +49,7 @@ def check_kspace_bw(image, x):
 
       # Create a new image object
       new_image = DENSEImage(FOV=image.FOV,
+              center=image.center,
               resolution=res,
               encoding_frequency=ke,
               T1=image.T1,
@@ -73,7 +74,7 @@ def check_kspace_bw(image, x):
   return res, incr_bw, D
 
 #
-def check_nb_slices(grid, x, voxel_size, res):
+def check_nb_slices(grid, x, vsz, res):
 
   # Flatten grid
   Xf = [x.flatten('F') for x in grid]
@@ -81,7 +82,8 @@ def check_nb_slices(grid, x, voxel_size, res):
   # Min and max position in the slice direction
   Z = np.array([Xf[2].min(), Xf[2].max()])
   z = np.array([x[:,2].min(), x[:,2].max()])
-  N = (z - Z)/voxel_size[2]
+  borders = np.array([-0.5*vsz[2], 0.5*vsz[2]])
+  N = (z - (Z+borders))/vsz[2]
   sign = [-1, 1]
   N = [int(np.ceil(np.abs(N[i]))) if sign[i]*N[i] > 0 else 0 for i in range(len(N))]
 
@@ -93,7 +95,7 @@ def check_nb_slices(grid, x, voxel_size, res):
         if k < 2:
           Xf[k] = np.append(Xf[k], Xf[k][0:r_slice], axis=0)
         else:
-          Xf[k] = np.insert(Xf[k], i*Xf[k].size, Z[i]*np.ones([r_slice,]) + (j+1)*voxel_size[k]*(-1)**(i+1), axis=0)
+          Xf[k] = np.insert(Xf[k], i*Xf[k].size, Z[i]*np.ones([r_slice,]) + (j+1)*vsz[k]*(-1)**(i+1), axis=0)
 
   # Slice location factor and number of voxels
   SL = r_slice*N[0]
