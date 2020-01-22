@@ -6,6 +6,12 @@ from scipy.io import savemat
 # Write scalar to vtk
 def write_vtk(functions, path=None, name=None):
 
+    # Verify if output folder exists
+    directory = os.path.dirname(path)
+    if directory != []:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
     # Get mesh
     try:
         mesh = functions.function_space().mesh()
