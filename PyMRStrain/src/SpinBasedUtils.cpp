@@ -78,17 +78,21 @@ std::vector<int> getConnectivity3(const Eigen::MatrixXd &x,
   // Iterates over voxels to perform logical operations
   for (k=0; k<nr_spins; k++) {
 
-    // Loop over voxels (Is inside?)
-    for (i=0; i<nr_voxels; i++) {
+      // Loop over voxels (Is inside?)
+      for (i=0; i<nr_voxels; i++) {
 
-      // Stores the spins that are inside of the pixel
-      if ((std::abs(x(k,0) - x_i[0](i)) <= dx) &&
-          (std::abs(x(k,1) - x_i[1](i)) <= dy) &&
-          (std::abs(x(k,2) - x_i[2](i)) <= dz)){
-        s2p[k] = i;
-        break;
+          // Stores the spins that are inside of the pixel
+          if ((std::abs(x(k,0) - x_i[0](i)) > dx) ||
+              (std::abs(x(k,1) - x_i[1](i)) > dy) ||
+              (std::abs(x(k,2) - x_i[2](i)) > dz)){
+              // Do nothing
+              // py::print(s2p[i]);
+          }
+          else{
+              s2p[k] = i;
+              break;
+          }
       }
-    }
   }
 
   return s2p;
@@ -97,43 +101,69 @@ std::vector<int> getConnectivity3(const Eigen::MatrixXd &x,
 // Calculates the pixel intensity of the images based on the pixel-to-spins
 // connectivity. The intensity is estimated using the mean of all the spins
 // inside a fgiven pixel
-std::vector<Eigen::VectorXd> getImage(const Eigen::VectorXd u,
-                          const std::vector<std::vector<int>> p2s){
+typedef std::vector<Eigen::VectorXcf> ImageVector;
+typedef std::tuple<ImageVector, Eigen::VectorXi> ImageTuple;
+ImageTuple getImage(const std::vector<Eigen::VectorXcf> &I,
+                    const Eigen::MatrixXd &x,
+                    const std::vector<Eigen::VectorXd> &xi,
+                    const Eigen::VectorXd &voxel_size,
+                    const std::vector<std::vector<int>> &p2s){
 
     // Number of voxels
     const size_t nr_voxels = p2s.size();
 
+    // Number of input images
+    const size_t nr_im = I.size();
+
     // Output
-    std::vector<Eigen::VectorXd> output(2);
-    output[0] = Eigen::VectorXd::Zero(nr_voxels);
-    output[1] = Eigen::VectorXd::Zero(nr_voxels);
+    ImageVector Im(nr_im, Eigen::VectorXcf::Zero(nr_voxels));
+    Eigen::VectorXi mask = Eigen::VectorXi::Zero(nr_voxels);
+
+    // Iterators and distance
+    size_t i, j, k;
+    double d = 0.707106781*voxel_size.norm();
 
     // Number of pixels
-    for (size_t i=0; i<nr_voxels; i++){
+    int a = 0;
+    for (i=0; i<nr_voxels; i++){
         if (!p2s[i].empty()){
-            output[0](i) = u(p2s[i]).mean();
-            output[1](i) = 1;
+
+            // Build weigths
+            Eigen::VectorXd w = Eigen::VectorXd::Zero(p2s[i].size());
+            for (j=0; j<p2s[i].size(); j++){
+                w(j) = std::pow(std::pow(x(p2s[i][j],0) - xi[0](i), 2)
+                     + std::pow(x(p2s[i][j],1) - xi[1](i), 2)
+                     + std::pow(x(p2s[i][j],2) - xi[2](i), 2), 0.5);
+                if (w(j) <= d){
+                }
+                else{
+                  a = 1;
+                }
+            }
+            w.array() = 1.0 - w.array()/d;
+
+            // Fill images
+            for (k=0; k<nr_im; k++){
+                Im[k](i) = (w.cast<std::complex<float>>().cwiseProduct(I[k](p2s[i]))).sum();
+            }
+            mask(i) += 1;
         }
     }
+    py::print(a);
 
-return output;
+return std::make_tuple(Im, mask);
 
 }
 
 // Updates the pixel-to-spin connectivity using the spin-to-pixel vector
-std::tuple<std::vector<std::vector<int>>,
-           std::vector<int>> update_p2s(const std::vector<int> s2p,
-                                        const int nr_voxels){
+std::vector<std::vector<int>> update_p2s(const std::vector<int> s2p,
+                                         const int nr_voxels){
 
     // Pixel-to-spins connectivity
     std::vector<std::vector<int>> p2s(nr_voxels);
 
     // Number of spins
     const size_t nr_spins = s2p.size();
-    // const size_t nr_spins = belong.size();
-
-    // Signal weights
-    std::vector<int> signal_w(nr_voxels);
 
     // Update connectivity
     // If the spins go outside of its container voxel
@@ -142,15 +172,10 @@ std::tuple<std::vector<std::vector<int>>,
     for (size_t i=0; i<nr_spins; i++){
         if ((s2p[i] >= 0) && (s2p[i] < nr_voxels)){
             p2s[s2p[i]].push_back(i);
-            signal_w[s2p[i]] += 1;
         }
-        // if ((s2p[belong[i]] >= 0) && (s2p[belong[i]] < nr_voxels)){
-        //     p2s[s2p[belong[i]]].push_back(belong[i]);
-        //     signal_w[s2p[belong[i]]] += 1;
-        // }
     }
 
-    return std::make_tuple(p2s, signal_w);
+    return p2s;
 }
 
 PYBIND11_MODULE(SpinBasedUtils, m) {

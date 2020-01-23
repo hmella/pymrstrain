@@ -10,11 +10,6 @@ def update_s2p2(s2p, pixel_u, resolution):
 
 # Three dimensional images with number of slices greater than 1
 def update_s2p3(s2p, pixel_u, resolution, belong):
-    # for i in range(len(s2p)):
-    #     if s2p[i] >= 0 and s2p[i] < nr_pixels:
-    #         s2p[i] += (resolution[1]*pixel_u[i,0]             # jump betwen rows
-    #                + resolution[1]*resolution[0]*pixel_u[i,2] # jump betwen slices
-    #                + pixel_u[i,1]).astype(np.int64)           # jump between columns
     s2p[belong] += (resolution[1]*pixel_u[belong,0]             # jump betwen rows
            + resolution[1]*resolution[0]*pixel_u[belong,2] # jump betwen slices
            + pixel_u[belong,1]).astype(np.int64)           # jump between columns

@@ -27,6 +27,7 @@ def fem_ventricle_geometry(parameters, filename=None):
     file.write("Ren = {:.5f};\n".format(R_en))
     file.write("Rep = {:.5f};".format(R_en+tau))
     file.write("h = {:.5f};".format(h))
+    file.write("delta = {:.5f};".format(tau))
     file.close()
 
     # Write geo file
@@ -43,11 +44,6 @@ def fem_ventricle_geometry(parameters, filename=None):
     geo += '\nPoint(4) = {Ren, 0, -0.5*h, lc};'
     geo += '\nPoint(5) = {0, -Ren, -0.5*h, lc};'
 
-    geo += '\n\nCircle(1) = {2, 1, 3};'
-    geo += '\nCircle(2) = {3, 1, 4};'
-    geo += '\nCircle(3) = {4, 1, 5};'
-    geo += '\nCircle(4) = {5, 1, 2};'
-
     geo += '\n\n// Epicardial wall'
     geo += '\nPoint(6) = {0, 0, -0.5*h, lc};'
     geo += '\nPoint(8) = {0, Rep, -0.5*h, lc};'
@@ -55,21 +51,59 @@ def fem_ventricle_geometry(parameters, filename=None):
     geo += '\nPoint(9) = {Rep, 0, -0.5*h, lc};'
     geo += '\nPoint(10) = {0, -Rep, -0.5*h, lc};'
 
+    geo += '\n\n// Inner wall'
+    geo += '\nPoint(11) = {0, 0, -0.5*h, lc};'
+    geo += '\nPoint(12) = {-Ren+delta, 0, -0.5*h, lc};'
+    geo += '\nPoint(13) = {0, Ren-delta, -0.5*h, lc};'
+    geo += '\nPoint(14) = {Ren-delta, 0, -0.5*h, lc};'
+    geo += '\nPoint(15) = {0, -Ren+delta, -0.5*h, lc};'
+
+    geo += '\n\n// Outer wall'
+    geo += '\nPoint(16) = {0, 0, -0.5*h, lc};'
+    geo += '\nPoint(18) = {0, Rep+delta, -0.5*h, lc};'
+    geo += '\nPoint(17) = {-Rep-delta, 0, -0.5*h, lc};'
+    geo += '\nPoint(19) = {Rep+delta, 0, -0.5*h, lc};'
+    geo += '\nPoint(20) = {0, -Rep-delta, -0.5*h, lc};'
+
+    geo += '\n\n// Circles'
+    geo += '\n\nCircle(1) = {2, 1, 3};'
+    geo += '\nCircle(2) = {3, 1, 4};'
+    geo += '\nCircle(3) = {4, 1, 5};'
+    geo += '\nCircle(4) = {5, 1, 2};'
+
     geo += '\n\nCircle(5) = {7, 6, 8};'
     geo += '\nCircle(6) = {8, 6, 9};'
     geo += '\nCircle(8) = {10, 6, 7};'
     geo += '\nCircle(7) = {9, 6, 10};'
 
+    geo += '\n\nCircle(9) = {12, 1, 13};'
+    geo += '\nCircle(10) = {13, 1, 14};'
+    geo += '\nCircle(11) = {14, 1, 15};'
+    geo += '\nCircle(12) = {15, 1, 12};'
+
+    geo += '\n\nCircle(13) = {17, 16, 18};'
+    geo += '\nCircle(14) = {18, 16, 19};'
+    geo += '\nCircle(15) = {20, 16, 17};'
+    geo += '\nCircle(16) = {19, 16, 20};'
+
+    geo += '\n\n// Ventricle'
     geo += '\nLine Loop(1) = {1,2,3,4};'
     geo += '\nLine Loop(2) = {5,6,7,8};'
     geo += '\nPlane Surface(1) = {2,1};'
 
+    geo += '\n\n// Outside'
+    geo += '\nLine Loop(3) = {9,10,11,12};'
+    geo += '\nLine Loop(4) = {13,14,15,16};'
+    geo += '\nPlane Surface(2) = {4,2};'
+    geo += '\nPlane Surface(3) = {1,3};'
+
     if h != 0:
       geo += '\nExtrude {0, 0, h} {'
-      geo += '\nSurface{1};'
-      geo += '\nLayers{Round(h/(0.25*lc))};'
+      geo += '\nSurface{1,2,3};'
+      geo += '\nLayers{Round(h/(lc))};'
       geo += '\n}'
       geo += '\n\nPhysical Volume(1) = {1};'
+      geo += '\nPhysical Volume(2) = {2,3};'
     else:
       geo += '\n\nPhysical Surface(1) = {1};'
 

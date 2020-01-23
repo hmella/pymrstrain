@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import interpolate
 from scipy import signal
+import time
 
 ###################
 # Common Generator
@@ -642,7 +643,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
-    alpha = alpha*np.ones([n_t],dtype=np.float)
+      alpha = alpha*np.ones([n_t],dtype=np.float)
 
   # Spins positions
   x = V.dof_coordinates()[::dp]
@@ -696,7 +697,11 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
       aaaa = [j for j in range(s2p.size) if s2p[j] != -1]
 
   # Displacement image
-  u_image = np.zeros(np.append(resolution, dk))
+  m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex)
+  m1_image = np.zeros(np.append(resolution, dk), dtype=np.complex)
+  m2_image = np.zeros(np.append(resolution, dk), dtype=np.complex)
+  m0 = np.zeros([x.shape[0],dk], dtype=np.complex)
+  m1 = np.zeros([x.shape[0],dk], dtype=np.complex)
 
   # Grid to evaluate magnetizations
   X = D['grid']
@@ -706,6 +711,12 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   s = image.array_resolution
   r = [int(0.5*(S[0]-s[0])), int(0.5*(S[0]-s[0])+s[0])]
   c = [int(0.5*(S[1]-s[1])), int(0.5*(S[1]-s[1])+s[1])]
+
+  # Spins inside and outside the ventricle
+  if TEST:
+      inside = V.mesh().nodes_in_physical()[loc_spins]
+  else:
+      inside = V.mesh().nodes_in_physical()
 
   # Time stepping
   prod = 1
@@ -731,16 +742,16 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
     # Change spins connectivity according to the new positions
     globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution, aaaa)
+    if image.slice_following:
+        print(x.shape[0], len(s2p[(s2p-SL>=0)*(s2p-SL<nr_voxels)]))
+    else:
+        print(x.shape[0], len(s2p[(s2p>=0)*(s2p<nr_voxels)]))
 
     # Update pixel-to-spins connectivity
     if image.slice_following:
-      (p2s, sigweigths) = update_p2s(s2p - SL, nr_voxels)
+      p2s = update_p2s(s2p-SL, nr_voxels)
     else:
-      (p2s, sigweigths) = update_p2s(s2p, nr_voxels)
-
-    # TODO: gather parallel results
-    # (p2s, sigweigths) = (gather_image(np.array(p2s)),
-    #                      gather_image(np.array(sigweigths)))
+      p2s = update_p2s(s2p, nr_voxels)
 
     # Debug
     from PyMRStrain.FiniteElement import FiniteElement
@@ -751,26 +762,40 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     uu = Function(VV)
     uu.vector()[:] = 0
     uu.vector()[np.array(aaaa)] = s2p[aaaa]
-    write_vtk([u,uu], path='output/uu_{:04d}.vtu'.format(i), name=['u','p'])
+    if image.slice_following:
+      write_vtk([u,uu], path='output/uu_SF{:04d}.vtu'.format(i), name=['u','p'])
+    else:
+      write_vtk([u,uu], path='output/uu_{:04d}.vtu'.format(i), name=['u','p'])
 
     # Update relative spins positions
     x_rel[:,:] = subpixel_u
 
+    # Updated spins positions
+    x_upd = x + reshaped_u
+
     # Copy previous displcement field
     upre = np.copy(reshaped_u)
+
+    # Get magnetization on each spin
+    m0[:,:] = Mxy0(M, M0, alpha[i], prod, t, T1, ke[0:dk], x_upd[:,0:dk], reshaped_u[:,0:dk])
+    m1[:,:] = Mxy1(M, M0, alpha[i], prod, t, T1, ke[0:dk], x_upd[:,0:dk], reshaped_u[:,0:dk])
+    m0[~inside,:] = 0
+    m1[~inside,:] = 0
+    mags = (m0, m1, m0)
 
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
     # using this option. Therefore the reshape must be performed accordingly
+    # TODO: AL PARECER LA OPCION slice_following ESTA PROMEDIANDO TODA LA
+    # MALLA
     for j in range(dk):
-        (I, m) = getImage(reshaped_u[:,j], p2s)
-        u_image[...,j] = I.reshape(resolution,order='F')
-    m = m.reshape(resolution,order='F')
-
-    # Reshape signal weights
-    # Obs: the option -order='F'- is included because the grid was flattened
-    # using this option. Therefore the reshape must be performed accordingly
-    sigweigths = np.array(sigweigths).reshape(resolution,order='F')
+        (I, m) = getImage([mag[:,j] for mag in mags], x_upd, voxel_coords, width, p2s)
+        m0_image[...,j] = I[0].reshape(resolution,order='F')
+        m1_image[...,j] = I[1].reshape(resolution,order='F')
+        # m0_image[...,j] = gather_image(I[0].reshape(resolution,order='F'))
+        # m1_image[...,j] = gather_image(I[1].reshape(resolution,order='F'))
+    m = m.reshape(resolution, order='F')
+    print()
 
     # Iterates over slices
     for slice in range(resolution[2]):
@@ -782,14 +807,9 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
       for j in range(image_0.shape[-2]):
 
         # Magnetization expressions
-        tmp0 = Mxy0(m[...,slice], M, M0, alpha[i], prod, t, T1, ke[j],
-                    X[j][...,slice]-u_image[...,slice,j], u_image[...,slice,j],
-                    phi[...,slice])*sigweigths[...,slice]
-        tmp1 = Mxy1(m[...,slice], M, M0, alpha[i], prod, t, T1, ke[j],
-                    X[j][...,slice]-u_image[...,slice,j], u_image[...,slice,j],
-                    phi[...,slice])*sigweigths[...,slice]
-        tmp2 = Mxyin(m[...,slice], M, M0, alpha[i], prod, t, T1, ke[j],
-                     phi[...,slice])*sigweigths[...,slice]
+        tmp0 = m0_image[...,slice,j]
+        tmp1 = m1_image[...,slice,j]
+        tmp2 = m2_image[...,slice,j]
 
         # Check if images should be cropped
         if incr_bw:

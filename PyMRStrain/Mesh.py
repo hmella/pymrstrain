@@ -1,9 +1,8 @@
 from PyMRStrain.FEMGeometry import *
 from meshio import read as meshio_read
+import numpy as np
 
 # Mesh class
-
-
 class Mesh(object):
     def __init__(self, path):
         self.mesh = meshio_read(path)
@@ -68,6 +67,27 @@ class Mesh(object):
     # Return facet markers
     def facet_markers(self):
         return self.mesh.field_data[self.facet]["gmsh:physical"]
+
+    # Return physical volumes
+    def physical_markers(self):
+        return self.mesh.cell_data[self.cell]['gmsh:physical']
+
+    # Return the nodes inside a given physical volume
+    def nodes_in_physical(self):
+        # Cells connectivity
+        cell_to_nodes = self.cells_connectivity()
+
+        # Markers
+        markers = self.physical_markers()
+
+        # Cells inside physical volume vol
+        inside = np.zeros([self.num_vertices(),], dtype=np.bool)
+        for (c_id, c) in enumerate(cell_to_nodes):
+            if markers[c_id]==1:
+                for s in c:
+                    inside[s] = True
+
+        return inside
 
     # Move mesh
     def move(self, u):
