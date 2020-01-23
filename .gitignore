@@ -3,6 +3,7 @@ demo/3D/files/msh_file
 build/
 dist/
 tmp/
+.vscode/
 PyMRStrain.egg-info/
 *.png
 *.npy
