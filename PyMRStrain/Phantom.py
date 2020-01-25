@@ -187,7 +187,7 @@ class DefaultPhantom(PhantomBase):
       self.u_real[dofmap[1]] *= 0.5*x + 1
 
       # Define through-plane displacement
-      self.u_real[dofmap[2]] = -0.2*(self.x[:,2])*np.abs(x-0.75)# + 0.0035
+      self.u_real[dofmap[2]] = -0.2*(self.x[:,2])*np.abs(x-0.75) + 0.0065
 
     # # # # Inclusion
     # # # f = Function(self.V)

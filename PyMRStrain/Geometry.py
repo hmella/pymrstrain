@@ -100,12 +100,56 @@ def fem_ventricle_geometry(parameters, filename=None):
     if h != 0:
       geo += '\nExtrude {0, 0, h} {'
       geo += '\nSurface{1,2,3};'
-      geo += '\nLayers{Round(h/(lc))};'
+      geo += '\nLayers{Round(h/lc)};'
       geo += '\n}'
       geo += '\n\nPhysical Volume(1) = {1};'
       geo += '\nPhysical Volume(2) = {2,3};'
     else:
       geo += '\n\nPhysical Surface(1) = {1};'
+
+    # # Write geo file
+    # geo = '/* Generation of myocardium mesh */'
+    # geo += '\nInclude "dimensions";'
+    #
+    # geo += '\n\n//This code generates myocardium bidimensional mesh'
+    # geo += '\n// Labels: Endocardial wall = 1'
+    # geo += '\n// Epicardial wall  = 2'
+    #
+    # geo += '\nPoint(1) = {0, 0, -0.5*h, lc};'
+    # geo += '\nPoint(2) = {-Ren, 0, -0.5*h, lc};'
+    # geo += '\nPoint(3) = {0, Ren, -0.5*h, lc};'
+    # geo += '\nPoint(4) = {Ren, 0, -0.5*h, lc};'
+    # geo += '\nPoint(5) = {0, -Ren, -0.5*h, lc};'
+    #
+    # geo += '\n\nCircle(1) = {2, 1, 3};'
+    # geo += '\nCircle(2) = {3, 1, 4};'
+    # geo += '\nCircle(3) = {4, 1, 5};'
+    # geo += '\nCircle(4) = {5, 1, 2};'
+    #
+    # geo += '\n\n// Epicardial wall'
+    # geo += '\nPoint(6) = {0, 0, -0.5*h, lc};'
+    # geo += '\nPoint(8) = {0, Rep, -0.5*h, lc};'
+    # geo += '\nPoint(7) = {-Rep, 0, -0.5*h, lc};'
+    # geo += '\nPoint(9) = {Rep, 0, -0.5*h, lc};'
+    # geo += '\nPoint(10) = {0, -Rep, -0.5*h, lc};'
+    #
+    # geo += '\n\nCircle(5) = {7, 6, 8};'
+    # geo += '\nCircle(6) = {8, 6, 9};'
+    # geo += '\nCircle(8) = {10, 6, 7};'
+    # geo += '\nCircle(7) = {9, 6, 10};'
+    #
+    # geo += '\nLine Loop(1) = {1,2,3,4};'
+    # geo += '\nLine Loop(2) = {5,6,7,8};'
+    # geo += '\nPlane Surface(1) = {2,1};'
+    #
+    # if h != 0:
+    #   geo += '\nExtrude {0, 0, h} {'
+    #   geo += '\nSurface{1};'
+    #   geo += '\nLayers{Round(h/lc)};'
+    #   geo += '\n}'
+    #   geo += '\n\nPhysical Volume(1) = {1};'
+    # else:
+    #   geo += '\n\nPhysical Surface(1) = {1};'
 
     # Open file
     file = open(folder+'/mesh.geo', 'w')

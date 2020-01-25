@@ -86,73 +86,17 @@ std::vector<int> getConnectivity3(const Eigen::MatrixXd &x,
               (std::abs(x(k,1) - x_i[1](i)) > dy) ||
               (std::abs(x(k,2) - x_i[2](i)) > dz)){
               // Do nothing
-              // py::print(s2p[i]);
           }
           else{
               s2p[k] = i;
               break;
           }
+
       }
+
   }
 
   return s2p;
-}
-
-// Calculates the pixel intensity of the images based on the pixel-to-spins
-// connectivity. The intensity is estimated using the mean of all the spins
-// inside a fgiven pixel
-typedef std::vector<Eigen::VectorXcf> ImageVector;
-typedef std::tuple<ImageVector, Eigen::VectorXi> ImageTuple;
-ImageTuple getImage(const std::vector<Eigen::VectorXcf> &I,
-                    const Eigen::MatrixXd &x,
-                    const std::vector<Eigen::VectorXd> &xi,
-                    const Eigen::VectorXd &voxel_size,
-                    const std::vector<std::vector<int>> &p2s){
-
-    // Number of voxels
-    const size_t nr_voxels = p2s.size();
-
-    // Number of input images
-    const size_t nr_im = I.size();
-
-    // Output
-    ImageVector Im(nr_im, Eigen::VectorXcf::Zero(nr_voxels));
-    Eigen::VectorXi mask = Eigen::VectorXi::Zero(nr_voxels);
-
-    // Iterators and distance
-    size_t i, j, k;
-    double d = 0.707106781*voxel_size.norm();
-
-    // Number of pixels
-    int a = 0;
-    for (i=0; i<nr_voxels; i++){
-        if (!p2s[i].empty()){
-
-            // Build weigths
-            Eigen::VectorXd w = Eigen::VectorXd::Zero(p2s[i].size());
-            for (j=0; j<p2s[i].size(); j++){
-                w(j) = std::pow(std::pow(x(p2s[i][j],0) - xi[0](i), 2)
-                     + std::pow(x(p2s[i][j],1) - xi[1](i), 2)
-                     + std::pow(x(p2s[i][j],2) - xi[2](i), 2), 0.5);
-                if (w(j) <= d){
-                }
-                else{
-                  a = 1;
-                }
-            }
-            w.array() = 1.0 - w.array()/d;
-
-            // Fill images
-            for (k=0; k<nr_im; k++){
-                Im[k](i) = (w.cast<std::complex<float>>().cwiseProduct(I[k](p2s[i]))).sum();
-            }
-            mask(i) += 1;
-        }
-    }
-    py::print(a);
-
-return std::make_tuple(Im, mask);
-
 }
 
 // Updates the pixel-to-spin connectivity using the spin-to-pixel vector
@@ -177,6 +121,58 @@ std::vector<std::vector<int>> update_p2s(const std::vector<int> s2p,
 
     return p2s;
 }
+
+
+// Calculates the pixel intensity of the images based on the pixel-to-spins
+// connectivity. The intensity is estimated using the mean of all the spins
+// inside a given pixel
+typedef std::vector<Eigen::VectorXcf> ImageVector;
+typedef std::tuple<ImageVector, Eigen::VectorXi> ImageTuple;
+ImageTuple getImage(const std::vector<Eigen::VectorXcf> &I,
+                    const Eigen::MatrixXd &x,
+                    const std::vector<Eigen::VectorXd> &xi,
+                    const Eigen::VectorXd &voxel_size,
+                    const std::vector<std::vector<int>> &p2s){
+
+    // Number of voxels
+    const size_t nr_voxels = p2s.size();
+
+    // Number of input images
+    const size_t nr_im = I.size();
+
+    // Output
+    ImageVector Im(nr_im, Eigen::VectorXcf::Zero(nr_voxels));
+    Eigen::VectorXi mask = Eigen::VectorXi::Zero(nr_voxels);
+
+    // Iterators and distance
+    size_t i, j, k;
+    double d = 0.707106781*voxel_size.norm();
+
+    // Number of pixels
+    for (i=0; i<nr_voxels; i++){
+        if (!p2s[i].empty()){
+
+            // Build weigths
+            Eigen::VectorXd w = Eigen::VectorXd::Zero(p2s[i].size());
+            for (j=0; j<p2s[i].size(); j++){
+                w(j) = std::pow(std::pow(x(p2s[i][j],0) - xi[0](i), 2)
+                     + std::pow(x(p2s[i][j],1) - xi[1](i), 2)
+                     + std::pow(x(p2s[i][j],2) - xi[2](i), 2), 0.5);
+            }
+            w.array() = 1.0 - w.array()/d;
+
+            // Fill images
+            for (k=0; k<nr_im; k++){
+                Im[k](i) = (w.cast<std::complex<float>>().cwiseProduct(I[k](p2s[i]))).sum();
+            }
+            mask(i) += 1;
+        }
+    }
+
+return std::make_tuple(Im, mask);
+
+}
+
 
 PYBIND11_MODULE(SpinBasedUtils, m) {
     m.doc() = "Utilities for spins-based image generation"; // optional module docstring

@@ -636,10 +636,10 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
   # Output image
   size = np.append(image.resolution, [dk, n_t])
-  image_0 = np.zeros(size, dtype=complex)
-  image_1 = np.zeros(size, dtype=complex)
-  image_2 = np.zeros(size, dtype=complex)
-  mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.int16)
+  image_0 = np.zeros(size, dtype=np.complex64)
+  image_1 = np.zeros(size, dtype=np.complex64)
+  image_2 = np.zeros(size, dtype=np.complex64)
+  mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.int32)
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
@@ -674,7 +674,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
       Xf, SL = check_nb_slices(D['grid'], x, D['voxel_size'], res)
 
   # TODO: scatter spins before building the connectivity
-  TEST = False
+  TEST = True
   if TEST:
       x, loc_spins = ScatterSpins(x)
       print(rank, x.shape)
@@ -690,18 +690,19 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   corners = np.array([Xf[j].flatten('F')[s2p]-0.5*width[j] for j in range(di)]).T
   x_rel = x[:,0:dp] - corners
 
-  # List of spins inside the image
+  # List of spins inside the excited slice
   if image.slice_following:
-      aaaa = [j for j in range(s2p.size)]
+      excited_spins = [j for j in range(s2p.size)]
+      voxel_coords  = [X.flatten('F') for X in D['grid']] # reset voxel coords
   else:
-      aaaa = [j for j in range(s2p.size) if s2p[j] != -1]
+      excited_spins = [j for j in range(s2p.size) if s2p[j] != -1]
 
-  # Displacement image
-  m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex)
-  m1_image = np.zeros(np.append(resolution, dk), dtype=np.complex)
-  m2_image = np.zeros(np.append(resolution, dk), dtype=np.complex)
-  m0 = np.zeros([x.shape[0],dk], dtype=np.complex)
-  m1 = np.zeros([x.shape[0],dk], dtype=np.complex)
+  # Magnetization images and spins magnetizations
+  m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
+  m1_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
+  m2_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
+  m0 = np.zeros([x.shape[0],dk], dtype=np.complex64)
+  m1 = np.zeros([x.shape[0],dk], dtype=np.complex64)
 
   # Grid to evaluate magnetizations
   X = D['grid']
@@ -713,10 +714,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   c = [int(0.5*(S[1]-s[1])), int(0.5*(S[1]-s[1])+s[1])]
 
   # Spins inside and outside the ventricle
-  if TEST:
-      inside = V.mesh().nodes_in_physical()[loc_spins]
-  else:
-      inside = V.mesh().nodes_in_physical()
+  inside = V.mesh().nodes_in_physical()[loc_spins]
 
   # Time stepping
   prod = 1
@@ -730,10 +728,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
 
     # Get displacements in the reference frame and deform mesh
     u = phantom.displacement(i)
-    if TEST:
-        reshaped_u = u.vector().reshape((-1,dp))[loc_spins,:]
-    else:
-        reshaped_u = u.vector().reshape((-1,dp))
+    reshaped_u = u.vector().reshape((-1,dp))[loc_spins,:]
 
     # Displacement in terms of pixels
     x_new = x_rel + reshaped_u - upre
@@ -741,11 +736,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     subpixel_u = x_new - np.multiply(pixel_u, width)
 
     # Change spins connectivity according to the new positions
-    globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution, aaaa)
-    if image.slice_following:
-        print(x.shape[0], len(s2p[(s2p-SL>=0)*(s2p-SL<nr_voxels)]))
-    else:
-        print(x.shape[0], len(s2p[(s2p>=0)*(s2p<nr_voxels)]))
+    globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution, excited_spins)
 
     # Update pixel-to-spins connectivity
     if image.slice_following:
@@ -754,18 +745,20 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
       p2s = update_p2s(s2p, nr_voxels)
 
     # Debug
-    from PyMRStrain.FiniteElement import FiniteElement
-    from PyMRStrain.FunctionSpace import FunctionSpace
-    from PyMRStrain.IO import write_vtk
-    FE = FiniteElement("tetrahedron")
-    VV = FunctionSpace(V.mesh(), FE)
-    uu = Function(VV)
-    uu.vector()[:] = 0
-    uu.vector()[np.array(aaaa)] = s2p[aaaa]
-    if image.slice_following:
-      write_vtk([u,uu], path='output/uu_SF{:04d}.vtu'.format(i), name=['u','p'])
-    else:
-      write_vtk([u,uu], path='output/uu_{:04d}.vtu'.format(i), name=['u','p'])
+    if rank==0:
+        from PyMRStrain.FiniteElement import FiniteElement
+        from PyMRStrain.FunctionSpace import FunctionSpace
+        from PyMRStrain.IO import write_vtk
+        FE = FiniteElement("tetrahedron")
+        VV = FunctionSpace(V.mesh(), FE)
+        uu = Function(VV)
+        uu.vector()[:] = 0
+        if image.slice_following:
+          uu.vector()[np.array(excited_spins)] = s2p[excited_spins]-SL
+          write_vtk([u,uu], path='output/uu_SF{:04d}.vtu'.format(i), name=['u','s2p'])
+        else:
+          uu.vector()[np.array(excited_spins)] = s2p[excited_spins]
+          write_vtk([u,uu], path='output/uu_{:04d}.vtu'.format(i), name=['u','s2p'])
 
     # Update relative spins positions
     x_rel[:,:] = subpixel_u
@@ -786,16 +779,11 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
     # using this option. Therefore the reshape must be performed accordingly
-    # TODO: AL PARECER LA OPCION slice_following ESTA PROMEDIANDO TODA LA
-    # MALLA
     for j in range(dk):
         (I, m) = getImage([mag[:,j] for mag in mags], x_upd, voxel_coords, width, p2s)
-        m0_image[...,j] = I[0].reshape(resolution,order='F')
-        m1_image[...,j] = I[1].reshape(resolution,order='F')
-        # m0_image[...,j] = gather_image(I[0].reshape(resolution,order='F'))
-        # m1_image[...,j] = gather_image(I[1].reshape(resolution,order='F'))
-    m = m.reshape(resolution, order='F')
-    print()
+        m0_image[...,j] = gather_image(I[0].reshape(resolution,order='F'))
+        m1_image[...,j] = gather_image(I[1].reshape(resolution,order='F'))
+    m = gather_image(m.reshape(resolution, order='F'))
 
     # Iterates over slices
     for slice in range(resolution[2]):
@@ -829,75 +817,3 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     prod = prod*np.cos(alpha[i])
 
   return image_0, image_1, image_2, mask
-
-
-# #######################################
-# #   Projections
-# #######################################
-# # Project scalar fields onto images
-# def _project2image_scalar(displacement, taglines, image, mesh_resolution):
-#   # Function space of tag-lines
-#   V = taglines.function_space()
-#
-#   # Image vector dimension
-#   d = image.type_dim()
-#
-#   # Ventricle dofmap (dofs coordinates changes with time)
-#   dofs = V.vertex_to_dof_map()
-#
-#   # Move the ventricle according with u
-#   V.mesh().move(displacement)
-#
-#   # Updated ventricular dof coordinates
-#   x = V.dof_coordinates()
-#
-#   # Number of slices
-#   number_of_slices = image._astute_resolution[2]
-#
-#   # Output image
-#   o_image = np.zeros(image._astute_resolution)
-#   weights = np.zeros(o_image.shape)
-#
-#   # Projection scheme
-#   fem2image = image._scheme
-#
-#   # Voxel and element volumes
-#   voxel_vol = np.prod(image.voxel_size(), axis=0)
-#   elem_vol  = np.pi*mesh_resolution**d
-#   if d > 2: elem_vol = 4.0/3.0*elem_vol
-#
-#   # Estimated number of dofs in voxel
-#   voxel_dofs = int(round(8.0*voxel_vol/elem_vol))
-#   mask = np.zeros([voxel_dofs,], dtype=int)
-#
-#   # Create local data
-#   local_dofs, local_coords, local_values = scatter_dofs(dofs, x, taglines.vector())
-#
-#   # Fill image
-#   for i in range(number_of_slices):
-#
-#     # Check dofs
-#     [spamm_image, lweights] = fem2image(mask, local_coords, image.sparse_grid, image.voxel_size(),
-#                                        local_dofs, local_values, image.resolution, i)
-#
-#     # Gather results
-#     spamm_image = gather_image(spamm_image)
-#     lweights    = gather_image(lweights)
-#
-#     # Avoid dividing by zero
-#     if rank is not 0:
-#       lweights = 1
-#
-#     # Weighted image
-#     spamm_image = np.divide(spamm_image, lweights)
-#
-#     # Fill image
-#     o_image[...,i] = spamm_image
-#     weights[...,i] = lweights
-#
-#   # Reset mesh
-#   displacement.vector()[:] *= -1.0
-#   V.mesh().move(displacement)
-#   displacement.vector()[:] *= -1.0
-#
-#   return np.squeeze(o_image), np.squeeze(weights)

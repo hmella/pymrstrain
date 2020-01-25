@@ -11,7 +11,7 @@ def scatter_image(X):
 
   # Get image coordinates and reshape
   # X = image._grid
-  X = [X[i].flatten() for i in range(len(X))] 
+  X = [X[i].flatten() for i in range(len(X))]
 
   # Voxels indices
   voxels = np.linspace(0,X[0].size-1,X[0].size,dtype=np.int)
@@ -54,7 +54,7 @@ def scatter_dofs(dofs, coordinates, values, geodim):
   '''
   if rank==0:
 
-    # Number of dofs 
+    # Number of dofs
     arr_size = int(dofs.size/size)
     if arr_size % geodim is not 0:
       arr_size = arr_size - 1
@@ -76,16 +76,25 @@ def scatter_dofs(dofs, coordinates, values, geodim):
   local_dofs  = local_dofs - local_dofs.min()
 
   return local_dofs, local_coords, local_values
-  
-  
+
+
 def gather_image(image):
+
+  # Check input array dtype
+  if image.dtype == np.complex64:
+      MPI_TYPE = MPI.COMPLEX
+  elif image.dtype == np.int32:
+      MPI_TYPE = MPI.INT
 
   # Empty image
   total = np.zeros_like(image)
 
   # Reduced image
-  comm.Reduce([image, MPI.DOUBLE], [total, MPI.DOUBLE], op=MPI.SUM, root=0)
-  
+  # # help(MPI)
+  # print(type(image.dtype))
+  # print(image.dtype)
+  comm.Reduce([image, MPI_TYPE], [total, MPI_TYPE], op=MPI.SUM, root=0)
+
   return total
 
 
@@ -112,7 +121,7 @@ def ScatterSpins(coordinates):
     # Spins indices
     spins = np.linspace(0, nr_spins-1, nr_spins, dtype=np.int64)
 
-    # Number of spins 
+    # Number of spins
     arr_size = int(nr_spins/size)
     if arr_size % geo_dim is not 0:
       arr_size = arr_size - 1
@@ -130,6 +139,6 @@ def ScatterSpins(coordinates):
   local_coords = coordinates[local_spins]
 
   # Make spins local
-  local_spins  = local_spins - local_spins.min()
+  local_spins  = local_spins# - local_spins.min()
 
   return local_coords, local_spins

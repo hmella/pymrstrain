@@ -9,7 +9,7 @@ if __name__=="__main__":
   # p = Parameters_2D(decimals=10, time_steps=18)
   # np.save("p.npy", p)
   p=np.load('p.npy',allow_pickle=True).item()
-  p["mesh_resolution"] = 0.0025
+  p["mesh_resolution"] = 0.002
 
   # Field inhomogeneity
   phi = lambda X, Y: 0*(X+Y)/0.1*0.2
@@ -19,14 +19,14 @@ if __name__=="__main__":
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
   N = 33                  # resolution
   I0 = DENSEImage(FOV=np.array([0.1, 0.1, 0.008]),
-            center=np.array([0.0,0.0,0.01]),
+            center=np.array([0.0,0.0,0.0]),
             resolution=np.array([N, N, 1]),
             encoding_frequency=np.array([ke,ke,0]),
             T1=0.85,
             flip_angle=15*np.pi/180,
             off_resonance=phi,
             kspace_factor=15,
-            slice_following=True)
+            slice_following=False)
 
   # Generator
   g0 = Generator(p, I0)
@@ -36,8 +36,8 @@ if __name__=="__main__":
 
   # Mesh and fem space
   p['h'] = 0.05
-  # mesh = Mesh('mesh/mesh.msh')
-  mesh = fem_ventricle_geometry(p, filename='mesh/mesh.msh')
+  mesh = Mesh('mesh/mesh.msh')
+  # mesh = fem_ventricle_geometry(p, filename='mesh/mesh.msh')
   V = FunctionSpace(mesh, FE)
 
   # Create phantom object
@@ -59,18 +59,19 @@ if __name__=="__main__":
   # Corrected image
   u = un0 - un1
 
-  fig, ax = plt.subplots(1,2)
-  fig0 = ax[0].imshow(np.abs(u[...,0,0,6]),cmap=plt.get_cmap('gray'))
-  fig1 = ax[1].imshow(np.angle(u[...,0,0,6]),cmap=plt.get_cmap('gray'))
-  fig0.axes.get_xaxis().set_visible(False)
-  fig0.axes.get_yaxis().set_visible(False)
-  fig1.axes.get_xaxis().set_visible(False)
-  fig1.axes.get_yaxis().set_visible(False)
-  if I0.slice_following:
-      plt.savefig('SF')
-  else:
-      plt.savefig('normal')
-  plt.show()
+  if rank==0:
+      fig, ax = plt.subplots(1,2)
+      fig0 = ax[0].imshow(np.abs(u[...,0,0,6]),cmap=plt.get_cmap('gray'))
+      fig1 = ax[1].imshow(np.angle(u[...,0,0,6]),cmap=plt.get_cmap('gray'))
+      fig0.axes.get_xaxis().set_visible(False)
+      fig0.axes.get_yaxis().set_visible(False)
+      fig1.axes.get_xaxis().set_visible(False)
+      fig1.axes.get_yaxis().set_visible(False)
+      if I0.slice_following:
+          plt.savefig('SF')
+      else:
+          plt.savefig('normal')
+      plt.show()
 
   # Plot
   if rank==0:
