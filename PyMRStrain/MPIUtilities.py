@@ -2,9 +2,9 @@ from mpi4py import MPI
 import numpy as np
 
 # MPI
-comm = MPI.COMM_WORLD
-size = comm.Get_size()
-rank = comm.Get_rank()
+MPI_comm = MPI.COMM_WORLD
+MPI_size = MPI_comm.Get_size()
+MPI_rank = MPI_comm.Get_rank()
 
 
 def scatter_image(X):
@@ -17,11 +17,11 @@ def scatter_image(X):
   voxels = np.linspace(0,X[0].size-1,X[0].size,dtype=np.int)
 
 
-  if rank==0:
+  if MPI_rank==0:
 
     # Number of voxels
-    arr_size = X[0].size/size
-    sections = [int(arr_size*i) for i in range(1,size)]
+    arr_size = X[0].size/MPI_size
+    sections = [int(arr_size*i) for i in range(1,MPI_size)]
 
     # Split arrays
     local_voxels = [[a] for a in np.split(voxels, sections, axis=0)]
@@ -31,7 +31,7 @@ def scatter_image(X):
     local_voxels = None
 
   # Scatter local arrays to other cores
-  local_voxels = comm.scatter(local_voxels, root=0)[0]
+  local_voxels = MPI_comm.scatter(local_voxels, root=0)[0]
   local_coords = [X[i][local_voxels] for i in range(len(X))]
 
   # # Make dofs local
@@ -52,13 +52,13 @@ def scatter_dofs(dofs, coordinates, values, geodim):
     local_dofs: distributed dofs along all processes
     local_coords: distributed coordinates along all processes
   '''
-  if rank==0:
+  if MPI_rank==0:
 
     # Number of dofs
-    arr_size = int(dofs.size/size)
+    arr_size = int(dofs.size/MPI_size)
     if arr_size % geodim is not 0:
       arr_size = arr_size - 1
-    sections = [int(arr_size*i) for i in range(1,size)]
+    sections = [int(arr_size*i) for i in range(1,MPI_size)]
 
     # Split arrays
     local_dofs = [[a] for a in np.split(dofs, sections, axis=0)]
@@ -68,7 +68,7 @@ def scatter_dofs(dofs, coordinates, values, geodim):
     local_dofs = None
 
   # Scatter local arrays to other cores
-  local_dofs   = comm.scatter(local_dofs, root=0)[0]
+  local_dofs   = MPI_comm.scatter(local_dofs, root=0)[0]
   local_coords = coordinates[local_dofs]
   local_values = values[local_dofs]
 
@@ -83,6 +83,8 @@ def gather_image(image):
   # Check input array dtype
   if image.dtype == np.complex64:
       MPI_TYPE = MPI.COMPLEX
+  elif image.dtype == np.complex128:
+      MPI_TYPE = MPI.DOUBLE_COMPLEX
   elif image.dtype == np.int32:
       MPI_TYPE = MPI.INT
 
@@ -90,10 +92,10 @@ def gather_image(image):
   total = np.zeros_like(image)
 
   # Reduced image
-  # # help(MPI)
+  # help(MPI)
   # print(type(image.dtype))
   # print(image.dtype)
-  comm.Reduce([image, MPI_TYPE], [total, MPI_TYPE], op=MPI.SUM, root=0)
+  MPI_comm.Reduce([image, MPI_TYPE], [total, MPI_TYPE], op=MPI.SUM, root=0)
 
   return total
 
@@ -112,7 +114,7 @@ def ScatterSpins(coordinates):
     local_spins: distributed spins along all processes
     local_coords: distributed coordinates along all processes
   '''
-  if rank==0:
+  if MPI_rank==0:
 
     # Number of spins
     nr_spins = coordinates.shape[0]
@@ -122,10 +124,10 @@ def ScatterSpins(coordinates):
     spins = np.linspace(0, nr_spins-1, nr_spins, dtype=np.int64)
 
     # Number of spins
-    arr_size = int(nr_spins/size)
+    arr_size = int(nr_spins/MPI_size)
     if arr_size % geo_dim is not 0:
       arr_size = arr_size - 1
-    sections = [int(arr_size*i) for i in range(1,size)]
+    sections = [int(arr_size*i) for i in range(1,MPI_size)]
 
     # Split arrays
     local_spins = [[a] for a in np.split(spins, sections, axis=0)]
@@ -135,7 +137,7 @@ def ScatterSpins(coordinates):
     local_spins = None
 
   # Scatter local arrays to other cores
-  local_spins   = comm.scatter(local_spins, root=0)[0]
+  local_spins   = MPI_comm.scatter(local_spins, root=0)[0]
   local_coords = coordinates[local_spins]
 
   # Make spins local

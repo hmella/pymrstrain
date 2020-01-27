@@ -6,7 +6,7 @@ import numpy as np
 ###################
 class ImageBase(object):
   def __init__(self,
-               FOV=np.array([1.0,1.0,0.04]),
+               FOV=np.array([0.1,0.1,0.08]),
                resolution=np.array([30, 30, 1]),
                center=np.array([0.0, 0.0, 0.0]),
                encoding_direction=[0, 1],
@@ -16,7 +16,8 @@ class ImageBase(object):
                off_resonance=[],
                interpolation='mean',
                kspace_factor=6.5,
-               slice_following = False):
+               slice_following = False,
+               slice_thickness = []):
     self.FOV = FOV
     self.resolution = resolution
     self.array_resolution = self._array_resolution()
@@ -34,6 +35,10 @@ class ImageBase(object):
     self._modified_resolution = False
     self.kspace_factor = kspace_factor
     self.slice_following = slice_following
+    if slice_thickness != []:
+        self.slice_thickness = slice_thickness
+    else:
+        self.slice_thickness = self.FOV[-1]
 
   # Flip angles
   def flip_angle_t(self, alpha):

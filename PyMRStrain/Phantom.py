@@ -38,21 +38,19 @@ class Phantom3D(object):
 #########################################################
 # Base class for phantoms
 class PhantomBase:
-  def __init__(self, mesh, V):
+  def __init__(self, spins):
     # Parameters must be defined by subclass
-    self.mesh = mesh
-    self.V    = V
     self.t    = 0.0
-    self.dofmap = self.V.vertex_to_dof_map()
-    self.x      = np.copy(self.V.dof_coordinates()[self.dofmap[0::self.V.element_shape()[0]]])
-    self.r      = np.copy(np.sqrt(np.power(self.x[:,0], 2) + np.power(self.x[:,1], 2)))
-    self.cos_   = np.copy(self.x[:,0]/self.r)
-    self.sin_   = np.copy(self.x[:,1]/self.r)
+    self.spins = spins
+    self.x      = self.spins.samples
+    self.r      = np.linalg.norm(self.x[:,0:2], axis=1)
+    self.scos   = self.x[:,0]/self.r
+    self.ssin   = self.x[:,1]/self.r
 
     # Volunteers
-    self.u  = Function(self.V)
-    self.v  = Function(self.V)
-    self.u_real = self.u.copy_values()
+    self.u  = Function(self.spins)
+    self.v  = Function(self.spins)
+    self.u_real = np.zeros(self.x.shape)
 
   # Temporal modulation function
   def TemporalModulation(self, t, tA, tB, tC):
@@ -96,44 +94,32 @@ class PhantomBase:
 #########################################################
 # Phantom Class
 class DefaultPhantom(PhantomBase):
-  def __init__(self, p, function_space=None, patient=False, write_vtk=False):
-
-    # Init parameters
-    self.sigma = p['sigma']
-    self.R_en  = p['R_en']
-    self.R_ep  = p['R_ep']
-    self.tA    = p['tA']
-    self.tB    = p['tB']
-    self.tC    = p['tC']
-    self.S_en  = p['S_en']
-    self.S_ar  = p['S_ar']
-    self.phi_en = p['phi_en']
-    self.phi_ep = p['phi_ep']
-    self.psi = p['psi']
-    self.xi  = p['xi']
+  def __init__(self, spins, p, patient=False, write_vtk=False):
+    super().__init__(spins)
+    self.p = p
     self.patient = patient
-    self.T = p["t_end"]
-    self.time_steps = p["time_steps"]
     self.write_vtk = write_vtk
-
-    # Init parameters from base class
-    super().__init__(function_space.mesh(), function_space)
 
   def get_data(self, i):
 
+    # Shorthand notation for the parameters
+    p = self.p
+
     # Time steps
-    # t = np.linspace(self.T/self.time_steps,self.T,self.time_steps)
-    t = np.linspace(0.0,self.T,self.time_steps+1)
+    # t = np.linspace(p['t_end']/p['time_steps'],p['t_end'],p['time_steps'])
+    t = np.linspace(0.0, p['t_end'], p['time_steps']+1)
 
     # Component dofmaps
-    geo_dim = self.V.element_shape()[0]
-    dofmap = [self.dofmap[i::geo_dim] for i in range(geo_dim)]
+    geo_dim = self.x.shape[-1]
+
+    # Ventricle region
+    ventricle = self.spins.regions[:,-1]
 
     # Create base displacement
-    mu = (self.R_ep - self.r)/(self.R_ep - self.R_en)
-    mu = mu - mu.min()
-    mu = mu/mu.max()
-    mu = np.power(mu, self.sigma)
+    mu = (p['R_ep'] - self.r)/(p['R_ep'] - p['R_en'])
+    mu[ventricle] = mu[ventricle] - mu[ventricle].min()
+    mu[ventricle] = mu[ventricle]/mu[ventricle].max()
+    mu[ventricle] = np.power(mu[ventricle], p['sigma'])
 
     ##########################
     # plt.scatter(self.x[:,0],self.x[:,1],c=mu,cmap="jet",edgecolors=None,marker='.')
@@ -141,13 +127,14 @@ class DefaultPhantom(PhantomBase):
     # plt.show()
 
     # End-systolic endocardial displacement
-    d_en  = (1 - self.S_en)*self.R_en
+    d_en  = (1 - p['S_en'])*p['R_en']
 
     # End-systolic epicardial displacement
-    d_ep  = self.R_ep - ((self.R_ep**2 - self.R_en**2)/self.S_ar + (self.R_en - d_en)**2)**0.5
+    d_ep  = p['R_ep'] - ((p['R_ep']**2 - p['R_en']**2)/p['S_ar']
+          + (p['R_en'] - d_en)**2)**0.5
 
     # End systolic radial displcements
-    phi_n = ((1 - mu)*self.phi_ep + mu*self.phi_en)*np.sin(2*np.pi/self.T*t[i])
+    phi_n = ((1 - mu)*p['phi_ep'] + mu*p['phi_en'])*np.sin(2*np.pi/p['t_end']*t[i])
     d_n   = (1 - mu)*d_ep + mu*d_en
 
     # End-diastolic and end-systolic radius
@@ -157,42 +144,42 @@ class DefaultPhantom(PhantomBase):
     # Get in-plane displacements
     if self.patient:
       # Abnormality
-      # Phi = 0.5*self.xi*(1.0 - (self.cos_*np.cos(self.psi) + self.sin_*np.sin(self.psi)))
-      Phi = 0.5*self.xi*(0.5 - 0.5*(self.cos_*np.cos(self.psi) + self.sin_*np.sin(self.psi))) + 0.5
+      # Phi = 0.5*p['xi']*(1.0 - (self.scos*np.cos(p['psi']) + self.ssin*np.sin(p['psi'])))
+      Phi = 0.5*p['xi']*(0.5 - 0.5*(self.scos*np.cos(p['psi']) + self.ssin*np.sin(p['psi']))) + 0.5
 
       # Create displacement and velocity for patients
-      self.u_real[dofmap[0]] = Phi*(R_ES*(self.cos_*np.cos(phi_n) \
-                            - self.sin_*np.sin(phi_n)) - R_ED*self.cos_)
-      self.u_real[dofmap[1]] = Phi*(R_ES*(self.sin_*np.cos(phi_n) \
-                            + self.cos_*np.sin(phi_n)) - R_ED*self.sin_)
+      self.u_real[:,0] = Phi*(R_ES*(self.scos*np.cos(phi_n) \
+                            - self.ssin*np.sin(phi_n)) - R_ED*self.scos)
+      self.u_real[:,1] = Phi*(R_ES*(self.ssin*np.cos(phi_n) \
+                            + self.scos*np.sin(phi_n)) - R_ED*self.ssin)
 
     else:
       # Create displacement and velocity for volunteers
-      self.u_real[dofmap[0]] = R_ES*(self.cos_*np.cos(phi_n) \
-                            - self.sin_*np.sin(phi_n)) - R_ED*self.cos_
-      self.u_real[dofmap[1]] = R_ES*(self.sin_*np.cos(phi_n) \
-                            + self.cos_*np.sin(phi_n)) - R_ED*self.sin_
+      self.u_real[:,0] = R_ES*(self.scos*np.cos(phi_n) \
+                            - self.ssin*np.sin(phi_n)) - R_ED*self.scos
+      self.u_real[:,1] = R_ES*(self.ssin*np.cos(phi_n) \
+                            + self.scos*np.sin(phi_n)) - R_ED*self.ssin
 
     # If the phantom is 3D get longitudinal displacement
     if geo_dim == 3:
       # Normalize coordinates
-      x = np.copy(self.x[:,2])
-      s_max = x.max()
-      s_min = x.min()
-      x = -(x - s_max)/(s_max - s_min) # x=0 at top, x=1 at bottom
+      z = np.copy(self.x[:,2])
+      s_max = z.max()
+      s_min = z.min()
+      z = -(z - s_max)/(s_max - s_min) # z=0 at top, z=1 at bottom
 
       # Scale in-plane components (keeps displacement on top but
       # increases displacement on bottom)
-      self.u_real[dofmap[0]] *= 0.5*x + 1
-      self.u_real[dofmap[1]] *= 0.5*x + 1
+      self.u_real[:,0] *= 0.5*z + 1
+      self.u_real[:,1] *= 0.5*z + 1
 
       # Define through-plane displacement
-      self.u_real[dofmap[2]] = -0.2*(self.x[:,2])*np.abs(x-0.75) + 0.0065
+      self.u_real[:,2] = -0.2*(self.x[:,2])*np.abs(z-0.75) + 0.0065
 
     # # # # Inclusion
     # # # f = Function(self.V)
-    # # # R = np.sqrt(np.power(self.x[:,0]-0.4*(self.R_en+self.R_ep),2) + np.power(self.x[:,1],2))
-    # # # s = (self.R_ep-self.R_en)
+    # # # R = np.sqrt(np.power(self.x[:,0]-0.4*(p['R_en']+p['R_ep']),2) + np.power(self.x[:,1],2))
+    # # # s = (p['R_ep']-p['R_en'])
     # # # f.vector()[dofmap_x] = (1-0.55*np.exp(-np.power(R/s,2)))
     # # # f.vector()[dofmap_y] = (1-0.55*np.exp(-np.power(R/s,2)))
     # # # write_scalar_vtk(f, path='output/f.vtk', name='f')
@@ -201,16 +188,16 @@ class DefaultPhantom(PhantomBase):
     dt = 1e-08
 
     # Displacements at different time-steps
-    g  = self.TemporalModulation(t, self.tA, self.tB, self.tC)
+    g  = self.TemporalModulation(t, p['tA'], p['tB'], p['tC'])
     self.u.vector()[:] = g[i]*self.u_real
     # # # self.u.vector()[:] = g[i]*(np.multiply(self.u_real,f.vector()))
     # # # write_scalar_vtk(self.u, path='output/u.vtk', name='u')
 
     # Velocity at different time-steps
-    dgdt = - self.TemporalModulation(t + 2*dt, self.tA, self.tB, self.tC) \
-         + 8*self.TemporalModulation(t + dt, self.tA, self.tB, self.tC) \
-         - 8*self.TemporalModulation(t - dt, self.tA, self.tB, self.tC) \
-         + self.TemporalModulation(t - 2*dt, self.tA, self.tB, self.tC)
+    dgdt = - self.TemporalModulation(t + 2*dt, p['tA'], p['tB'], p['tC']) \
+         + 8*self.TemporalModulation(t + dt, p['tA'], p['tB'], p['tC']) \
+         - 8*self.TemporalModulation(t - dt, p['tA'], p['tB'], p['tC']) \
+         + self.TemporalModulation(t - 2*dt, p['tA'], p['tB'], p['tC'])
     dgdt /= 12*dt
     self.v.vector()[:] = dgdt[i]*self.u_real
 
@@ -239,8 +226,8 @@ class PixelledPhantom(PhantomBase):
     self.Y    = image._grid[1]
     self.r    = np.sqrt(np.power(self.X, 2) + np.power(self.Y, 2))
     self.r[np.isnan(self.r)] = 1
-    self.cos_ = self.X/self.r
-    self.sin_ = self.Y/self.r
+    self.scos = self.X/self.r
+    self.ssin = self.Y/self.r
 
     # Volunteers
     self.u  = np.zeros(np.append(self.X.shape,2))
@@ -248,36 +235,36 @@ class PixelledPhantom(PhantomBase):
     self.u_real = np.zeros(np.append(self.X.shape,2))
 
     # Init parameters
-    self.sigma = p['sigma']
-    self.R_en  = p['R_en']
-    self.R_ep  = p['R_ep']
-    self.tA    = p['tA']
-    self.tB    = p['tB']
-    self.tC    = p['tC']
-    self.S_en  = p['S_en']
-    self.S_ar  = p['S_ar']
-    self.phi_en = p['phi_en']
-    self.phi_ep = p['phi_ep']
-    self.psi = p['psi']
-    self.xi  = p['xi']
+    p['sigma'] = p['sigma']
+    p['R_en']  = p['R_en']
+    p['R_ep']  = p['R_ep']
+    p['tA']    = p['tA']
+    p['tB']    = p['tB']
+    p['tC']    = p['tC']
+    p['S_en']  = p['S_en']
+    p['S_ar']  = p['S_ar']
+    p['phi_en'] = p['phi_en']
+    p['phi_ep'] = p['phi_ep']
+    p['psi'] = p['psi']
+    p['xi']  = p['xi']
     self.patient = patient
-    self.T = T
-    self.time_steps = p["time_steps"]
+    p['t_end'] = T
+    p['time_steps'] = p["time_steps"]
     self.image = image
 
   def get_data(self, i):
 
     # Time steps
-    # t = np.linspace(self.T/self.time_steps,self.T,self.time_steps)
-    t = np.linspace(0.0,self.T,self.time_steps+1)
+    # t = np.linspace(p['t_end']/p['time_steps'],p['t_end'],p['time_steps'])
+    t = np.linspace(0.0,p['t_end'],p['time_steps']+1)
 
     # Create base displacement
-    mu = (self.R_ep - self.r)/(self.R_ep - self.R_en)
+    mu = (p['R_ep'] - self.r)/(p['R_ep'] - p['R_en'])
     # mu = mu - mu.min()
     # mu = mu/mu.max()
     # mu[np.logical_or(mu < 0.0, mu > 1.0)] = 0
-    # mu = np.power(mu, self.sigma)
-    # print(self.sigma)
+    # mu = np.power(mu, p['sigma'])
+    # print(p['sigma'])
 
     # #########################
     # plt.imshow(mu,cmap="jet")
@@ -285,13 +272,13 @@ class PixelledPhantom(PhantomBase):
     # plt.show()
 
     # End-systolic endocardial displacement
-    d_en  = (1 - self.S_en)*self.R_en
+    d_en  = (1 - p['S_en'])*p['R_en']
 
     # End-systolic epicardial displacement
-    d_ep  = self.R_ep - ((self.R_ep**2 - self.R_en**2)/self.S_ar + (self.R_en - d_en)**2)**0.5
+    d_ep  = p['R_ep'] - ((p['R_ep']**2 - p['R_en']**2)/p['S_ar'] + (p['R_en'] - d_en)**2)**0.5
 
     # End systolic radial displcements
-    phi_n = ((1 - mu)*self.phi_ep + mu*self.phi_en)*np.sin(2*np.pi/self.T*t[i])
+    phi_n = ((1 - mu)*p['phi_ep'] + mu*p['phi_en'])*np.sin(2*np.pi/p['t_end']*t[i])
     d_n   = (1 - mu)*d_ep + mu*d_en
 
     # End-diastolic and end-systolic radius
@@ -300,27 +287,27 @@ class PixelledPhantom(PhantomBase):
 
     if self.patient:
       # Abnormality
-      # Phi = 0.5*self.xi*(1.0 - (self.cos_*np.cos(self.psi) + self.sin_*np.sin(self.psi)))
-      Phi = 0.5*self.xi*(0.5 - 0.5*(self.cos_*np.cos(self.psi) + self.sin_*np.sin(self.psi))) + 0.5
+      # Phi = 0.5*p['xi']*(1.0 - (self.scos*np.cos(p['psi']) + self.ssin*np.sin(p['psi'])))
+      Phi = 0.5*p['xi']*(0.5 - 0.5*(self.scos*np.cos(p['psi']) + self.ssin*np.sin(p['psi']))) + 0.5
 
       # Create displacement and velocity for patients
-      self.u_real[...,0] = Phi*(R_ES*(self.cos_*np.cos(phi_n) \
-                            - self.sin_*np.sin(phi_n)) - R_ED*self.cos_)
-      self.u_real[...,1] = Phi*(R_ES*(self.sin_*np.cos(phi_n) \
-                            + self.cos_*np.sin(phi_n)) - R_ED*self.sin_)
+      self.u_real[...,0] = Phi*(R_ES*(self.scos*np.cos(phi_n) \
+                            - self.ssin*np.sin(phi_n)) - R_ED*self.scos)
+      self.u_real[...,1] = Phi*(R_ES*(self.ssin*np.cos(phi_n) \
+                            + self.scos*np.sin(phi_n)) - R_ED*self.ssin)
 
     else:
       # Create displacement and velocity for volunteers
-      self.u_real[...,0] = R_ES*(self.cos_*np.cos(phi_n) \
-                            - self.sin_*np.sin(phi_n)) - R_ED*self.cos_
-      self.u_real[...,1] = R_ES*(self.sin_*np.cos(phi_n) \
-                            + self.cos_*np.sin(phi_n)) - R_ED*self.sin_
+      self.u_real[...,0] = R_ES*(self.scos*np.cos(phi_n) \
+                            - self.ssin*np.sin(phi_n)) - R_ED*self.scos
+      self.u_real[...,1] = R_ES*(self.ssin*np.cos(phi_n) \
+                            + self.scos*np.sin(phi_n)) - R_ED*self.ssin
 
 
     # # Inclusion
     # f = np.zeros(self.u_real.shape)
-    # R = np.sqrt(np.power(self.X-0.5*(self.R_en+self.R_ep),2) + np.power(self.Y,2))
-    # s = 2*(self.R_ep-self.R_en)
+    # R = np.sqrt(np.power(self.X-0.5*(p['R_en']+p['R_ep']),2) + np.power(self.Y,2))
+    # s = 2*(p['R_ep']-p['R_en'])
     # f[...,0] = (0.35*np.exp(-np.power(R/s,2)))
     # f[...,1] = (0.35*np.exp(-np.power(R/s,2)))
 
@@ -328,15 +315,15 @@ class PixelledPhantom(PhantomBase):
     dt = 1e-08
 
     # Displacements at different time-steps
-    g  = self.TemporalModulation(t, self.tA, self.tB, self.tC)
+    g  = TemporalModulation(t, p['tA'], p['tB'], p['tC'])
     self.u[...] = g[i]*self.u_real
     # self.u[...] = g[i]*(self.u_real-f*self.u_real)
 
     # Velocity at different time-steps
-    dgdt = - self.TemporalModulation(t + 2*dt, self.tA, self.tB, self.tC) \
-         + 8*self.TemporalModulation(t + dt, self.tA, self.tB, self.tC) \
-         - 8*self.TemporalModulation(t - dt, self.tA, self.tB, self.tC) \
-         + self.TemporalModulation(t - 2*dt, self.tA, self.tB, self.tC)
+    dgdt = - TemporalModulation(t + 2*dt, p['tA'], p['tB'], p['tC']) \
+         + 8*TemporalModulation(t + dt, p['tA'], p['tB'], p['tC']) \
+         - 8*TemporalModulation(t - dt, p['tA'], p['tB'], p['tC']) \
+         + TemporalModulation(t - 2*dt, p['tA'], p['tB'], p['tC'])
     dgdt /= 12*dt
     self.v[:] = dgdt[i]*self.u_real
 

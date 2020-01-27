@@ -14,29 +14,28 @@ def write_vtk(functions, path=None, name=None):
 
     # Get mesh
     try:
-        mesh = functions.function_space().mesh()
+        mesh = functions.spins.mesh
     except:
-        mesh = functions[0].function_space().mesh()
+        mesh = functions[0].spins.mesh
 
     # Prepare data as a dictionary
     point_data = {}
     for i, (u, n) in enumerate(zip(functions,name)):
 
         # Element shape
-        element_shape = u.function_space().element_shape()[0]
+        element_shape = u.dim
 
         if element_shape == 2:
-          d = u.vector().reshape((-1, element_shape))
+          d = u.vector()
           data = np.zeros([d.shape[0], d.shape[1]+1])
           data[:,:-1] = d
         else:
-          data = u.vector().reshape((-1, element_shape))
+          data = u.vector()
 
         point_data[n] = data
 
-    meshio.write(path, meshio.Mesh(points=mesh.vertex_coordinates(),
-                 cells={mesh.cell: mesh.cells_connectivity()},
-                 point_data=point_data))
+    mesh.point_data = point_data
+    meshio.write(path, mesh)
 
 
 def export_image(data, path=None, name=None):

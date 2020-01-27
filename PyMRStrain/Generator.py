@@ -40,7 +40,7 @@ class Generator:
       if isinstance(self.Image,Image):
         o_image = get_dense_image(self.Image, self.phantom, self.p, self.debug, self.fem)
       else:
-        o_image = get_complementary_dense_image(self.Image, self.phantom, self.p, self.debug, self.fem)
+        o_image = get_complementary_dense_image(self.Image, self.phantom, self.p, self.debug)
     elif self.Image.technique is "PCSPAMM":
       o_image = get_PCSPAMM_image(self.Image, self.phantom, self.p, self.debug)
     elif self.Image.technique is "EXACT":
@@ -117,7 +117,7 @@ def get_sine_image(image, phantom, parameters, debug, fem=False):
   # Time stepping
   for i in range(n+1):
 
-    if rank==0 and debug: print("- Time: {:.2f}".format(t))
+    if MPI_rank==0 and debug: print("- Time: {:.2f}".format(t))
 
     # Get displacements in the reference frame
     u = phantom.displacement(i)
@@ -235,7 +235,7 @@ def get_tagging_image(image, phantom, parameters, debug=False):
     # Update time
     t += dt
 
-    if rank==0 and debug: print("- Time: {:.2f}".format(t))
+    if MPI_rank==0 and debug: print("- Time: {:.2f}".format(t))
 
     # Get displacements in the reference frame
     u = phantom.displacement(i)
@@ -382,7 +382,7 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
     # Update time
     t += dt
 
-    if rank==0 and debug: print("- Time: {:.2f}".format(t))
+    if MPI_rank==0 and debug: print("- Time: {:.2f}".format(t))
 
     # Get displacements in the reference frame
     u = phantom.displacement(i)
@@ -480,7 +480,7 @@ def get_exact_image(image, phantom, parameters, debug=False):
   # Time stepping
   for i in range(n+1):
 
-    if rank==0 and debug: print("- Time: {:.2f}".format(t))
+    if MPI_rank==0 and debug: print("- Time: {:.2f}".format(t))
 
     # Get displacements in the reference frame
     u = phantom.displacement(i)
@@ -577,7 +577,7 @@ def get_PCSPAMM_image(image, phantom, parameters, debug=False):
     # Update time
     t += dt
 
-    if rank==0 and debug: print("- Time: {:.2f}".format(t))
+    if MPI_rank==0 and debug: print("- Time: {:.2f}".format(t))
 
     # Get displacements in the reference frame
     u, v = phantom.velocity(i)
@@ -607,7 +607,7 @@ def get_PCSPAMM_image(image, phantom, parameters, debug=False):
 
 
 # Generate complementary DENSE images
-def get_complementary_dense_image(image, phantom, parameters, debug, fem):
+def get_complementary_dense_image(image, phantom, parameters, debug):
   """ Generate DENSE images
   """
   # Time-steping parameters
@@ -626,12 +626,9 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   # DENSE magnetizations
   Mxy0, Mxy1, Mxyin = DENSEMagnetizations()
 
-  # Function space of the displacement field
-  V = phantom.V
-
   # Determine if the image and phantom geometry are 2D or 3D
   di = image.type_dim()                      # image geometric dimension
-  dp = V.shape[0]                            # phantom (fem) geometric dimension
+  dp = phantom.x.shape[-1]                   # phantom (fem) geometric dimension
   dk = np.sum(int(k/k) for k in ke if k!= 0) # Number of encoding directions
 
   # Output image
@@ -640,13 +637,14 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   image_1 = np.zeros(size, dtype=np.complex64)
   image_2 = np.zeros(size, dtype=np.complex64)
   mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.int32)
+  end = time.time()
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
       alpha = alpha*np.ones([n_t],dtype=np.float)
 
   # Spins positions
-  x = V.dof_coordinates()[::dp]
+  x = phantom.x
 
   # Check k space bandwidth to avoid folding artifacts
   res, incr_bw, D = check_kspace_bw(image, x)
@@ -671,38 +669,27 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   # for the generation of the connectivity when generating
   # Slice-Following (SF) images
   if image.slice_following:
-      Xf, SL = check_nb_slices(D['grid'], x, D['voxel_size'], res)
-
-  # TODO: scatter spins before building the connectivity
-  TEST = True
-  if TEST:
-      x, loc_spins = ScatterSpins(x)
-      print(rank, x.shape)
+      Xf, SL = check_nb_slices(Xf, x, width, res)
 
   # Connectivity (this is done just once)
   voxel_coords = [X.flatten('F') for X in Xf]
-  s2p = globals()["getConnectivity{:d}".format(dp)](x, voxel_coords, width)
+  (s2p, excited_spins) = globals()["getConnectivity{:d}".format(dp)](x, voxel_coords, width)
   s2p = np.array(s2p)
 
   # Spins positions with respect to its containing voxel center
   # Obs: the option -order='F'- is included to make the grid of the
   # Z coordinate at the end of the flattened array
   corners = np.array([Xf[j].flatten('F')[s2p]-0.5*width[j] for j in range(di)]).T
-  x_rel = x[:,0:dp] - corners
+  x_rel = x[:, 0:dp] - corners
 
   # List of spins inside the excited slice
   if image.slice_following:
-      excited_spins = [j for j in range(s2p.size)]
       voxel_coords  = [X.flatten('F') for X in D['grid']] # reset voxel coords
-  else:
-      excited_spins = [j for j in range(s2p.size) if s2p[j] != -1]
 
   # Magnetization images and spins magnetizations
   m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
   m1_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
   m2_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
-  m0 = np.zeros([x.shape[0],dk], dtype=np.complex64)
-  m1 = np.zeros([x.shape[0],dk], dtype=np.complex64)
 
   # Grid to evaluate magnetizations
   X = D['grid']
@@ -713,22 +700,25 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
   r = [int(0.5*(S[0]-s[0])), int(0.5*(S[0]-s[0])+s[0])]
   c = [int(0.5*(S[1]-s[1])), int(0.5*(S[1]-s[1])+s[1])]
 
-  # Spins inside and outside the ventricle
-  inside = V.mesh().nodes_in_physical()[loc_spins]
+  # Spins inside the ventricle
+  inside = phantom.spins.regions[:,-1]
+  if image.slice_following:
+      sf = (x[:,2] < image.center[2] + 0.5*image.slice_thickness)
+      sf *= (x[:,2] > image.center[2] - 0.5*image.slice_thickness)
 
   # Time stepping
   prod = 1
-  upre = np.zeros([x.shape[0],dp])
+  upre = np.zeros([x.shape[0], dp])
   for i in range(n_t):
 
     # Update time
     t += dt
 
-    if rank==0 and debug: print("- Time: {:.2f}".format(t))
+    if MPI_rank==0 and debug: print("- Time: {:.2f}".format(t))
 
     # Get displacements in the reference frame and deform mesh
     u = phantom.displacement(i)
-    reshaped_u = u.vector().reshape((-1,dp))[loc_spins,:]
+    reshaped_u = u.vector()
 
     # Displacement in terms of pixels
     x_new = x_rel + reshaped_u - upre
@@ -736,29 +726,13 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     subpixel_u = x_new - np.multiply(pixel_u, width)
 
     # Change spins connectivity according to the new positions
-    globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution, excited_spins)
+    globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution)
 
     # Update pixel-to-spins connectivity
     if image.slice_following:
-      p2s = update_p2s(s2p-SL, nr_voxels)
+      p2s = update_p2s(s2p-SL, excited_spins, nr_voxels)
     else:
-      p2s = update_p2s(s2p, nr_voxels)
-
-    # Debug
-    if rank==0:
-        from PyMRStrain.FiniteElement import FiniteElement
-        from PyMRStrain.FunctionSpace import FunctionSpace
-        from PyMRStrain.IO import write_vtk
-        FE = FiniteElement("tetrahedron")
-        VV = FunctionSpace(V.mesh(), FE)
-        uu = Function(VV)
-        uu.vector()[:] = 0
-        if image.slice_following:
-          uu.vector()[np.array(excited_spins)] = s2p[excited_spins]-SL
-          write_vtk([u,uu], path='output/uu_SF{:04d}.vtu'.format(i), name=['u','s2p'])
-        else:
-          uu.vector()[np.array(excited_spins)] = s2p[excited_spins]
-          write_vtk([u,uu], path='output/uu_{:04d}.vtu'.format(i), name=['u','s2p'])
+      p2s = update_p2s(s2p, excited_spins, nr_voxels)
 
     # Update relative spins positions
     x_rel[:,:] = subpixel_u
@@ -770,26 +744,41 @@ def get_complementary_dense_image(image, phantom, parameters, debug, fem):
     upre = np.copy(reshaped_u)
 
     # Get magnetization on each spin
-    m0[:,:] = Mxy0(M, M0, alpha[i], prod, t, T1, ke[0:dk], x_upd[:,0:dk], reshaped_u[:,0:dk])
-    m1[:,:] = Mxy1(M, M0, alpha[i], prod, t, T1, ke[0:dk], x_upd[:,0:dk], reshaped_u[:,0:dk])
+    (m0, m1, min) = magnetizations(M, M0, alpha[i], prod, t, T1, ke[0:dk], x_upd[:,0:dk], reshaped_u[:,0:dk])
     m0[~inside,:] = 0
     m1[~inside,:] = 0
-    mags = (m0, m1, m0)
+    if image.slice_following:
+        m0[~sf,:] = 0
+        m1[~sf,:] = 0
+    mags = [m0, m1, m0]
+
+    # # Debug
+    # if MPI_rank==0:
+    #     from PyMRStrain.IO import write_vtk
+    #     uu = Function(u.spins, dim=1)
+    #     uu.vector()[:] = -1
+    #     if image.slice_following:
+    #       uu.vector()[:] = np.real(m0[:,0]).reshape((-1,1))
+    #       # uu.vector()[excited_spins] = (s2p-SL).reshape((-1,1))
+    #       write_vtk([u,uu], path='output/uu_SF{:04d}.vtu'.format(i), name=['u','s2p'])
+    #     else:
+    #       uu.vector()[:] = np.real(m0[:,0]).reshape((-1,1))
+    #       # uu.vector()[excited_spins] = s2p.reshape((-1,1))
+    #       write_vtk([u,uu], path='output/uu_{:04d}.vtu'.format(i), name=['u','s2p'])
 
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
     # using this option. Therefore the reshape must be performed accordingly
-    for j in range(dk):
-        (I, m) = getImage([mag[:,j] for mag in mags], x_upd, voxel_coords, width, p2s)
-        m0_image[...,j] = gather_image(I[0].reshape(resolution,order='F'))
-        m1_image[...,j] = gather_image(I[1].reshape(resolution,order='F'))
+    (I, m) = getImage_(mags, x_upd, voxel_coords, width, p2s)
+    m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
+    m1_image[...] = gather_image(I[1].reshape(m1_image.shape,order='F'))
     m = gather_image(m.reshape(resolution, order='F'))
 
     # Iterates over slices
     for slice in range(resolution[2]):
 
       # Update mask
-      mask[...,slice,i] = np.abs(iFFT(H*FFT(m)[r[0]:r[1]:1, c[0]:c[1]:1, slice]))
+      mask[...,slice,i] = np.abs(iFFT(H*FFT(m[...,slice])[r[0]:r[1]:1, c[0]:c[1]:1]))
 
       # Complex magnetization data
       for j in range(image_0.shape[-2]):

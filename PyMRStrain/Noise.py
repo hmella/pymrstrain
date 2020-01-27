@@ -1,5 +1,4 @@
 import numpy as np
-from PyMRStrain.MPIUtilities import rank, comm
 
 # Get tissue and background indicators
 def get_segmentation_mask(u_image, tol=1.0e-15):

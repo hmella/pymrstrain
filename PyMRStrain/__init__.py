@@ -12,3 +12,4 @@ from PyMRStrain.Noise import *
 from PyMRStrain.Parameters import *
 from PyMRStrain.Phantom import *
 from PyMRStrain.Plotter import *
+from PyMRStrain.Spins import *
