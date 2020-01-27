@@ -81,10 +81,16 @@ def scatter_dofs(dofs, coordinates, values, geodim):
 def gather_image(image):
 
   # Check input array dtype
-  if image.dtype == np.complex64:
-      MPI_TYPE = MPI.COMPLEX
-  elif image.dtype == np.complex128:
-      MPI_TYPE = MPI.DOUBLE_COMPLEX
+  if image.dtype == np.complex128:
+      MPI_TYPE = MPI.C_DOUBLE_COMPLEX
+  elif image.dtype == np.complex64:
+      MPI_TYPE = MPI.C_FLOAT_COMPLEX
+  elif image.dtype == np.float:
+      MPI_TYPE = MPI.DOUBLE
+  elif image.dtype == np.float32:
+      MPI_TYPE = MPI.FLOAT
+  elif image.dtype == np.int:
+        MPI_TYPE = MPI.LONG
   elif image.dtype == np.int32:
       MPI_TYPE = MPI.INT
 
@@ -92,9 +98,6 @@ def gather_image(image):
   total = np.zeros_like(image)
 
   # Reduced image
-  # help(MPI)
-  # print(type(image.dtype))
-  # print(image.dtype)
   MPI_comm.Reduce([image, MPI_TYPE], [total, MPI_TYPE], op=MPI.SUM, root=0)
 
   return total

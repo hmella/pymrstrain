@@ -1,6 +1,7 @@
 from PyMRStrain.Geometry import *
 from PyMRStrain.Function import *
 from PyMRStrain.Image import *
+from PyMRStrain.Imaging import slice_profile
 from PyMRStrain.Math import FFT, iFFT
 from PyMRStrain.MPIUtilities import *
 from PyMRStrain.PySpinBasedUtils import *
@@ -632,11 +633,11 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
   dk = np.sum(int(k/k) for k in ke if k!= 0) # Number of encoding directions
 
   # Output image
-  size = np.append(image.resolution, [dk, n_t])
+  size = np.append(image.array_resolution, [dk, n_t])
   image_0 = np.zeros(size, dtype=np.complex64)
   image_1 = np.zeros(size, dtype=np.complex64)
   image_2 = np.zeros(size, dtype=np.complex64)
-  mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.int32)
+  mask    = np.zeros(np.append(image.array_resolution, n_t), dtype=np.float32)
   end = time.time()
 
   # Flip angles
@@ -705,6 +706,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
   if image.slice_following:
       sf = (x[:,2] < image.center[2] + 0.5*image.slice_thickness)
       sf *= (x[:,2] > image.center[2] - 0.5*image.slice_thickness)
+      # SP = slice_profile(x[:,2], image.center[2], image.slice_thickness)
 
   # Time stepping
   prod = 1
@@ -713,8 +715,6 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
 
     # Update time
     t += dt
-
-    if MPI_rank==0 and debug: print("- Time: {:.2f}".format(t))
 
     # Get displacements in the reference frame and deform mesh
     u = phantom.displacement(i)
@@ -750,26 +750,36 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
     if image.slice_following:
         m0[~sf,:] = 0
         m1[~sf,:] = 0
+        # for k in range(dk):
+        #     m0[:,k] *= SP
+        #     m1[:,k] *= SP
+
     mags = [m0, m1, m0]
 
     # # Debug
     # if MPI_rank==0:
     #     from PyMRStrain.IO import write_vtk
-    #     uu = Function(u.spins, dim=1)
-    #     uu.vector()[:] = -1
+    #     s2p_fun = Function(u.spins, dim=1)
+    #     s2p_fun.vector()[:] = 0
+    #     mag_fun = Function(u.spins, dim=2)
+    #     mag_fun.vector()[:] = 0
     #     if image.slice_following:
-    #       uu.vector()[:] = np.real(m0[:,0]).reshape((-1,1))
-    #       # uu.vector()[excited_spins] = (s2p-SL).reshape((-1,1))
-    #       write_vtk([u,uu], path='output/uu_SF{:04d}.vtu'.format(i), name=['u','s2p'])
+    #       mag_fun.vector()[sf] = 1
+    #       s2p_fun.vector()[excited_spins] = (s2p-SL).reshape((-1,1))
+    #       write_vtk([u,s2p_fun,mag_fun], path='output/uu_SF_{:04d}.vtu'.format(i), name=['u','s2p','M'])
     #     else:
-    #       uu.vector()[:] = np.real(m0[:,0]).reshape((-1,1))
-    #       # uu.vector()[excited_spins] = s2p.reshape((-1,1))
-    #       write_vtk([u,uu], path='output/uu_{:04d}.vtu'.format(i), name=['u','s2p'])
+    #       mag_fun.vector()[sf] = 1
+    #       s2p_fun.vector()[excited_spins] = s2p.reshape((-1,1))
+    #       write_vtk([u,s2p_fun,mag_fun], path='output/uu_{:04d}.vtu'.format(i), name=['u','s2p','M'])
 
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
     # using this option. Therefore the reshape must be performed accordingly
     (I, m) = getImage_(mags, x_upd, voxel_coords, width, p2s)
+    if MPI_rank == 0 and debug:
+        print('Time step {:d}. Number of spins inside a voxel: {:.0f}'.format(i, m.max()))
+
+    # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
     m1_image[...] = gather_image(I[1].reshape(m1_image.shape,order='F'))
     m = gather_image(m.reshape(resolution, order='F'))

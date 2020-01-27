@@ -52,6 +52,7 @@ class Spins:
         inner = r < self.R_en
         outer = r > self.R_ep
         ventricle = (~inner)*(~outer)
+        print('Number of spins in process {:d}: {:d}'.format(MPI_rank, x.shape[0]))
 
         return np.column_stack((x,y,z)), np.column_stack((inner,outer,ventricle))
 

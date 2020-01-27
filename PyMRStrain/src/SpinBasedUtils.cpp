@@ -135,7 +135,7 @@ std::vector<std::vector<int>> update_p2s(const std::vector<int> &s2p,
 // connectivity. The intensity is estimated using the mean of all the spins
 // inside a given pixel
 typedef std::vector<Eigen::VectorXcf> ImageVector;
-typedef std::tuple<ImageVector, Eigen::VectorXi> ImageTuple;
+typedef std::tuple<ImageVector, Eigen::VectorXf> ImageTuple;
 ImageTuple getImage(const std::vector<Eigen::VectorXcf> &I,
                     const Eigen::MatrixXf &x,
                     const std::vector<Eigen::VectorXf> &xi,
@@ -150,7 +150,7 @@ ImageTuple getImage(const std::vector<Eigen::VectorXcf> &I,
 
     // Output
     ImageVector Im(nr_im, Eigen::VectorXcf::Zero(nr_voxels));
-    Eigen::VectorXi mask = Eigen::VectorXi::Zero(nr_voxels);
+    Eigen::VectorXf mask = Eigen::VectorXf::Zero(nr_voxels);
 
     // Iterators and distance
     size_t i, j, k;
@@ -173,7 +173,7 @@ ImageTuple getImage(const std::vector<Eigen::VectorXcf> &I,
             for (k=0; k<nr_im; k++){
                 Im[k](i) = w.cwiseProduct(I[k](p2s[i])).sum();
             }
-            mask(i) += 1;
+            mask(i) += p2s[i].size();
         }
     }
 
@@ -197,7 +197,7 @@ ImageTuple getImage_(const std::vector<Eigen::MatrixXcf> &I,
 
     // Output
     ImageVector Im(nr_im, Eigen::VectorXcf::Zero(nr_voxels*nr_enc));
-    Eigen::VectorXi mask = Eigen::VectorXi::Zero(nr_voxels);
+    Eigen::VectorXf mask = Eigen::VectorXf::Zero(nr_voxels);
 
     // Iterators and distance
     size_t i, j, k, l;
@@ -222,7 +222,7 @@ ImageTuple getImage_(const std::vector<Eigen::MatrixXcf> &I,
                     Im[k](i+l*nr_voxels) = w.cwiseProduct(I[k](p2s[i],l)).sum();
                 }
             }
-            mask(i) += 1;
+            mask(i) += p2s[i].size();
         }
     }
 

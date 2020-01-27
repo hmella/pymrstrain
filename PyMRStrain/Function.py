@@ -2,11 +2,12 @@ import numpy as np
 
 # Function
 class Function:
-    def __init__(self, spins, dim=3):
+    def __init__(self, spins, dim=3, type=np.float):
         self.spins = spins
         self.dim = dim
         self.x = spins.samples
-        self.array = np.zeros([self.x.shape[0], dim])
+        self.type = type
+        self.array = np.zeros([self.x.shape[0], dim], dtype=self.type)
 
     # Assign method
     def assign(self, u):

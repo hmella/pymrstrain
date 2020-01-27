@@ -27,7 +27,7 @@ def write_vtk(functions, path=None, name=None):
 
         if element_shape == 2:
           d = u.vector()
-          data = np.zeros([d.shape[0], d.shape[1]+1])
+          data = np.zeros([d.shape[0], d.shape[1]+1], dtype=d.dtype)
           data[:,:-1] = d
         else:
           data = u.vector()

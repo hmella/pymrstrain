@@ -10,8 +10,8 @@ def update_s2p2(s2p, pixel_u, resolution):
 
 # Three dimensional images with number of slices greater than 1
 def update_s2p3(s2p, pixel_u, resolution):
-    s2p += (resolution[1]*pixel_u[:,0]             # jump betwen rows
-        + resolution[1]*resolution[0]*pixel_u[:,2] # jump betwen slices
+    s2p += (resolution[0]*pixel_u[:,0]             # jump betwen rows
+        + resolution[0]*resolution[1]*pixel_u[:,2] # jump betwen slices
         + pixel_u[:,1]).astype(np.int64)           # jump between columns
 
 
@@ -20,12 +20,17 @@ def update_s2p3(s2p, pixel_u, resolution):
 # reproduce the behavior of the scanner
 def check_kspace_bw(image, x):
 
-  # Encoding frequency
+  # Encoding frequency, voxelsize and kspace factor
   ke = image.encoding_frequency
+  vs = image.voxel_size()
+  kf = image.kspace_factor
+
+  # Lower bound for the new encoding frequencies
+  kl = 2*np.pi/vs
 
   # Modified pixel size
-  pxsz = np.array([2*np.pi/(image.kspace_factor*k) if k != 0
-                   else image.voxel_size()[i] for i,k in enumerate(ke)])
+  pxsz = np.array([2*np.pi/(kf*freq) if (freq != 0 and kf*freq > kl[i])
+                   else vs[i] for (i,freq) in enumerate(ke)])
 
   # Modified image resolution
   res = np.floor(np.divide(image.FOV,pxsz)).astype(np.int64)

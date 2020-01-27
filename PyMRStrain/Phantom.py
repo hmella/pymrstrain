@@ -141,6 +141,27 @@ class DefaultPhantom(PhantomBase):
     R_ED = self.r
     R_ES = self.r - d_n
 
+    # If the phantom is 3D add longitudinal displacement
+    # and angle scaling factor
+    if geo_dim == 3:
+        # Normalize coordinates
+        z = np.copy(self.x[:,2])
+        z_max = z.max()
+        z_min = z.min()
+        z = -(z - z_max)/(z_max - z_min) # z=0 at top, z=1 at bottom
+
+        # Scale in-plane components (keeps displacement on top but
+        # increases displacement on bottom)
+        scale = (0.65-z)/0.65
+
+        # Define through-plane displacement
+        self.u_real[:,2] = (z - 1)*0.02
+
+    else:
+        scale = 1.0
+
+
+
     # Get in-plane displacements
     if self.patient:
       # Abnormality
@@ -155,26 +176,10 @@ class DefaultPhantom(PhantomBase):
 
     else:
       # Create displacement and velocity for volunteers
-      self.u_real[:,0] = R_ES*(self.scos*np.cos(phi_n) \
-                            - self.ssin*np.sin(phi_n)) - R_ED*self.scos
-      self.u_real[:,1] = R_ES*(self.ssin*np.cos(phi_n) \
-                            + self.scos*np.sin(phi_n)) - R_ED*self.ssin
-
-    # If the phantom is 3D get longitudinal displacement
-    if geo_dim == 3:
-      # Normalize coordinates
-      z = np.copy(self.x[:,2])
-      s_max = z.max()
-      s_min = z.min()
-      z = -(z - s_max)/(s_max - s_min) # z=0 at top, z=1 at bottom
-
-      # Scale in-plane components (keeps displacement on top but
-      # increases displacement on bottom)
-      self.u_real[:,0] *= 0.5*z + 1
-      self.u_real[:,1] *= 0.5*z + 1
-
-      # Define through-plane displacement
-      self.u_real[:,2] = -0.2*(self.x[:,2])*np.abs(z-0.75) + 0.0065
+      self.u_real[:,0] = R_ES*(self.scos*np.cos(phi_n*scale) \
+                            - self.ssin*np.sin(phi_n*scale)) - R_ED*self.scos
+      self.u_real[:,1] = R_ES*(self.ssin*np.cos(phi_n*scale) \
+                            + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin
 
     # # # # Inclusion
     # # # f = Function(self.V)
