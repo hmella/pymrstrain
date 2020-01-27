@@ -4,6 +4,7 @@ from PyMRStrain.FunctionSpace import *
 from PyMRStrain.Geometry import *
 from PyMRStrain.Generator import *
 from PyMRStrain.Image import *
+from PyMRStrain.Imaging import *
 from PyMRStrain.IO import *
 from PyMRStrain.Math import *
 from PyMRStrain.Mesh import *
