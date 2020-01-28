@@ -1,7 +1,6 @@
-from PyMRStrain.Geometry import *
 from PyMRStrain.Function import *
 from PyMRStrain.Image import *
-from PyMRStrain.Imaging import slice_profile
+from PyMRStrain.MRImaging import slice_profile
 from PyMRStrain.Math import FFT, iFFT
 from PyMRStrain.MPIUtilities import *
 from PyMRStrain.PySpinBasedUtils import *
@@ -24,11 +23,6 @@ class Generator:
     self.phantom = phantom
     self.debug   = debug
     self.fem     = fem
-
-  # Ventricle and image meshes
-  def ventricle_mesh(self):
-    mesh = fem_ventricle_geometry(self.p["R_en"], self.p["tau"], self.p["mesh_resolution"])
-    return mesh
 
   # Obtain image
   def get_image(self):
