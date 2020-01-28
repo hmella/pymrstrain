@@ -1,39 +1,11 @@
-from PyMRStrain.FiniteElement import *
-from PyMRStrain.FunctionSpace import *
-from PyMRStrain.Function import *
-from PyMRStrain.Mesh import *
-import numpy as np
-from scipy.ndimage.filters import gaussian_filter
-import matplotlib.pyplot as plt
+from PyMRStrain.Function import Function
 from PyMRStrain.IO import write_vtk
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.ndimage.filters import gaussian_filter
 
 # NOTE: 1 [cycle] = 2*np.pi [rad]
 
-class Phantom3D(object):
-  def __init__(self, function_space=None, time_steps=30, path=None):
-    self.V = function_space                       # Function space
-    self.mesh = function_space.mesh()             # Mesh
-    self._time_steps = time_steps                 # Number of time steps
-    self.path = path
-    self.t = 0.0
-
-  def displacement(self, i):
-    # Function
-    u = Function(self.V)
-
-    # Load data
-    u.vector()[:] = Mesh(self.path+'u_{:04d}.msh'.format(i)).mesh.point_data['u'].flatten()
-
-    return u
-
-  def velocity(self, i):
-    # Function
-    v = Function(self.V)
-
-    # Load data
-    v.vector()[:] = Mesh(self.path+'v_{:04d}.msh'.format(i)).mesh.point_data['v'].flatten()
-
-    return self.displacement(i), v
 
 #########################################################
 # Base class for phantoms
@@ -93,7 +65,7 @@ class PhantomBase:
 
 #########################################################
 # Phantom Class
-class DefaultPhantom(PhantomBase):
+class Phantom(PhantomBase):
   def __init__(self, spins, p, patient=False, write_vtk=False):
     super().__init__(spins)
     self.p = p

@@ -1,14 +1,14 @@
 from PyMRStrain import *
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import time
 
 if __name__=="__main__":
 
   # Parameters
-#   p = Parameters(decimals=10, time_steps=18)
+  p = Parameters(decimals=10, time_steps=18)
 #   np.save("p.npy", p)
-  p=np.load('p.npy',allow_pickle=True).item()
+  # p=np.load('p.npy',allow_pickle=True).item()
   # p['time_steps'] = 2
 
   # Field inhomogeneity
@@ -20,7 +20,7 @@ if __name__=="__main__":
   N = 33                  # resolution
   I0 = DENSEImage(FOV=np.array([0.1, 0.1, 0.04]),
             center=np.array([0.0,0.0,-0.03]),
-            resolution=np.array([N, N+31, 1]),
+            resolution=np.array([N, N, 1]),
             encoding_frequency=np.array([ke,ke,0]),
             T1=0.85,
             flip_angle=15*np.pi/180,
@@ -34,10 +34,10 @@ if __name__=="__main__":
   p['center'] = np.array([0,0,0])
 #   p['R_inner'] = p['R_en']
 #   p['R_outer'] = p['R_ep']
-  spins = Spins(Nb_samples=500000, parameters=p, structured=(False, 20))
+  spins = Spins(Nb_samples=250000, parameters=p, structured=(False, 20))
 
   # Create phantom object
-  phantom = DefaultPhantom(spins, p, patient=False, write_vtk=False)
+  phantom = Phantom(spins, p, patient=False, write_vtk=False)
 
   # Generator
   g0 = Generator(p, I0, debug=True)

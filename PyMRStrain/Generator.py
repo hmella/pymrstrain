@@ -1,16 +1,17 @@
-from PyMRStrain.Function import *
-from PyMRStrain.Image import *
+from PyMRStrain.Function import Function
+from PyMRStrain.Image import Image, DENSEImage, CSPAMMImage
 from PyMRStrain.MRImaging import slice_profile
 from PyMRStrain.Math import FFT, iFFT
-from PyMRStrain.MPIUtilities import *
-from PyMRStrain.PySpinBasedUtils import *
+from PyMRStrain.MPIUtilities import gather_image, MPI_rank
+from PyMRStrain.PySpinBasedUtils import (update_s2p2, update_s2p3,
+                                        check_kspace_bw, check_nb_slices)
 from PyMRStrain.Magnetizations import DENSEMagnetizations
-from ImageUtilities import *
-from SpinBasedUtils import *
-import numpy as np
+from Connectivity import (getConnectivity2, getConnectivity3,
+                          update_p2s)
+from ImageBuilding import get_images, DENSE_magnetizations
 import matplotlib.pyplot as plt
-from scipy import interpolate
-from scipy import signal
+import numpy as np
+from scipy import interpolate, signal
 import time
 
 ###################
@@ -618,9 +619,6 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
   M0    = 1.0                          # thermal equilibrium magnetization
   M     = M0
 
-  # DENSE magnetizations
-  Mxy0, Mxy1, Mxyin = DENSEMagnetizations()
-
   # Determine if the image and phantom geometry are 2D or 3D
   di = image.type_dim()                      # image geometric dimension
   dp = phantom.x.shape[-1]                   # phantom (fem) geometric dimension
@@ -738,7 +736,8 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
     upre = np.copy(reshaped_u)
 
     # Get magnetization on each spin
-    (m0, m1, min) = magnetizations(M, M0, alpha[i], prod, t, T1, ke[0:dk], x_upd[:,0:dk], reshaped_u[:,0:dk])
+    (m0, m1, min) = DENSE_magnetizations(M, M0, alpha[i], prod, t, T1,
+                        ke[0:dk], x_upd[:,0:dk], reshaped_u[:,0:dk])
     m0[~inside,:] = 0
     m1[~inside,:] = 0
     if image.slice_following:
@@ -769,7 +768,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
     # using this option. Therefore the reshape must be performed accordingly
-    (I, m) = getImage_(mags, x_upd, voxel_coords, width, p2s)
+    (I, m) = get_images(mags, x_upd, voxel_coords, width, p2s)
     if MPI_rank == 0 and debug:
         print('Time step {:d}. Number of spins inside a voxel: {:.0f}'.format(i, m.max()))
 

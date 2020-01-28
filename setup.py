@@ -37,8 +37,8 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        'ImageUtilities',
-        ['PyMRStrain/src/ImageUtilities.cpp'],
+        'ImageBuilding',
+        ['PyMRStrain/src/ImageBuilding.cpp'],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
@@ -48,8 +48,8 @@ ext_modules = [
         language='c++'
     ),
     Extension(
-        'SpinBasedUtils',
-        ['PyMRStrain/src/SpinBasedUtils.cpp'],
+        'Connectivity',
+        ['PyMRStrain/src/Connectivity.cpp'],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
