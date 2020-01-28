@@ -7,77 +7,8 @@ MPI_size = MPI_comm.Get_size()
 MPI_rank = MPI_comm.Get_rank()
 
 
-def scatter_image(X):
-
-  # Get image coordinates and reshape
-  # X = image._grid
-  X = [X[i].flatten() for i in range(len(X))]
-
-  # Voxels indices
-  voxels = np.linspace(0,X[0].size-1,X[0].size,dtype=np.int)
-
-
-  if MPI_rank==0:
-
-    # Number of voxels
-    arr_size = X[0].size/MPI_size
-    sections = [int(arr_size*i) for i in range(1,MPI_size)]
-
-    # Split arrays
-    local_voxels = [[a] for a in np.split(voxels, sections, axis=0)]
-
-  else:
-    #Create variables on other cores
-    local_voxels = None
-
-  # Scatter local arrays to other cores
-  local_voxels = MPI_comm.scatter(local_voxels, root=0)[0]
-  local_coords = [X[i][local_voxels] for i in range(len(X))]
-
-  # # Make dofs local
-  # local_voxels  = local_voxels - local_voxels.min()
-
-  return local_voxels, local_coords
-
-def scatter_dofs(dofs, coordinates, values, geodim):
-  ''' Scatter dofmap and coordinate dofs to local processes
-
-  Input:
-  -----------
-    dofs:        numpy ndarray of shape [n, d] with d the dimension of the function space
-    coordinates: numpy ndarray dofs coordinates
-
-  Output:
-  -----------
-    local_dofs: distributed dofs along all processes
-    local_coords: distributed coordinates along all processes
-  '''
-  if MPI_rank==0:
-
-    # Number of dofs
-    arr_size = int(dofs.size/MPI_size)
-    if arr_size % geodim is not 0:
-      arr_size = arr_size - 1
-    sections = [int(arr_size*i) for i in range(1,MPI_size)]
-
-    # Split arrays
-    local_dofs = [[a] for a in np.split(dofs, sections, axis=0)]
-
-  else:
-    #Create variables on other cores
-    local_dofs = None
-
-  # Scatter local arrays to other cores
-  local_dofs   = MPI_comm.scatter(local_dofs, root=0)[0]
-  local_coords = coordinates[local_dofs]
-  local_values = values[local_dofs]
-
-  # Make dofs local
-  local_dofs  = local_dofs - local_dofs.min()
-
-  return local_dofs, local_coords, local_values
-
-
+# Sum images obtained in each processor into a single
+# array
 def gather_image(image):
 
   # Check input array dtype
@@ -143,7 +74,15 @@ def ScatterSpins(coordinates):
   local_spins   = MPI_comm.scatter(local_spins, root=0)[0]
   local_coords = coordinates[local_spins]
 
-  # Make spins local
-  local_spins  = local_spins# - local_spins.min()
+  # # Make spins local
+  # local_spins  = local_spins# - local_spins.min()
 
   return local_coords, local_spins
+
+
+# Printing function for parallel processing
+def MPI_print(string):
+    if MPI_rank == 0:
+        print(string)
+    else:
+        pass
