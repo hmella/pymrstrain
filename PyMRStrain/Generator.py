@@ -1,13 +1,12 @@
 from PyMRStrain.Function import Function
 from PyMRStrain.Image import Image, DENSEImage, CSPAMMImage
-from PyMRStrain.MRImaging import slice_profile
-from PyMRStrain.Math import FFT, iFFT
-from PyMRStrain.MPIUtilities import gather_image, MPI_rank
-from PyMRStrain.PySpinBasedUtils import (update_s2p2, update_s2p3,
-                                        check_kspace_bw, check_nb_slices)
 from PyMRStrain.Magnetizations import DENSEMagnetizations
+from PyMRStrain.Math import FFT, iFFT
+from PyMRStrain.MPIUtilities import gather_image, MPI_rank, MPI_print
+from PyMRStrain.PySpinBasedUtils import (update_s2p2, update_s2p3,
+    check_kspace_bw, check_nb_slices)
 from Connectivity import (getConnectivity2, getConnectivity3,
-                          update_p2s)
+    update_p2s)
 from ImageBuilding import get_images, DENSE_magnetizations
 import matplotlib.pyplot as plt
 import numpy as np
@@ -113,7 +112,7 @@ def get_sine_image(image, phantom, parameters, debug, fem=False):
   # Time stepping
   for i in range(n+1):
 
-    if MPI_rank==0 and debug: print("- Time: {:.2f}".format(t))
+    if debug: MPI_print("- Time: {:.2f}".format(t))
 
     # Get displacements in the reference frame
     u = phantom.displacement(i)
@@ -231,7 +230,7 @@ def get_tagging_image(image, phantom, parameters, debug=False):
     # Update time
     t += dt
 
-    if MPI_rank==0 and debug: print("- Time: {:.2f}".format(t))
+    if debug: MPI_print("- Time: {:.2f}".format(t))
 
     # Get displacements in the reference frame
     u = phantom.displacement(i)
@@ -378,7 +377,7 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
     # Update time
     t += dt
 
-    if MPI_rank==0 and debug: print("- Time: {:.2f}".format(t))
+    if debug: MPI_print("- Time: {:.2f}".format(t))
 
     # Get displacements in the reference frame
     u = phantom.displacement(i)
@@ -476,7 +475,7 @@ def get_exact_image(image, phantom, parameters, debug=False):
   # Time stepping
   for i in range(n+1):
 
-    if MPI_rank==0 and debug: print("- Time: {:.2f}".format(t))
+    if debug: MPI_print("- Time: {:.2f}".format(t))
 
     # Get displacements in the reference frame
     u = phantom.displacement(i)
@@ -573,7 +572,7 @@ def get_PCSPAMM_image(image, phantom, parameters, debug=False):
     # Update time
     t += dt
 
-    if MPI_rank==0 and debug: print("- Time: {:.2f}".format(t))
+    if debug: MPI_print("- Time: {:.2f}".format(t))
 
     # Get displacements in the reference frame
     u, v = phantom.velocity(i)
@@ -769,8 +768,8 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
     # Obs: the option -order='F'- is included because the grid was flattened
     # using this option. Therefore the reshape must be performed accordingly
     (I, m) = get_images(mags, x_upd, voxel_coords, width, p2s)
-    if MPI_rank == 0 and debug:
-        print('Time step {:d}. Number of spins inside a voxel: {:.0f}'.format(i, m.max()))
+    if debug:
+        MPI_print('Time step {:d}. Number of spins inside a voxel: {:.0f}'.format(i, m.max()))
 
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))

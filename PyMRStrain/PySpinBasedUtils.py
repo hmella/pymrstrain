@@ -5,7 +5,6 @@ from PyMRStrain.Image import *
 # Two dimensional meshgrids
 def update_s2p2(s2p, pixel_u, resolution):
     s2p[:] += (resolution[1]*pixel_u[:,1] + pixel_u[:,0]).astype(np.int64)
-    # return s2p
 
 
 # Three dimensional images with number of slices greater than 1
@@ -20,7 +19,8 @@ def update_s2p3(s2p, pixel_u, resolution):
 # reproduce the behavior of the scanner
 def check_kspace_bw(image, x):
 
-  # Encoding frequency, voxelsize and kspace factor
+  # Encoding frequency, voxelsize, kspace factor,
+  # and acquisition matrix
   ke = image.encoding_frequency
   vs = image.voxel_size()
   kf = image.kspace_factor
@@ -77,7 +77,7 @@ def check_kspace_bw(image, x):
 def check_nb_slices(grid, x, vsz, res):
 
   # Flatten grid
-  Xf = [x.flatten('F') for x in grid]
+  Xf = [p.flatten('F') for p in grid]
 
   # Min and max position in the slice direction
   Z = np.array([Xf[2].min(), Xf[2].max()])
@@ -102,6 +102,6 @@ def check_nb_slices(grid, x, vsz, res):
 
   # Reshape output
   resolution = [res[0], res[1], res[2]+sum(N)]
-  Xf = [x.reshape(resolution, order='F') for x in Xf]
+  Xf = [p.reshape(resolution, order='F') for p in Xf]
 
   return Xf, SL
