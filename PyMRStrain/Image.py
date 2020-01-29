@@ -14,13 +14,12 @@ class ImageBase(object):
                T1=1.0, T2=0.5,
                M0=1.0, M=1.0,
                off_resonance=[],
-               interpolation='mean',
                kspace_factor=6.5,
                slice_following = False,
-               slice_thickness = []):
+               slice_thickness = [],
+               oversampling_factor=2):
     self.FOV = FOV
     self.resolution = resolution
-    self.array_resolution = self._array_resolution()
     self.center = center
     self.encoding_direction = encoding_direction
     self.flip_angle = flip_angle
@@ -28,17 +27,15 @@ class ImageBase(object):
     self.T2 = T2
     self.M0 = M0
     self.M  = M
-    self._grid = self.grid()
-    self._astute_resolution = self.astute_resolution()
+    self.grid = self.generate_grid()
     self.off_resonance = off_resonance
-    self.interpolation = interpolation
-    self._modified_resolution = False
     self.kspace_factor = kspace_factor
     self.slice_following = slice_following
     if slice_thickness != []:
         self.slice_thickness = slice_thickness
     else:
         self.slice_thickness = self.FOV[-1]
+    self.oversampling_factor = oversampling_factor
 
   # Flip angles
   def flip_angle_t(self, alpha):
@@ -54,34 +51,12 @@ class ImageBase(object):
   def voxel_size(self):
     return self.FOV/self.resolution
 
-  # Practical resolution
-  # OBS: resolution of the image is intended to be the number of x-coordinates
-  #      times the number of y-coordinates ([#X,#Y]), i.e., is not the same as
-  #      the array resolution. Therefore, the array resolution must be the
-  #      resolution of the image flipped. This was considere by introducing the
-  #      variable 'array_resolution'
-  def _array_resolution(self):
-    r = self.resolution
-    if self.resolution.size < 3:
-      arr_resolution = r[::-1]
-    else:
-      arr_resolution = np.array([r[1],r[0],r[2]],dtype=int)
-    return arr_resolution
-
-  def astute_resolution(self):
-    if self.resolution.size < 3:
-      number_of_slices  = 1
-      r = np.append(self.array_resolution, [number_of_slices, self.type_dim()])
-    else:
-      r = np.append(self.array_resolution, self.type_dim())
-    return r.astype(int)
-
   # Field of view
   def field_of_view(self):
     return self.FOV
 
   # Image grids
-  def grid(self, sparse=False):
+  def generate_grid(self, sparse=False):
     # Resolution
     resolution = self.resolution
 
@@ -96,17 +71,11 @@ class ImageBase(object):
     X = [X[i] - X[i].mean() if i<2 else X[i] for i in range(d)]
 
     if d == 2:
-      grid = np.meshgrid(X[0], X[1], indexing='xy', sparse=sparse)
+      grid = np.meshgrid(X[0], X[1], indexing='ij', sparse=sparse)
     elif d == 3:
-      grid = np.meshgrid(X[0], X[1], X[2], indexing='xy', sparse=sparse)
+      grid = np.meshgrid(X[0], X[1], X[2], indexing='ij', sparse=sparse)
 
     return grid
-
-  # Get sparse grid
-  def _get_sparse_grid(self):
-    # Squeeze coordinates
-    sparse_grid = self.grid(sparse=True)
-    return [np.squeeze(x) for x in sparse_grid]
 
   # Type of image dimension
   def type_dim(self):
@@ -117,20 +86,10 @@ class ImageBase(object):
     d  = len(self.resolution)
     Xc = np.zeros([self._grid[0].size, d])
     for i in range(d):
-      Xc[:,i] = self._grid[i].flatten('F')
+      Xc[:,i] = self._grid[i].flatten('C')
 
     return Xc
 
-  # Projection scheme
-  def projection_scheme(self):
-    if self.resolution.size < 3:
-      if self.interpolation is 'mean':
-        scheme = fem2image_vector_mean
-      elif self.interpolation is 'gaussian':
-        scheme = fem2image_vector_gaussian
-    elif self.resolution.size == 3:
-      scheme = fem2image_vector_3d
-    return scheme
 
 ###################
 # DENSE Image

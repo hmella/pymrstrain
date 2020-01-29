@@ -133,18 +133,16 @@ class Phantom(PhantomBase):
         scale = 1.0
 
 
-
     # Get in-plane displacements
     if self.patient:
       # Abnormality
-      # Phi = 0.5*p['xi']*(1.0 - (self.scos*np.cos(p['psi']) + self.ssin*np.sin(p['psi'])))
-      Phi = 0.5*p['xi']*(0.5 - 0.5*(self.scos*np.cos(p['psi']) + self.ssin*np.sin(p['psi']))) + 0.5
+      Phi = p['xi']*(1 - (self.scos*np.cos(p['psi']) + self.ssin*np.sin(p['psi'])))
 
       # Create displacement and velocity for patients
-      self.u_real[:,0] = Phi*(R_ES*(self.scos*np.cos(phi_n) \
-                            - self.ssin*np.sin(phi_n)) - R_ED*self.scos)
-      self.u_real[:,1] = Phi*(R_ES*(self.ssin*np.cos(phi_n) \
-                            + self.scos*np.sin(phi_n)) - R_ED*self.ssin)
+      self.u_real[:,0] = Phi*(R_ES*(self.scos*np.cos(phi_n*scale) \
+                            - self.ssin*np.sin(phi_n*scale)) - R_ED*self.scos)
+      self.u_real[:,1] = Phi*(R_ES*(self.ssin*np.cos(phi_n*scale) \
+                            + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin)
 
     else:
       # Create displacement and velocity for volunteers

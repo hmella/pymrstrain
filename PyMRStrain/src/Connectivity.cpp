@@ -65,11 +65,7 @@ ConnectivityVectors getConnectivity3(const Eigen::MatrixXf &x,
   std::vector<int> s2p;
   std::vector<int> excited_spins;
 
-  // Positions, counter and iterators
-  // (OBS: indices i and j represents row and col positions. However,
-  //       these indices are flipped with respect to the spatial
-  //       coordinates of the image 'x_i'. This mean that 'i' is varying
-  //       across the y-coordinate and 'j' across x-coordinate.
+  // Voxel and spin iterators
   int voxel, spin;
 
   // Voxel half-width

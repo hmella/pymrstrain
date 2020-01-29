@@ -11,10 +11,12 @@ class IndexTracker:
     self.Y = Y
     rows, cols, self.slices = X.shape
     self.ind = 0
-    self.im_X = self.ax[0].imshow(self.X[:, :, self.ind], cmap=plt.get_cmap('Greys_r'),
+    self.im_X = self.ax[0].imshow(self.X[:, :, self.ind].T, cmap=plt.get_cmap('Greys_r'),
                 interpolation='nearest', vmin=x_min, vmax=x_max)
-    self.im_Y = self.ax[1].imshow(self.Y[:, :, self.ind], cmap=plt.get_cmap('Greys_r'),
+    self.im_Y = self.ax[1].imshow(self.Y[:, :, self.ind].T, cmap=plt.get_cmap('Greys_r'),
                 interpolation='nearest', vmin=y_min, vmax=y_max)
+    self.im_X.axes.invert_yaxis()
+    self.im_Y.axes.invert_yaxis()
     self.update()
 
   def onscroll(self, event):
@@ -25,9 +27,8 @@ class IndexTracker:
     self.update()
 
   def update(self):
-    self.im_X.set_data(self.X[:, :, self.ind])
-    self.im_Y.set_data(self.Y[:, :, self.ind])
-    self.ax[0].set_title('x-direction (s%s)' % self.ind)
-    self.ax[1].set_title('y-direction (s%s)' % self.ind)
+    self.im_X.set_data(self.X[:, :, self.ind].T)
     self.im_X.axes.figure.canvas.draw()
+
+    self.im_Y.set_data(self.Y[:, :, self.ind].T)
     self.im_Y.axes.figure.canvas.draw()

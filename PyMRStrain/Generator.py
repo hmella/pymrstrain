@@ -68,8 +68,8 @@ def get_sine_image(image, phantom, parameters, debug, fem=False):
   dt    = t_end/n
 
   # Output image
-  o_image = np.zeros(np.append(image.array_resolution, [image.type_dim(), n+1]), dtype=complex)
-  mask    = np.zeros(np.append(image.array_resolution, n+1), dtype=np.int16)
+  o_image = np.zeros(np.append(image.resolution, [image.type_dim(), n+1]), dtype=complex)
+  mask    = np.zeros(np.append(image.resolution, n+1), dtype=np.int16)
 
   # Sequence parameters
   T1    = image.T1                     # relaxation
@@ -99,7 +99,7 @@ def get_sine_image(image, phantom, parameters, debug, fem=False):
     x = V.dof_coordinates()
     spamm_fem = Function(V)
   else:
-    [X,Y] = image._grid
+    [X,Y] = image.grid
     taglines = np.zeros(np.append(X.shape,2))
     spamm = lambda omega, X: np.cos(omega*X)
 
@@ -172,8 +172,8 @@ def get_tagging_image(image, phantom, parameters, debug=False):
   n     = parameters["time_steps"]
 
   # Output image
-  o_image = np.zeros(np.append(image.array_resolution, [image.type_dim(), n]), dtype=complex)
-  mask    = np.zeros(np.append(image.array_resolution, n), dtype=np.int16)
+  o_image = np.zeros(np.append(image.resolution, [image.type_dim(), n]), dtype=complex)
+  mask    = np.zeros(np.append(image.resolution, n), dtype=np.int16)
 
   # Sequence parameters
   T1    = image.T1                     # relaxation
@@ -264,10 +264,10 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
   dt    = t_end/n
 
   # Output image
-  size = np.append(image.array_resolution, [image.type_dim(), n])
+  size = np.append(image.resolution, [image.type_dim(), n])
   image_0 = np.zeros(size, dtype=complex)
   image_1 = np.zeros(size, dtype=complex)
-  mask    = np.zeros(np.append(image.array_resolution, n), dtype=np.int16)
+  mask    = np.zeros(np.append(image.resolution, n), dtype=np.int16)
 
   # Sequence parameters
   T1    = image.T1                     # relaxation
@@ -327,8 +327,8 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
             interpolation=image.interpolation)
     new_image._modified_resolution = True
     new_image._original_resolution = image.resolution
-    new_image._original_grid = image._grid
-    new_image._original_array_resolution = image.array_resolution
+    new_image._original_grid = image.grid
+    new_image._original_array_resolution = image.resolution
     new_image._original_voxel_size = image.voxel_size()
     input_image = new_image
   else:
@@ -340,17 +340,17 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
     x = V.dof_coordinates()
     spamm_fem = Function(V)
   else:
-    [X,Y] = image._grid
+    [X,Y] = image.grid
     taglines = np.zeros(np.append(X.shape,2))
     spamm = lambda omega, X: np.cos(omega*X)
 
   # Off resonance
   d = image.geometric_dimension()
   if not image.off_resonance:
-    phi = np.zeros(input_image.array_resolution)
+    phi = np.zeros(input_image.resolution)
     phi_fem = np.zeros(x[0::d,0].shape)
   else:
-    phi = image.off_resonance(input_image._grid[0],input_image._grid[1])
+    phi = image.off_resonance(input_image.grid[0],input_image.grid[1])
     phi_fem = image.off_resonance(x[0::d,0],x[0::d,1])
 
   # SPAMM modulation
@@ -367,7 +367,7 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
     T1 = image.T1*np.ones(input_image.resolution)
 
   # Hamming filter to reduce Gibbs ringing artifacts
-  H = signal.hamming(image.array_resolution[0])
+  H = signal.hamming(image.resolution[0])
   H = np.outer(H,H)
 
   # Time stepping
@@ -430,8 +430,8 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
       if incr_bw:
 
         # Images size
-        S = new_image.array_resolution
-        s = image.array_resolution
+        S = new_image.resolution
+        s = image.resolution
 
         # fig, ax = plt.subplots(1,2)
         # im0 = ax[0].imshow(np.abs(FFT(tmp0)))
@@ -468,9 +468,9 @@ def get_exact_image(image, phantom, parameters, debug=False):
   dt    = t_end/n
 
   # Output image
-  size = np.append(image.array_resolution, [image.type_dim(), n+1])
+  size = np.append(image.resolution, [image.type_dim(), n+1])
   image_0 = np.zeros(size, dtype=np.float)
-  mask    = np.zeros(np.append(image.array_resolution, n+1), dtype=np.int16)
+  mask    = np.zeros(np.append(image.resolution, n+1), dtype=np.int16)
 
   # Time stepping
   for i in range(n+1):
@@ -510,10 +510,10 @@ def get_PCSPAMM_image(image, phantom, parameters, debug=False):
   n     = parameters["time_steps"]
 
   # Output image
-  size = np.append(image.array_resolution, [image.type_dim(), n])
+  size = np.append(image.resolution, [image.type_dim(), n])
   image_0 = np.zeros(size, dtype=complex)
   image_1 = np.zeros(size, dtype=complex)
-  mask    = np.zeros(np.append(image.array_resolution, n), dtype=np.int16)
+  mask    = np.zeros(np.append(image.resolution, n), dtype=np.int16)
 
   # Sequence parameters
   T1    = image.T1                     # relaxation
@@ -624,12 +624,11 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
   dk = np.sum(int(k/k) for k in ke if k!= 0) # Number of encoding directions
 
   # Output image
-  size = np.append(image.array_resolution, [dk, n_t])
+  size = np.append(image.resolution, [dk, n_t])
   image_0 = np.zeros(size, dtype=np.complex64)
   image_1 = np.zeros(size, dtype=np.complex64)
   image_2 = np.zeros(size, dtype=np.complex64)
-  mask    = np.zeros(np.append(image.array_resolution, n_t), dtype=np.float32)
-  end = time.time()
+  mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
@@ -643,18 +642,18 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
 
   # Off resonance
   if not image.off_resonance:
-    phi = np.zeros(image.array_resolution)
+    phi = np.zeros(image.resolution)
   else:
     phi = image.off_resonance(D["grid"][0],D["grid"][1])
 
   # Hamming filter to reduce Gibbs ringing artifacts
-  Hf = [signal.hamming(image.array_resolution[i]) for i in range(di)]
+  Hf = [signal.hamming(image.resolution[i]) for i in range(di)]
   H = np.outer(Hf[0],Hf[1])
 
   # Grid, voxel width, image resolution and number of voxels
   Xf = D['grid']
   width = D['voxel_size']
-  resolution = D['array_resolution']
+  resolution = D['resolution']
   nr_voxels = Xf[0].size
 
   # Check if the number of slices needs to be increased
@@ -665,7 +664,8 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
 
   # Connectivity (this is done just once)
   voxel_coords = [X.flatten('F') for X in Xf]
-  (s2p, excited_spins) = globals()["getConnectivity{:d}".format(dp)](x, voxel_coords, width)
+  get_connectivity = globals()["getConnectivity{:d}".format(dp)]
+  (s2p, excited_spins) = get_connectivity(x, voxel_coords, width)
   s2p = np.array(s2p)
 
   # Spins positions with respect to its containing voxel center
@@ -687,9 +687,10 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
   X = D['grid']
 
   # Resolutions and cropping ranges
+  fac = 1#image.oversampling_factor
   S = resolution
-  s = image.array_resolution
-  r = [int(0.5*(S[0]-s[0])), int(0.5*(S[0]-s[0])+s[0])]
+  s = image.resolution
+  r = [int(0.5*(S[0]-fac*s[0])), int(0.5*(S[0]-fac*s[0])+fac*s[0])]
   c = [int(0.5*(S[1]-s[1])), int(0.5*(S[1]-s[1])+s[1])]
 
   # Spins inside the ventricle
@@ -745,7 +746,6 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
         # for k in range(dk):
         #     m0[:,k] *= SP
         #     m1[:,k] *= SP
-
     mags = [m0, m1, m0]
 
     # # Debug
@@ -780,7 +780,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
     for slice in range(resolution[2]):
 
       # Update mask
-      mask[...,slice,i] = np.abs(iFFT(H*FFT(m[...,slice])[r[0]:r[1]:1, c[0]:c[1]:1]))
+      mask[...,slice,i] = np.abs(iFFT(H*FFT(m[...,slice])[r[0]:r[1]:fac, c[0]:c[1]:1]))
 
       # Complex magnetization data
       for j in range(image_0.shape[-2]):
@@ -794,9 +794,9 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
         if incr_bw:
 
           # kspace cropping
-          image_0[...,slice,j,i] = iFFT(H*FFT(tmp0)[r[0]:r[1]:1, c[0]:c[1]:1])
-          image_1[...,slice,j,i] = iFFT(H*FFT(tmp1)[r[0]:r[1]:1, c[0]:c[1]:1])
-          image_2[...,slice,j,i] = iFFT(H*FFT(tmp2)[r[0]:r[1]:1, c[0]:c[1]:1])
+          image_0[...,slice,j,i] = iFFT(H*FFT(tmp0)[r[0]:r[1]:fac, c[0]:c[1]:1])
+          image_1[...,slice,j,i] = iFFT(H*FFT(tmp1)[r[0]:r[1]:fac, c[0]:c[1]:1])
+          image_2[...,slice,j,i] = iFFT(H*FFT(tmp2)[r[0]:r[1]:fac, c[0]:c[1]:1])
 
         else:
 

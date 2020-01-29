@@ -9,9 +9,9 @@ def update_s2p2(s2p, pixel_u, resolution):
 
 # Three dimensional images with number of slices greater than 1
 def update_s2p3(s2p, pixel_u, resolution):
-    s2p += (resolution[0]*pixel_u[:,0]             # jump betwen rows
+    s2p += (resolution[0]*pixel_u[:,1]             # jump betwen rows
         + resolution[0]*resolution[1]*pixel_u[:,2] # jump betwen slices
-        + pixel_u[:,1]).astype(np.int64)           # jump between columns
+        + pixel_u[:,0]).astype(np.int64)           # jump between columns
 
 
 # Check if the kspace bandwidth needs to be modified
@@ -19,11 +19,20 @@ def update_s2p3(s2p, pixel_u, resolution):
 # reproduce the behavior of the scanner
 def check_kspace_bw(image, x):
 
-  # Encoding frequency, voxelsize, kspace factor,
-  # and acquisition matrix
+  # Encoding frequency, voxelsize, FOV, kspace factor,
+  # and oversampling_factor
   ke = image.encoding_frequency
-  vs = image.voxel_size()
   kf = image.kspace_factor
+  vs = image.voxel_size()
+  FOV = image.FOV
+  oversampling = image.oversampling_factor
+
+
+  # Field of view in the measurement direction
+  # which fullfills the acquisition matrix size
+  FOV_m  = 1.0/((1.0/vs[0])/(oversampling*image.resolution[0]))
+  pxsz_m = FOV_m/(oversampling*image.resolution[0])
+  # vs[0], FOV[0] = pxsz_m, FOV_m
 
   # Lower bound for the new encoding frequencies
   kl = 2*np.pi/vs
@@ -35,6 +44,8 @@ def check_kspace_bw(image, x):
   # Modified image resolution
   res = np.floor(np.divide(image.FOV,pxsz)).astype(np.int64)
   incr_bw = np.any([image.resolution[i] < res[i] for i in range(ke.size)])
+
+  print(res, FOV)
 
   # If the resolution needs modification then check if the new
   # one has even or odd components to make the cropping process
@@ -53,25 +64,18 @@ def check_kspace_bw(image, x):
               resolution=res,
               encoding_frequency=ke,
               T1=image.T1,
-              off_resonance=image.off_resonance,
-              interpolation=image.interpolation)
-      new_image._modified_resolution = True
-      new_image._original_resolution = image.resolution
-      new_image._original_grid = image._grid
-      new_image._original_array_resolution = image.array_resolution
-      new_image._original_voxel_size = image.voxel_size()
+              off_resonance=image.off_resonance)
   else:
       new_image = image
 
   # Output dict
   D = {"voxel_size": image.FOV/res,
-       "grid":       new_image._grid,
-       "astute_resolution": new_image._astute_resolution,
-       "array_resolution":  new_image.array_resolution,
-       "inc_grid_slice_dir": []}
+       "grid":       new_image.grid,
+       "resolution":  new_image.resolution}
   del new_image
 
   return res, incr_bw, D
+
 
 #
 def check_nb_slices(grid, x, vsz, res):
