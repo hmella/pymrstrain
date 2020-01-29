@@ -1,13 +1,14 @@
 import numpy as np
 from PyMRStrain.MRImaging import *
+import matplotlib.pyplot as plt
 
-# Image
-I = np.zeros([30,60])
-pxsz = [0.003, 0.003]
+# Acquisition matrix
+acq_matrix = [64,256]
 
-# Image coordinates
-[X,Y] = np.meshgrid(np.linspace(-1,1,60),np.linspace(-1,1,30))
-R = X**2 + Y**2
-I[R <= 0.5**2] = 1
+# kspace
+k = np.ones(acq_matrix)
 
-acquisition_artifact(I, pxsz[1], receiver_bandwidth=32*1000, T2star=0.02)
+k_test = acq_to_res(k, acq_matrix, [32,128], dir=[1,0])
+
+plt.imshow(k_test.T)
+plt.show()

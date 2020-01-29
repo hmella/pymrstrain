@@ -17,8 +17,8 @@ if __name__=="__main__":
   # Create complimentary image
   ke = 0.12               # encoding frequency [cycles/mm]
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
-  N = 33                  # resolution
-  I0 = DENSEImage(FOV=np.array([0.1, 0.1, 0.04]),
+  N = 100                  # resolution
+  I = DENSEImage(FOV=np.array([0.3, 0.3, 0.04]),
             center=np.array([0.0,0.0,0.03]),
             resolution=np.array([N, N, 1]),
             encoding_frequency=np.array([ke,ke,0]),
@@ -27,7 +27,7 @@ if __name__=="__main__":
             off_resonance=phi,
             kspace_factor=15,
             slice_following=True,
-            slice_thickness=0.015,
+            slice_thickness=0.008,
             oversampling_factor=2)
 
   # Spins
@@ -41,7 +41,7 @@ if __name__=="__main__":
   phantom = Phantom(spins, p, patient=True, write_vtk=False)
 
   # Generator
-  g0 = Generator(p, I0, debug=True)
+  g0 = Generator(p, I, debug=True)
 
   # Generation
   g0.phantom = phantom
@@ -51,7 +51,7 @@ if __name__=="__main__":
   print(end-start)
 
   # Add noise to images
-  sigma = 0.5e-102
+  sigma = 0.5e-2
   un0 = add_noise_to_DENSE_(u0, mask, sigma=sigma)
   un1 = add_noise_to_DENSE_(u1, mask, sigma=sigma)
 
@@ -68,9 +68,9 @@ if __name__=="__main__":
       fig1.axes.invert_yaxis()
       # fig1.axes.get_xaxis().set_visible(False)
       # fig1.axes.get_yaxis().set_visible(False)
-      if I0.slice_following:
-          if I0.FOV[-1] > I0.slice_thickness:
-              plt.savefig('SF_2')
+      if I.slice_following:
+          if I.FOV[-1] > I.slice_thickness:
+              plt.savefig('SF_{:d}'.format(I.oversampling_factor))
           else:
               plt.savefig('SS')
       else:

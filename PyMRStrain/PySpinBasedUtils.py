@@ -32,7 +32,7 @@ def check_kspace_bw(image, x):
   # which fullfills the acquisition matrix size
   FOV_m  = 1.0/((1.0/vs[0])/(oversampling*image.resolution[0]))
   pxsz_m = FOV_m/(oversampling*image.resolution[0])
-  # vs[0], FOV[0] = pxsz_m, FOV_m
+  vs[0], FOV[0] = pxsz_m, FOV_m
 
   # Lower bound for the new encoding frequencies
   kl = 2*np.pi/vs

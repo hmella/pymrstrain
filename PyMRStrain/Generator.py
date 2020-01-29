@@ -1,8 +1,9 @@
 from PyMRStrain.Function import Function
 from PyMRStrain.Image import Image, DENSEImage, CSPAMMImage
 from PyMRStrain.Magnetizations import DENSEMagnetizations
-from PyMRStrain.Math import FFT, iFFT
+from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.MPIUtilities import gather_image, MPI_rank, MPI_print
+from PyMRStrain.MRImaging import acquisition_artifact
 from PyMRStrain.PySpinBasedUtils import (update_s2p2, update_s2p3,
     check_kspace_bw, check_nb_slices)
 from Connectivity import (getConnectivity2, getConnectivity3,
@@ -434,16 +435,16 @@ def get_cspamm_image(image, phantom, parameters, debug, fem):
         s = image.resolution
 
         # fig, ax = plt.subplots(1,2)
-        # im0 = ax[0].imshow(np.abs(FFT(tmp0)))
-        # im1 = ax[1].imshow(H*np.abs(FFT(tmp0)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
+        # im0 = ax[0].imshow(np.abs(itok(tmp0)))
+        # im1 = ax[1].imshow(H*np.abs(itok(tmp0)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
         #                                     int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1]))
         # plt.show()
 
 
         # kspace cropping
-        image_0[...,j,i] = iFFT(H*FFT(tmp0)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
+        image_0[...,j,i] = ktoi(H*itok(tmp0)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
                                           int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
-        image_1[...,j,i] = iFFT(H*FFT(tmp1)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
+        image_1[...,j,i] = ktoi(H*itok(tmp1)[int(0.5*(S[0]-s[0])):int(0.5*(S[0]-s[0])+s[0]):1,
                                           int(0.5*(S[1]-s[1])):int(0.5*(S[1]-s[1])+s[1]):1])
 
       else:
@@ -646,10 +647,6 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
   else:
     phi = image.off_resonance(D["grid"][0],D["grid"][1])
 
-  # Hamming filter to reduce Gibbs ringing artifacts
-  Hf = [signal.hamming(image.resolution[i]) for i in range(di)]
-  H = np.outer(Hf[0],Hf[1])
-
   # Grid, voxel width, image resolution and number of voxels
   Xf = D['grid']
   width = D['voxel_size']
@@ -687,11 +684,16 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
   X = D['grid']
 
   # Resolutions and cropping ranges
-  fac = 1#image.oversampling_factor
+  fac = image.oversampling_factor
   S = resolution
   s = image.resolution
   r = [int(0.5*(S[0]-fac*s[0])), int(0.5*(S[0]-fac*s[0])+fac*s[0])]
   c = [int(0.5*(S[1]-s[1])), int(0.5*(S[1]-s[1])+s[1])]
+
+  # Hamming filter to reduce Gibbs ringing artifacts
+  H0 = signal.hamming(r[1]-r[0])
+  H1 = signal.hamming(c[1]-c[0])
+  H = np.outer(H0,H1)
 
   # Spins inside the ventricle
   inside = phantom.spins.regions[:,-1]
@@ -780,7 +782,7 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
     for slice in range(resolution[2]):
 
       # Update mask
-      mask[...,slice,i] = np.abs(iFFT(H*FFT(m[...,slice])[r[0]:r[1]:fac, c[0]:c[1]:1]))
+      # mask[...,slice,i] = np.abs(ktoi(H*itok(m[...,slice])[r[0]:r[1]:fac, c[0]:c[1]:1]))
 
       # Complex magnetization data
       for j in range(image_0.shape[-2]):
@@ -793,10 +795,29 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
         # Check if images should be cropped
         if incr_bw:
 
-          # kspace cropping
-          image_0[...,slice,j,i] = iFFT(H*FFT(tmp0)[r[0]:r[1]:fac, c[0]:c[1]:1])
-          image_1[...,slice,j,i] = iFFT(H*FFT(tmp1)[r[0]:r[1]:fac, c[0]:c[1]:1])
-          image_2[...,slice,j,i] = iFFT(H*FFT(tmp2)[r[0]:r[1]:fac, c[0]:c[1]:1])
+          # Uncorrected kspaces
+          k0 = itok(tmp0)
+          k1 = itok(tmp1)
+          k2 = itok(tmp2)
+          k0 = acquisition_artifact(k0[r[0]:r[1]:1, c[0]:c[1]:1], width[2],
+            receiver_bandwidth=128*1000, T2star=0.02, fast_imaging_mode='EPI')
+          k1 = acquisition_artifact(k1[r[0]:r[1]:1, c[0]:c[1]:1], width[2],
+            receiver_bandwidth=128*1000, T2star=0.02, fast_imaging_mode='EPI')
+          k2 = acquisition_artifact(k2[r[0]:r[1]:1, c[0]:c[1]:1], width[2],
+            receiver_bandwidth=128*1000, T2star=0.02, fast_imaging_mode='EPI')
+          print(k0.shape)
+          k0 = (H*k0)[::fac,:]
+          k1 = (H*k1)[::fac,:]
+          k2 = (H*k2)[::fac,:]
+
+
+          # # kspace cropping
+          # image_0[...,slice,j,i] = ktoi(H*k0[r[0]:r[1]:fac, c[0]:c[1]:1])
+          # image_1[...,slice,j,i] = ktoi(H*k1[r[0]:r[1]:fac, c[0]:c[1]:1])
+          # image_2[...,slice,j,i] = ktoi(H*k2[r[0]:r[1]:fac, c[0]:c[1]:1])
+          image_0[...,slice,j,i] = ktoi(k0)
+          image_1[...,slice,j,i] = ktoi(k1)
+          image_2[...,slice,j,i] = ktoi(k2)
 
         else:
 
