@@ -28,11 +28,15 @@ def check_kspace_bw(image, x):
   oversampling = image.oversampling_factor
 
 
-  # Field of view in the measurement direction
-  # which fullfills the acquisition matrix size
-  FOV_m  = 1.0/((1.0/vs[0])/(oversampling*image.resolution[0]))
-  pxsz_m = FOV_m/(oversampling*image.resolution[0])
-  vs[0], FOV[0] = pxsz_m, FOV_m
+  # Field of view in the measurement and phase
+  # direction fullfilling the acquisition matrix
+  # size
+  # FOV_m  = 1.0/((1.0/vs[0])/(oversampling*image.resolution[0]))
+  # pxsz_m = FOV_m/(oversampling*image.resolution[0])
+  # vs[0], FOV[0] = pxsz_m, FOV_m
+  FOV_m  = 1.0/((1.0/vs[0:2])/(oversampling*image.resolution[0:2]))
+  pxsz_m = FOV_m/(oversampling*image.resolution[0:2])
+  vs[0:2], FOV[0:2] = pxsz_m, FOV_m
 
   # Lower bound for the new encoding frequencies
   kl = 2*np.pi/vs

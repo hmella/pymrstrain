@@ -17,7 +17,8 @@ class ImageBase(object):
                kspace_factor=6.5,
                slice_following = False,
                slice_thickness = [],
-               oversampling_factor=2):
+               oversampling_factor=2,
+               phase_profiles=64):
     self.FOV = FOV
     self.resolution = resolution
     self.center = center
@@ -36,6 +37,8 @@ class ImageBase(object):
     else:
         self.slice_thickness = self.FOV[-1]
     self.oversampling_factor = oversampling_factor
+    self.phase_profiles = phase_profiles
+    self.acq_matrix = np.array([2*resolution[0], phase_profiles])
 
   # Flip angles
   def flip_angle_t(self, alpha):

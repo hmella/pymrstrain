@@ -26,9 +26,10 @@ if __name__=="__main__":
             flip_angle=15*np.pi/180,
             off_resonance=phi,
             kspace_factor=15,
-            slice_following=True,
+            slice_following=False,
             slice_thickness=0.008,
-            oversampling_factor=2)
+            oversampling_factor=2,
+            phase_profiles=50)
 
   # Spins
   p['h'] = 0.1
@@ -51,7 +52,7 @@ if __name__=="__main__":
   print(end-start)
 
   # Add noise to images
-  sigma = 0.5e-2
+  sigma = 0.5e-32
   un0 = add_noise_to_DENSE_(u0, mask, sigma=sigma)
   un1 = add_noise_to_DENSE_(u1, mask, sigma=sigma)
 

@@ -1,9 +1,10 @@
 from PyMRStrain.Function import Function
 from PyMRStrain.Image import Image, DENSEImage, CSPAMMImage
+from PyMRStrain.Helpers import order, m_dirs
 from PyMRStrain.Magnetizations import DENSEMagnetizations
 from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.MPIUtilities import gather_image, MPI_rank, MPI_print
-from PyMRStrain.MRImaging import acquisition_artifact
+from PyMRStrain.MRImaging import EPI_kspace, acq_to_res
 from PyMRStrain.PySpinBasedUtils import (update_s2p2, update_s2p3,
     check_kspace_bw, check_nb_slices)
 from Connectivity import (getConnectivity2, getConnectivity3,
@@ -688,11 +689,13 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
   S = resolution
   s = image.resolution
   r = [int(0.5*(S[0]-fac*s[0])), int(0.5*(S[0]-fac*s[0])+fac*s[0])]
-  c = [int(0.5*(S[1]-s[1])), int(0.5*(S[1]-s[1])+s[1])]
+  c = [int(0.5*(S[1]-fac*s[1])), int(0.5*(S[1]-fac*s[1])+fac*s[1])]
+  dr = [1, fac]
+  dc = [fac, 1]
 
   # Hamming filter to reduce Gibbs ringing artifacts
-  H0 = signal.hamming(r[1]-r[0])
-  H1 = signal.hamming(c[1]-c[0])
+  H0 = signal.hamming(image.acq_matrix[0])
+  H1 = signal.hamming(image.resolution[1])
   H = np.outer(H0,H1)
 
   # Spins inside the ventricle
@@ -796,20 +799,26 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
         if incr_bw:
 
           # Uncorrected kspaces
-          k0 = itok(tmp0)
-          k1 = itok(tmp1)
-          k2 = itok(tmp2)
-          k0 = acquisition_artifact(k0[r[0]:r[1]:1, c[0]:c[1]:1], width[2],
-            receiver_bandwidth=128*1000, T2star=0.02, fast_imaging_mode='EPI')
-          k1 = acquisition_artifact(k1[r[0]:r[1]:1, c[0]:c[1]:1], width[2],
-            receiver_bandwidth=128*1000, T2star=0.02, fast_imaging_mode='EPI')
-          k2 = acquisition_artifact(k2[r[0]:r[1]:1, c[0]:c[1]:1], width[2],
-            receiver_bandwidth=128*1000, T2star=0.02, fast_imaging_mode='EPI')
-          print(k0.shape)
-          k0 = (H*k0)[::fac,:]
-          k1 = (H*k1)[::fac,:]
-          k2 = (H*k2)[::fac,:]
+          k0 = itok(tmp0)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
+          k1 = itok(tmp1)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
+          k2 = itok(tmp2)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
 
+          # kspace resizing
+          # k0 = acq_to_res(k0, k0.shape, image.acq_matrix, dir=m_dirs[j])
+          # k1 = acq_to_res(k1, k1.shape, image.acq_matrix, dir=m_dirs[j])
+          # k2 = acq_to_res(k2, k2.shape, image.acq_matrix, dir=m_dirs[j])
+          k0 = acq_to_res(k0, image.acq_matrix[m_dirs[j]], k0.shape, dir=m_dirs[j])
+          k1 = acq_to_res(k1, image.acq_matrix[m_dirs[j]], k1.shape, dir=m_dirs[j])
+          k2 = acq_to_res(k2, image.acq_matrix[m_dirs[j]], k2.shape, dir=m_dirs[j])
+
+          if j == 0:
+              k0 = (H*k0)[::fac,:]
+              k1 = (H*k1)[::fac,:]
+              k2 = (H*k2)[::fac,:]
+          else:
+              k0 = (H.T*k0)[:,::fac]
+              k1 = (H.T*k1)[:,::fac]
+              k2 = (H.T*k2)[:,::fac]
 
           # # kspace cropping
           # image_0[...,slice,j,i] = ktoi(H*k0[r[0]:r[1]:fac, c[0]:c[1]:1])
