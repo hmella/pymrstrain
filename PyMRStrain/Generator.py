@@ -756,18 +756,22 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
     # # Debug
     # if MPI_rank==0:
     #     from PyMRStrain.IO import write_vtk
+    #     from PyMRStrain.Math import wrap
     #     s2p_fun = Function(u.spins, dim=1)
     #     s2p_fun.vector()[:] = 0
-    #     mag_fun = Function(u.spins, dim=2)
-    #     mag_fun.vector()[:] = 0
+    #     slicef = Function(u.spins, dim=2)
+    #     slicef.vector()[:] = 0
+    #     rot = Function(u.spins, dim=1)
+    #     theta = np.arctan(x[:,1]/x[:,0])
+    #     rot.vector()[:] = wrap(theta.reshape((-1,1)), np.pi/8)
     #     if image.slice_following:
-    #       mag_fun.vector()[sf] = 1
+    #       slicef.vector()[sf] = 1
     #       s2p_fun.vector()[excited_spins] = (s2p-SL).reshape((-1,1))
-    #       write_vtk([u,s2p_fun,mag_fun], path='output/uu_SF_{:04d}.vtu'.format(i), name=['u','s2p','M'])
+    #       write_vtk([u,s2p_fun,slicef,rot], path='output/uu_SF_{:04d}.vtu'.format(i), name=['u','s2p','ex_slice','rot'])
     #     else:
-    #       mag_fun.vector()[sf] = 1
+    #       slicef.vector()[:] = 1
     #       s2p_fun.vector()[excited_spins] = s2p.reshape((-1,1))
-    #       write_vtk([u,s2p_fun,mag_fun], path='output/uu_{:04d}.vtu'.format(i), name=['u','s2p','M'])
+    #       write_vtk([u,s2p_fun,slicef,rot], path='output/uu_{:04d}.vtu'.format(i), name=['u','s2p','ex_slice','rot'])
 
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
@@ -804,12 +808,13 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
           k2 = itok(tmp2)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
 
           # kspace resizing
-          # k0 = acq_to_res(k0, k0.shape, image.acq_matrix, dir=m_dirs[j])
-          # k1 = acq_to_res(k1, k1.shape, image.acq_matrix, dir=m_dirs[j])
-          # k2 = acq_to_res(k2, k2.shape, image.acq_matrix, dir=m_dirs[j])
-          k0 = acq_to_res(k0, image.acq_matrix[m_dirs[j]], k0.shape, dir=m_dirs[j])
-          k1 = acq_to_res(k1, image.acq_matrix[m_dirs[j]], k1.shape, dir=m_dirs[j])
-          k2 = acq_to_res(k2, image.acq_matrix[m_dirs[j]], k2.shape, dir=m_dirs[j])
+
+          k0 = acq_to_res(k0, image.acq_matrix[m_dirs[j]], k0.shape,
+                  image.FOV[m_dirs[j][1]]/image.phase_profiles, dir=m_dirs[j])
+          k1 = acq_to_res(k1, image.acq_matrix[m_dirs[j]], k1.shape,
+                  image.FOV[m_dirs[j][1]]/image.phase_profiles, dir=m_dirs[j])
+          k2 = acq_to_res(k2, image.acq_matrix[m_dirs[j]], k2.shape,
+                  image.FOV[m_dirs[j][1]]/image.phase_profiles, dir=m_dirs[j])
 
           if j == 0:
               k0 = (H*k0)[::fac,:]
@@ -819,6 +824,14 @@ def get_complementary_dense_image(image, phantom, parameters, debug):
               k0 = (H.T*k0)[:,::fac]
               k1 = (H.T*k1)[:,::fac]
               k2 = (H.T*k2)[:,::fac]
+          # if j == 0:
+          #     k0 = (k0)[::fac,:]
+          #     k1 = (k1)[::fac,:]
+          #     k2 = (k2)[::fac,:]
+          # else:
+          #     k0 = (k0)[:,::fac]
+          #     k1 = (k1)[:,::fac]
+          #     k2 = (k2)[:,::fac]
 
           # # kspace cropping
           # image_0[...,slice,j,i] = ktoi(H*k0[r[0]:r[1]:fac, c[0]:c[1]:1])

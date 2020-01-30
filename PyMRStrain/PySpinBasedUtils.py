@@ -24,16 +24,13 @@ def check_kspace_bw(image, x):
   ke = image.encoding_frequency
   kf = image.kspace_factor
   vs = image.voxel_size()
-  FOV = image.FOV
+  FOV = np.copy(image.FOV)
   oversampling = image.oversampling_factor
 
 
   # Field of view in the measurement and phase
   # direction fullfilling the acquisition matrix
   # size
-  # FOV_m  = 1.0/((1.0/vs[0])/(oversampling*image.resolution[0]))
-  # pxsz_m = FOV_m/(oversampling*image.resolution[0])
-  # vs[0], FOV[0] = pxsz_m, FOV_m
   FOV_m  = 1.0/((1.0/vs[0:2])/(oversampling*image.resolution[0:2]))
   pxsz_m = FOV_m/(oversampling*image.resolution[0:2])
   vs[0:2], FOV[0:2] = pxsz_m, FOV_m
@@ -46,10 +43,8 @@ def check_kspace_bw(image, x):
                    else vs[i] for (i,freq) in enumerate(ke)])
 
   # Modified image resolution
-  res = np.floor(np.divide(image.FOV,pxsz)).astype(np.int64)
+  res = np.floor(np.divide(FOV,pxsz)).astype(np.int64)
   incr_bw = np.any([image.resolution[i] < res[i] for i in range(ke.size)])
-
-  print(res, FOV)
 
   # If the resolution needs modification then check if the new
   # one has even or odd components to make the cropping process
@@ -63,7 +58,7 @@ def check_kspace_bw(image, x):
               res[i] += 1
 
       # Create a new image object
-      new_image = DENSEImage(FOV=image.FOV,
+      new_image = DENSEImage(FOV=FOV,
               center=image.center,
               resolution=res,
               encoding_frequency=ke,
@@ -73,9 +68,10 @@ def check_kspace_bw(image, x):
       new_image = image
 
   # Output dict
-  D = {"voxel_size": image.FOV/res,
+  D = {"voxel_size": new_image.voxel_size(),
        "grid":       new_image.grid,
-       "resolution":  new_image.resolution}
+       "resolution":  new_image.resolution,
+       "FOV": new_image.FOV}
   del new_image
 
   return res, incr_bw, D

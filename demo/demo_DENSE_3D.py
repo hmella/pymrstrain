@@ -6,8 +6,8 @@ import time
 if __name__=="__main__":
 
   # Parameters
-  # p = Parameters(decimals=10, time_steps=18)
-  # np.save("p.npy", p)
+#   p = Parameters(time_steps=18)
+#   np.save("p.npy", p)
   p=np.load('p.npy',allow_pickle=True).item()
   # p['time_steps'] = 2
 
@@ -17,8 +17,8 @@ if __name__=="__main__":
   # Create complimentary image
   ke = 0.12               # encoding frequency [cycles/mm]
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
-  N = 100                  # resolution
-  I = DENSEImage(FOV=np.array([0.3, 0.3, 0.04]),
+  N = 66                  # resolution
+  I = DENSEImage(FOV=np.array([0.2, 0.2, 0.04]),
             center=np.array([0.0,0.0,0.03]),
             resolution=np.array([N, N, 1]),
             encoding_frequency=np.array([ke,ke,0]),
@@ -26,14 +26,16 @@ if __name__=="__main__":
             flip_angle=15*np.pi/180,
             off_resonance=phi,
             kspace_factor=15,
-            slice_following=False,
+            slice_following=True,
             slice_thickness=0.008,
             oversampling_factor=2,
-            phase_profiles=50)
+            phase_profiles=44)
 
   # Spins
   p['h'] = 0.1
   p['center'] = np.array([0,0,0])
+  p['phi_en'] = 20*np.pi/180
+  p['phi_ep'] = 0*np.pi/180
 #   p['R_inner'] = p['R_en']
 #   p['R_outer'] = p['R_ep']
   spins = Spins(Nb_samples=1000000, parameters=p)
@@ -59,28 +61,40 @@ if __name__=="__main__":
   # Corrected image
   u = un0 - un1
 
-  if MPI_rank==0:
-      fig, ax = plt.subplots(1,2)
-      fig0 = ax[0].imshow(np.abs(u[...,0,0,6].T),cmap=plt.get_cmap('gray'))
-      fig1 = ax[1].imshow(np.angle(u[...,0,0,6].T),cmap=plt.get_cmap('gray'))
-      fig0.axes.invert_yaxis()
-      # fig0.axes.get_xaxis().set_visible(False)
-      # fig0.axes.get_yaxis().set_visible(False)
-      fig1.axes.invert_yaxis()
-      # fig1.axes.get_xaxis().set_visible(False)
-      # fig1.axes.get_yaxis().set_visible(False)
-      if I.slice_following:
-          if I.FOV[-1] > I.slice_thickness:
-              plt.savefig('SF_{:d}'.format(I.oversampling_factor))
-          else:
-              plt.savefig('SS')
-      else:
-          plt.savefig('normal')
-      plt.show()
+#   if MPI_rank==0:
+#       fig, ax = plt.subplots(1,2)
+#       fig0 = ax[0].imshow(np.abs(u[...,0,0,6].T),cmap=plt.get_cmap('gray'))
+#       fig1 = ax[1].imshow(np.angle(u[...,0,0,6].T),cmap=plt.get_cmap('gray'))
+#       fig0.axes.invert_yaxis()
+#       # fig0.axes.get_xaxis().set_visible(False)
+#       # fig0.axes.get_yaxis().set_visible(False)
+#       fig1.axes.invert_yaxis()
+#       # fig1.axes.get_xaxis().set_visible(False)
+#       # fig1.axes.get_yaxis().set_visible(False)
+#       if I.slice_following:
+#           if I.FOV[-1] > I.slice_thickness:
+#               plt.savefig('SF_{:d}'.format(I.oversampling_factor))
+#           else:
+#               plt.savefig('SS')
+#       else:
+#           plt.savefig('normal')
+#       plt.show()
 
   # Plot
   if MPI_rank==0:
       fig, ax = plt.subplots(1, 2)
+      tracker = IndexTracker(ax, np.abs(u[:,:,0,0,:]), np.abs(u[:,:,0,1,:]))
+      fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
+      plt.show()
+
+      fig, ax = plt.subplots(1, 2)
       tracker = IndexTracker(ax, np.angle(u[:,:,0,0,:]), np.angle(u[:,:,0,1,:]))
+      fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
+      plt.show()
+
+      fig, ax = plt.subplots(1, 2)
+      tracker = IndexTracker(ax, np.abs(itok(un0[:,:,0,0,:])),
+                             np.abs(itok(un0[:,:,0,1,:])),
+                             vrange=[0, 1e+03])
       fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
       plt.show()

@@ -3,9 +3,13 @@ from numpy import clip
 
 # Slice plotter
 class IndexTracker:
-  def __init__(self, ax, X, Y):
-    x_min, x_max = X.min(), X.max()
-    y_min, y_max = Y.min(), Y.max()
+  def __init__(self, ax, X, Y, vrange=[]):
+    if vrange == []:
+        x_min, x_max = X.min(), X.max()
+        y_min, y_max = Y.min(), Y.max()
+    else:
+        x_min, x_max = vrange
+        y_min, y_max = vrange
     self.ax = ax
     self.X = X
     self.Y = Y

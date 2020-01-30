@@ -1,7 +1,7 @@
 import numpy as np
 from PyMRStrain.MPIUtilities import MPI_rank, MPI_comm
 
-def Parameters(mesh_resolution=1e-03, time_steps=20, decimals=8):
+def Parameters(time_steps=20):
     ''' Generate parameters for simulations
     '''
     if MPI_rank==0:
@@ -12,9 +12,9 @@ def Parameters(mesh_resolution=1e-03, time_steps=20, decimals=8):
 
         # Ventricle geometry
         h = 0.01
-        tau  = np.round(np.random.uniform(0.0075, 0.0125),decimals=decimals)
-        R_en = np.round(np.random.uniform(0.01, 0.03),decimals=decimals)
-        # R_en = np.round(np.random.uniform(0.02, 0.03),decimals=decimals)
+        tau  = np.random.uniform(0.0075, 0.0125)
+        # R_en = np.random.uniform(0.01, 0.03)
+        R_en = np.random.uniform(0.02, 0.03)
         R_ep = R_en+tau
         R_inner = R_en-tau
         if R_inner <= 0:
@@ -27,24 +27,16 @@ def Parameters(mesh_resolution=1e-03, time_steps=20, decimals=8):
         tC = np.random.uniform(0.5, 0.6)
 
         # Displacemets
-        sigma  = np.round(np.random.uniform(0.25, 2.0),decimals=decimals)                     #
-        S_en   = np.round(np.random.uniform(0.6, 0.8),decimals=decimals)                      # end-systolic endo. scaling
-        S_ar   = np.round(np.random.uniform(0.9, 1.1),decimals=decimals)                      # end-systolic area scaling
-        phi_en = np.round(np.random.uniform(-15.0*np.pi/180.0, 15.0*np.pi/180.0),decimals=decimals)  # end-systolic epi. twist
-        phi_ep = np.round(np.random.uniform(min([phi_en,0]), max([phi_en,0])),decimals=decimals)
+        sigma  = np.random.uniform(0.25, 2.0)                     #
+        S_en   = np.random.uniform(0.6, 0.8)                      # end-systolic endo. scaling
+        S_ar   = np.random.uniform(0.9, 1.1)                      # end-systolic area scaling
+        # phi_en = np.random.uniform(0, 30.0*np.pi/180.0)           # end-systolic epi. twist
+        phi_en = np.random.uniform(0, 30.0*np.pi/180.0)           # end-systolic epi. twist
+        phi_ep = np.random.uniform(0, phi_en)
 
         # Pacient parameters
-        psi = np.round(np.random.uniform(0.0, 2.0*np.pi),decimals=decimals)
-        xi  = np.round(np.random.uniform(0.0, 1.0),decimals=decimals)
-
-        # Image parameters
-        FOV = [0.1, 0.1]                     # Field of view in x-direction  [m]
-
-        # DENSE acquisition parameters
-        ke   = 0.1                     # [cycle/mm]
-        ke   = 0.1*1000.0              # [cycle/m]
-        ke   = 2.0*np.pi*ke            # [rad/m]
-        sigma_noise = [0.1, 0.25]      # [rad]
+        psi = np.random.uniform(0.0, 2.0*np.pi)
+        xi  = np.random.uniform(0.0, 1.0)
 
         # Create dict
         parameters = {'t': t,
@@ -66,8 +58,6 @@ def Parameters(mesh_resolution=1e-03, time_steps=20, decimals=8):
                   'phi_en': phi_en,
                   'psi': psi,
                   'xi': xi,
-                  'mesh_resolution': mesh_resolution,
-                  'sigma_noise': sigma_noise,
                   'time_steps': time_steps}
     else:
         parameters = None
