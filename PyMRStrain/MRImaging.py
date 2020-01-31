@@ -1,9 +1,10 @@
+from PyMRStrain.Filters import Hamming_filter, Riesz_filter, Tukey_filter
 from PyMRStrain.Helpers import order, build_idx
 from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.MPIUtilities import MPI_print, MPI_rank
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import interpolate, signal
+
 
 
 # Transforms the kspace from the acquisition size (acq_matrix)
@@ -27,10 +28,10 @@ def acq_to_res(k, acq_matrix, resolution, delta, epi=None, dir=[0,1],
         k_meas = epi.kspace(k_meas, delta, dir, T2star=0.02)
 
     # Hamming filter to reduce Gibbs ringing artifacts
-    H0 = signal.hamming(acq_matrix[dir[0]])
-    H1 = signal.hamming(acq_matrix[dir[1]])
-    H = np.outer(H0, H1).flatten('F')
-    k_meas = H*k_meas
+    # H = Hamming_filter(acq_matrix,dir)
+    H0 = Riesz_filter(acq_matrix,dir,decay=0.2)
+    H1 = Tukey_filter(acq_matrix,dir,alpha=0.2)
+    k_meas = H0*H1*k_meas
 
     # Fill final kspace
     pshape = np.copy(acq_matrix)
