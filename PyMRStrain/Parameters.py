@@ -11,8 +11,9 @@ def Parameters(time_steps=20):
         dt = t_end/time_steps
 
         # Ventricle geometry
-        h = 0.01
+        h = 0.1
         tau  = np.random.uniform(0.0075, 0.0125)
+        center = np.array([0.0,0.0,0.0])
         # R_en = np.random.uniform(0.01, 0.03)
         R_en = np.random.uniform(0.02, 0.03)
         R_ep = R_en+tau
@@ -44,6 +45,7 @@ def Parameters(time_steps=20):
                   't_end': t_end,
                   'h': h,
                   'tau': tau,
+                  'center': center,
                   'R_en': R_en,
                   'R_ep': R_ep,
                   'R_inner': R_inner,

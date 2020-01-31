@@ -18,13 +18,13 @@ if __name__=="__main__":
   phi = lambda X, Y: 0*(X+Y)/0.1*0.2
 
   # Encoding frequency
-  ke = 0.13               # encoding frequency [cycles/mm]
+  ke = 0.07               # encoding frequency [cycles/mm]
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
 
   # Create complimentary image
-  I = DENSEImage(FOV=np.array([0.2, 0.2, 0.04]),
+  I = CSPAMMImage(FOV=np.array([0.2, 0.2, 0.04]),
             center=np.array([0.0,0.0,0.03]),
-            resolution=np.array([70, 70, 1]),
+            resolution=np.array([100, 100, 1]),
             encoding_frequency=np.array([ke,ke,0]),
             T1=0.85,
             flip_angle=15*np.pi/180,
@@ -36,7 +36,7 @@ if __name__=="__main__":
             phase_profiles=30)
 
   # Spins
-  spins = Spins(Nb_samples=1000000, parameters=p)
+  spins = Spins(Nb_samples=100000, parameters=p)
 
   # Create phantom object
   phantom = Phantom(spins, p, patient=True, write_vtk=False)
@@ -60,8 +60,8 @@ if __name__=="__main__":
 
   # Add noise to images
   sigma = 0.5e-32
-  un0 = add_noise_to_DENSE_(u0, mask, sigma=sigma)
-  un1 = add_noise_to_DENSE_(u1, mask, sigma=sigma)
+  un0 = add_noise_to_SPAMM_(u0, mask, sigma=sigma)
+  un1 = add_noise_to_SPAMM_(u1, mask, sigma=sigma)
 
   # Corrected image
   u = un0 - un1

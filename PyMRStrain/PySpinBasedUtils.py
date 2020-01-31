@@ -1,5 +1,6 @@
 import numpy as np
 from PyMRStrain.Image import *
+from PyMRStrain.MPIUtilities import MPI_print
 
 
 # Two dimensional meshgrids
@@ -57,8 +58,8 @@ def check_kspace_bw(image, x):
           elif (image.resolution[i] % 2 != 0) and (res[i] % 2 == 0):
               res[i] += 1
 
-      # Create a new image object
-      new_image = DENSEImage(FOV=FOV,
+      # Create a new image object with the new FOV and resolution
+      new_image = image.__class__(FOV=FOV,
               center=image.center,
               resolution=res,
               encoding_frequency=ke,
@@ -73,6 +74,12 @@ def check_kspace_bw(image, x):
        "resolution":  new_image.resolution,
        "FOV": new_image.FOV}
   del new_image
+
+  # Debug printings
+  MPI_print(' Acq. matrix: ({:d},{:d})'.format(image.acq_matrix[0],
+      image.acq_matrix[1]))
+  MPI_print(' Generation matrix: ({:d},{:d})'.format(res[0],
+      res[1]))
 
   return res, incr_bw, D
 

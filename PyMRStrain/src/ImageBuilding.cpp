@@ -98,9 +98,46 @@ Magnetization_Images DENSE_magnetizations(const float &M,
 }
 
 
+// Evaluate the CSPAMM magnetizations on all the spins
+Magnetization_Images CSPAMM_magnetizations(const float &M,
+                                    const float &M0,
+                                    const float &alpha,
+                                    const float &prod,
+                                    const float &t,
+                                    const float &T1,
+                                    const Eigen::VectorXf &ke,
+                                    const Eigen::MatrixXf &X,
+                                    const Eigen::MatrixXf &u){
+
+    // Output images
+    Eigen::MatrixXcf Mxy0 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
+    Eigen::MatrixXcf Mxy1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());;
+    // Eigen::MatrixXcd Mxyin = Eigen::MatrixXcd::Zero(X.rows(),X.cols());;
+
+    // Temp variables
+    Eigen::MatrixXcf tmp1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
+    Eigen::MatrixXcf tmp2 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
+
+    // Complex unit
+    std::complex<float> cu(0, 1);
+
+    // Build magnetizations
+    for (int i=0; i<ke.size(); i++){
+        tmp1.array()(Eigen::all,i) += 0.5*M*std::exp(-t/T1)*(-cu*ke(i)*X(Eigen::all,i)).array().exp();
+        tmp1.array()(Eigen::all,i) += 0.5*M*std::exp(-t/T1)*(+cu*ke(i)*X(Eigen::all,i)).array().exp();
+        tmp2.array()(Eigen::all,i) += M0*(1-std::exp(-t/T1));
+    }
+    Mxy0 += (tmp1 + tmp2)*prod*std::sin(alpha);
+    Mxy1 += (-tmp1 + tmp2)*prod*std::sin(alpha);
+
+    return std::make_tuple(Mxy0, Mxy1, Mxy0);
+
+}
+
 PYBIND11_MODULE(ImageBuilding, m) {
     m.doc() = "Utilities for spins-based image generation"; // optional module docstring
     m.def("get_images", &get_images, py::return_value_policy::reference,
       "Calculates the pixel intensity based on the pixel-to-spins connectivity");
     m.def("DENSE_magnetizations", &DENSE_magnetizations, py::return_value_policy::reference);
+    m.def("CSPAMM_magnetizations", &CSPAMM_magnetizations, py::return_value_policy::reference);
 }

@@ -38,7 +38,7 @@ class ImageBase(object):
         self.slice_thickness = self.FOV[-1]
     self.oversampling_factor = oversampling_factor
     self.phase_profiles = phase_profiles
-    self.acq_matrix = np.array([2*resolution[0], phase_profiles])
+    self.acq_matrix = np.array([oversampling_factor*resolution[0], phase_profiles])
 
   # Flip angles
   def flip_angle_t(self, alpha):
@@ -126,7 +126,7 @@ class CSPAMMImage(ImageBase):
     self.encoding_frequency = encoding_frequency
     self.encoding_angle = encoding_angle
     self.taglines = taglines
-    self.technique = 'Tagging'
+    self.technique = 'CSPAMM'
     super(CSPAMMImage, self).__init__(**kwargs)
 
 ###################

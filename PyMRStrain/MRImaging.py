@@ -1,114 +1,124 @@
-from PyMRStrain.Helpers import order
+from PyMRStrain.Helpers import order, build_idx
 from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.MPIUtilities import MPI_print, MPI_rank
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy import interpolate, signal
 
 
 # Transforms the kspace from the acquisition size (acq_matrix)
 # to the corresponding resolution
-def acq_to_res(k, acq_matrix, resolution, delta, dir=[0,1]):
+def acq_to_res(k, acq_matrix, resolution, delta, epi=None, dir=[0,1],
+    oversampling=2):
 
     # FIRST PART:
     # Correct the kspace for discrepancies in the
     # phase direction.
 
-    # Check phase direction
-    zero_fill = resolution[dir[1]] > acq_matrix[dir[1]]
-
     # Number of additional lines
-    n_lines = np.abs(resolution[dir[1]] - acq_matrix[dir[1]])
+    n_lines = resolution[dir[1]] - acq_matrix[dir[1]]
 
     # Adapt kspace using the phase-corrected shape
-    pshape = np.copy(acq_matrix)
-    idx = int(n_lines/2*acq_matrix[dir[0]])
-    if zero_fill:
-        pshape[dir[1]] += n_lines
-        k_meas = np.copy(k).flatten(order[dir[0]])[idx:-idx]
-    else:
-        pshape[dir[1]] -= n_lines
-        k_meas = np.copy(k).flatten(order[dir[0]])[idx:-idx]
+    idx = build_idx(n_lines, acq_matrix, dir)
+    k_meas = np.copy(k).flatten(order[dir[0]])[idx[0]:idx[1]]
 
-    # TODO: add EPI artifacts
-    # MPI_print('TODO: arreglar el tamaño del pixel en la dirección de fase')
-    # MPI_print(delta)
-    k_meas = EPI_kspace(k_meas, delta, acq_matrix, dir=dir, rec_bw=128*1000,
-                         T2star=0.02)
+    # Add EPI artifacts
+    if epi != None:
+        k_meas = epi.kspace(k_meas, delta, dir, T2star=0.02)
+
+    # Hamming filter to reduce Gibbs ringing artifacts
+    H0 = signal.hamming(acq_matrix[dir[0]])
+    H1 = signal.hamming(acq_matrix[dir[1]])
+    H = np.outer(H0, H1).flatten('F')
+    k_meas = H*k_meas
 
     # Fill final kspace
-    if zero_fill:
-        k_new = np.zeros(pshape, dtype=complex).flatten(order[dir[0]])
-        k_new[idx:-idx] = k_meas
-        k_new = np.reshape(k_new, pshape, order=order[dir[0]])
-    else:
-        k_new = k_meas.reshape(pshape, order=order[dir[0]])
+    pshape = np.copy(acq_matrix)
+    pshape[dir[1]] += n_lines
+    k_new = np.zeros(pshape, dtype=np.complex64).flatten(order[dir[0]])
+    k_new[idx[0]:idx[1]] = k_meas
+
+    # Remove oversampled values
+    pshape[dir[0]] /= oversampling
+    k_new = np.reshape(k_new[::oversampling], pshape, order=order[dir[0]])
 
     return k_new
 
 
-def EPI_kspace(k, delta, acq_matrix, dir=[0,1],
-                  rec_bw=64*1000, T2star=0.02):
+# EPI class for the generation of EPI-like artifacts
+class EPI:
+    def __init__(self, receiver_bw = 64*1000,
+                 echo_train_length = 1,
+                 off_resonance = 100,
+                 acq_matrix = [128,64],
+                 spatial_shift = 'top-down'):
+        self.receiver_bw = receiver_bw
+        self.echo_train_length = echo_train_length
+        self.off_resonance = off_resonance
+        self.acq_matrix = acq_matrix
+        self.spatial_shift = spatial_shift
+        self.temporal_echo_spacing = acq_matrix[1]*1.0/(2.0*self.receiver_bw)
 
-    # kspace bandwith
-    k_max = 0.5/delta
+    # Get kspace with EPI-like artifacts
+    def kspace(self,k,delta,dir,T2star):
+        # kspace bandwith
+        k_max = 0.5/delta
 
-    # kspace of the input image
-    km_profiles = acq_matrix[dir[0]]
-    kp_profiles = acq_matrix[dir[1]]
-    grid = np.meshgrid(np.linspace(-k_max,k_max,km_profiles),
-                         np.linspace(-k_max,k_max,kp_profiles),
-                         indexing='ij')
-    ky = grid[dir[1]].flatten(order[dir[0]])
+        # kspace of the input image
+        m_profiles = self.acq_matrix[dir[0]]
+        ph_profiles = self.acq_matrix[dir[1]]
+        grid = np.meshgrid(np.linspace(-k_max,k_max,m_profiles),
+                            np.linspace(-k_max,k_max,ph_profiles),
+                            indexing='ij')
+        ky = grid[dir[1]].flatten(order[dir[0]])
 
-    # Parameters
-    df_off = 200                          # off-resonance frequency
-    dt_esp = km_profiles*1.0/(2.0*rec_bw) # temporal echo spacing
-    ETL = 11                              # echo train length
+        # Parameters
+        df_off = self.off_resonance            # off-resonance frequency
+        dt_esp = self.temporal_echo_spacing    # temporal echo spacing
+        ETL = self.echo_train_length           # echo train length
 
-    # Spatial shifts
-    dy_off = df_off*dt_esp*ETL*delta    # top-down
-    # dy_off = 2*df_off*dt_esp*ETL*delta    # center-out
+        # Spatial shifts
+        if self.spatial_shift == 'top-down':
+            dy_off = df_off*dt_esp*self.echo_train_length*delta
+        elif self.spatial_shift == 'center-out':
+            dy_off = 2*df_off*dt_esp*self.echo_train_length*delta
 
-    # Acquisition times
-    # TODO: redefine the acquisition times to consider
-    # multishot EPI
-    t = time_map(k,acq_matrix,dt_esp,dir=dir,ETL=ETL)
-    MTF_decay = 1#np.exp(-t/T2star)
+        # Acquisition times
+        t = self.time_map(k,dir=dir)
 
-    # Truncation
-    # MTF_off = np.exp(1j*2*np.pi*dy_off*np.abs(ky),order=order[dir[0]])
-    # MTF_off = np.exp(1j*2*np.pi*dy_off*np.abs(ky)*t,order=order[dir[0]])
-    MTF_off = np.exp(1j*2*np.pi*dy_off*np.abs(ky)*t/T2star,order=order[dir[0]])
-    MTF = MTF_decay*MTF_off
+        # Truncation
+        MTF_off = np.exp(1j*2*np.pi*dy_off*np.abs(ky),order=order[dir[0]])
+        # MTF_off = np.exp(1j*2*np.pi*dy_off*np.abs(ky)*t,order=order[dir[0]])
+        # MTF_off = np.exp(1j*2*np.pi*dy_off*np.abs(ky)*t/T2star,order=order[dir[0]])
+        MTF = MTF_off
 
-    return MTF*k
+        return MTF*k
 
+    # Time maps of the EPI acquisition
+    def time_map(self, k, dir):
 
-# Generates acquisition times depending of the
-# acquisition sequence and imaging mode
-def time_map(k,acq_matrix,dt_esp,dir=[0,1],ETL=1):
+        # kspace of the input image
+        m_profiles = self.acq_matrix[dir[0]]
+        ph_profiles = self.acq_matrix[dir[1]]
 
-    # kspace of the input image
-    km_profiles = acq_matrix[dir[0]]
-    kp_profiles = acq_matrix[dir[1]]
+        # Acquisition times for different cartesian techniques:
+        # EPI
+        t_train = np.linspace(0,self.temporal_echo_spacing*self.echo_train_length,
+                            m_profiles*self.echo_train_length)
+        for i in range(self.echo_train_length):
+            if (i % 2 != 0):
+                a, b = i*m_profiles, (i+1)*m_profiles
+                t_train[a:b] = np.flip(t_train[a:b])
 
-    # Acquisition times for different cartesian techniques:
-    # EPI
-    t_train = np.linspace(0,dt_esp*ETL,km_profiles*ETL)
-    for i in range(ETL):
-        if (i % 2 != 0):
-            a, b = i*km_profiles, (i+1)*km_profiles
-            t_train[a:b] = np.flip(t_train[a:b])
+        t = np.copy(t_train)
+        for i in range(int(ph_profiles/self.echo_train_length)-1):
+            t = np.append(t, t_train, axis=0)
 
-    t = np.copy(t_train)
-    for i in range(int(kp_profiles/ETL)-1):
-        t = np.append(t, t_train, axis=0)
+        # Simpler GRE
+        # delta = 0.002
+        # t = np.linspace(0,dt_esp*ph_profiles,m_profiles*ph_profiles)
+        # t = t.reshape(k.shape,order='F')
+        # for i in range(t.shape[1]):
+        #     t[:,i] += i*dt_esp + delta
 
-    # Simpler GRE
-    # delta = 0.002
-    # t = np.linspace(0,dt_esp*kp_profiles,km_profiles*kp_profiles)
-    # t = t.reshape(k.shape,order='F')
-    # for i in range(t.shape[1]):
-    #     t[:,i] += i*dt_esp + delta
-
-    return t
+        return t
