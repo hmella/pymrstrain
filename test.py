@@ -3,19 +3,26 @@ from PyMRStrain.MRImaging import *
 import matplotlib.pyplot as plt
 
 # Acquisition matrices
-acq_matrix_1 = [256,64]
-acq_matrix_2 = [64,256]
+acq_matrix = [256,64]
 
 # kspace
-k_1 = np.zeros(acq_matrix_1, dtype=complex)
-k_2 = np.zeros(acq_matrix_2, dtype=complex)
-for i in range(256):
-    k_1[i,:] = i+100
-    k_2[:,i] = i+100
-k_test_1 = acq_to_res(k_1, acq_matrix_1, [128,128], dir=[0,1])
-k_test_2 = acq_to_res(k_2, acq_matrix_2, [128,128], dir=[1,0])
+k = np.zeros(acq_matrix, dtype=complex)
 
-fig, ax = plt.subplots(1,2)
-ax[0].imshow(np.abs(k_test_1).T)
-ax[1].imshow(np.abs(k_test_2).T)
+# Filter size
+s = np.array(k.shape)
+s20 = np.round(0.2*s).astype(int)
+s0 = np.linspace(0, s20[0]/2, s20[0])
+s1 = np.linspace(0, s20[1]/2, s20[1])
+w0 = 1.0 - np.power(np.abs(s0/(s20[0]/2)),2)
+w1 = 1.0 - np.power(np.abs(s1/(s20[1]/2)),2)
+
+O0 = np.ones([s[0],])
+O1 = np.ones([s[1],])
+
+O0[0:s20[0]] *= np.flip(w0)
+O0[s[0]-s20[0]:s[0]] *= w0
+O1[0:s20[1]] *= np.flip(w1)
+O1[s[1]-s20[1]:s[1]] *= w1
+
+plt.imshow(np.outer(O0,O1))
 plt.show()
