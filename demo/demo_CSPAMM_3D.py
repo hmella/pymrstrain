@@ -33,7 +33,7 @@ if __name__=="__main__":
             slice_following=True,
             slice_thickness=0.008,
             oversampling_factor=2,
-            phase_profiles=30)
+            phase_profiles=100)
 
   # Spins
   spins = Spins(Nb_samples=100000, parameters=p)
