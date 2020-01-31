@@ -8,3 +8,4 @@ tmp/
 PyMRStrain.egg-info/
 *.png
 *.npy
+PyMRStrain/__pycache__
