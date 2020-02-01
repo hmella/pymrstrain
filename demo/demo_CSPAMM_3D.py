@@ -23,23 +23,24 @@ if __name__=="__main__":
 
   # Create complimentary image
   I = CSPAMMImage(FOV=np.array([0.2, 0.2, 0.04]),
-            center=np.array([0.0,0.0,0.03]),
-            resolution=np.array([100, 100, 1]),
+            center=np.array([0.0,0.0,0.0]),
+            resolution=np.array([70, 70, 1]),
             encoding_frequency=np.array([ke,ke,0]),
             T1=0.85,
             flip_angle=15*np.pi/180,
+            encoding_angle=45*np.pi/180,
             off_resonance=phi,
             kspace_factor=15,
             slice_following=True,
             slice_thickness=0.008,
-            oversampling_factor=2,
-            phase_profiles=100)
+            oversampling_factor=1,
+            phase_profiles=40)
 
   # Spins
   spins = Spins(Nb_samples=100000, parameters=p)
 
   # Create phantom object
-  phantom = Phantom(spins, p, patient=True, write_vtk=False)
+  phantom = Phantom(spins, p, patient=False, write_vtk=False)
 
   # EPI acquisiton object
   epi = EPI(receiver_bw=128*1000,
@@ -79,8 +80,8 @@ if __name__=="__main__":
       plt.show()
 
       fig, ax = plt.subplots(1, 2)
-      tracker = IndexTracker(ax, np.abs(itok(u[:,:,0,0,:])),
-                             np.abs(itok(u[:,:,0,1,:])),
-                             vrange=[0, 1e+03])
+      tracker = IndexTracker(ax, np.abs(itok(u[:,:,0,0,:],axes=[0,1])),
+                             np.abs(itok(u[:,:,0,1,:],axes=[0,1])),
+                             vrange=[0, 1e+02])
       fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
       plt.show()
