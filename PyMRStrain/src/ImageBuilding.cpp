@@ -40,18 +40,18 @@ ImageTuple get_images(const std::vector<Eigen::MatrixXcf> &I,
 
             // Build weigths
             Eigen::VectorXf w = Eigen::VectorXf::Zero(p2s[i].size());
-            // for (j=0; j<p2s[i].size(); j++){
-            //     w(j) = std::pow(std::pow(x(p2s[i][j],0) - xi[0](i), 2)
-            //          + std::pow(x(p2s[i][j],1) - xi[1](i), 2)
-            //          + std::pow(x(p2s[i][j],2) - xi[2](i), 2), 0.5);
-            // }
-            // w.array() = 1.0 - w.array()/d;
             for (j=0; j<p2s[i].size(); j++){
-                w(j) = std::pow(x(p2s[i][j],0) - xi[0](i), 2)
+                w(j) = std::pow(std::pow(x(p2s[i][j],0) - xi[0](i), 2)
                      + std::pow(x(p2s[i][j],1) - xi[1](i), 2)
-                     + std::pow(x(p2s[i][j],2) - xi[2](i), 2);
+                     + std::pow(x(p2s[i][j],2) - xi[2](i), 2), 0.5);
             }
-            w.array() = (-w.array()/std::pow(d, 2)).exp();
+            w.array() = 1.0 - w.array()/d;
+            // for (j=0; j<p2s[i].size(); j++){
+            //     w(j) = std::pow(x(p2s[i][j],0) - xi[0](i), 2)
+            //          + std::pow(x(p2s[i][j],1) - xi[1](i), 2)
+            //          + std::pow(x(p2s[i][j],2) - xi[2](i), 2);
+            // }
+            // w.array() = (-w.array()/std::pow(d, 2)).exp();
 
             // Fill images
             for (k=0; k<nr_im; k++){
