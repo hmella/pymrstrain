@@ -36,7 +36,7 @@ if __name__=="__main__":
             phase_profiles=40)
 
   # Spins
-  spins = Spins(Nb_samples=1000000, parameters=p)
+  spins = Spins(Nb_samples=200000, parameters=p)
 
   # Create phantom object
   phantom = Phantom(spins, p, patient=False, write_vtk=False)
@@ -49,7 +49,7 @@ if __name__=="__main__":
             spatial_shift='top-down')
 
   # Generator
-  g0 = Generator(p, I, None, debug=True)
+  g0 = Generator(p, I, epi, debug=True)
 
   # Generation
   g0.phantom = phantom

@@ -3,7 +3,7 @@ from PyMRStrain.Image import Image, DENSEImage, CSPAMMImage
 from PyMRStrain.Helpers import order, m_dirs
 from PyMRStrain.Magnetizations import DENSEMagnetizations
 from PyMRStrain.Math import itok, ktoi
-from PyMRStrain.MPIUtilities import (gather_image, MPI_rank, 
+from PyMRStrain.MPIUtilities import (gather_image, MPI_rank,
     MPI_print, MPI_size)
 from PyMRStrain.MRImaging import acq_to_res
 from PyMRStrain.PySpinBasedUtils import (update_s2p2, update_s2p3,
@@ -163,6 +163,7 @@ def get_cspamm_image(image, epi, phantom, parameters, debug, fem):
  # Sequence parameters
   T1    = image.T1                     # relaxation
   alpha = image.flip_angle             # flip angle
+  beta  = image.encoding_angle         # tip angle
   ke    = image.encoding_frequency     # encoding frequency
   M0    = 1.0                          # thermal equilibrium magnetization
   M     = M0
@@ -283,8 +284,8 @@ def get_cspamm_image(image, epi, phantom, parameters, debug, fem):
     upre = np.copy(reshaped_u)
 
     # Get magnetization on each spin
-    (m0, m1, min) = CSPAMM_magnetizations(M, M0, alpha[i], prod, t, T1,
-                        ke[0:dk], x[:,0:dk], reshaped_u[:,0:dk])
+    (m0, m1, min) = CSPAMM_magnetizations(M, M0, alpha[i], beta, prod, t, T1,
+                        ke[0:dk], x[:,0:dk])
     m0[~inside,:] = 0
     m1[~inside,:] = 0
     if image.slice_following:
@@ -343,33 +344,24 @@ def get_cspamm_image(image, epi, phantom, parameters, debug, fem):
         tmp1 = m1_image[...,slice,j]
         tmp2 = m2_image[...,slice,j]
 
-        # Check if images should be cropped
-        if incr_bw:
+        # Uncorrected kspaces
+        k0 = itok(tmp0)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
+        k1 = itok(tmp1)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
+        k2 = itok(tmp2)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
 
-          # Uncorrected kspaces
-          k0 = itok(tmp0)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
-          k1 = itok(tmp1)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
-          k2 = itok(tmp2)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
+        # kspace resizing and epi artifacts generation
+        delta_ph = image.FOV[m_dirs[j][1]]/image.phase_profiles
+        k0 = acq_to_res(k0, image.acq_matrix[m_dirs[j]], k0.shape,
+                delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
+        k1 = acq_to_res(k1, image.acq_matrix[m_dirs[j]], k1.shape,
+                delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
+        k2 = acq_to_res(k2, image.acq_matrix[m_dirs[j]], k2.shape,
+                delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
 
-          # kspace resizing and epi artifacts generation
-          delta_ph = image.FOV[m_dirs[j][1]]/image.phase_profiles
-          k0 = acq_to_res(k0, image.acq_matrix[m_dirs[j]], k0.shape,
-                  delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
-          k1 = acq_to_res(k1, image.acq_matrix[m_dirs[j]], k1.shape,
-                  delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
-          k2 = acq_to_res(k2, image.acq_matrix[m_dirs[j]], k2.shape,
-                  delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
-
-          # kspace cropping
-          image_0[...,slice,j,i] = ktoi(k0)
-          image_1[...,slice,j,i] = ktoi(k1)
-          image_2[...,slice,j,i] = ktoi(k2)
-
-        else:
-
-          image_0[...,slice,j,i] = tmp0
-          image_1[...,slice,j,i] = tmp1
-          image_2[...,slice,j,i] = tmp2
+        # kspace cropping
+        image_0[...,slice,j,i] = ktoi(k0)
+        image_1[...,slice,j,i] = ktoi(k1)
+        image_2[...,slice,j,i] = ktoi(k2)
 
     # Flip angles product
     prod = prod*np.cos(alpha[i])
@@ -656,7 +648,7 @@ def get_complementary_dense_image(image, epi, phantom, parameters, debug):
 
     # Get magnetization on each spin
     (m0, m1, min) = DENSE_magnetizations(M, M0, alpha[i], prod, t, T1,
-                        ke[0:dk], x_upd[:,0:dk], reshaped_u[:,0:dk])
+                        ke[0:dk], x[:,0:dk], reshaped_u[:,0:dk])
     m0[~inside,:] = 0
     m1[~inside,:] = 0
     if image.slice_following:
@@ -715,33 +707,33 @@ def get_complementary_dense_image(image, epi, phantom, parameters, debug):
         tmp1 = m1_image[...,slice,j]
         tmp2 = m2_image[...,slice,j]
 
-        # Check if images should be cropped
-        if incr_bw:
+        # # Check if images should be cropped
+        # if incr_bw:
 
-          # Uncorrected kspaces
-          k0 = itok(tmp0)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
-          k1 = itok(tmp1)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
-          k2 = itok(tmp2)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
+        # Uncorrected kspaces
+        k0 = itok(tmp0)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
+        k1 = itok(tmp1)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
+        k2 = itok(tmp2)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
 
-          # kspace resizing and epi artifacts generation
-          delta_ph = image.FOV[m_dirs[j][1]]/image.phase_profiles
-          k0 = acq_to_res(k0, image.acq_matrix[m_dirs[j]], k0.shape,
-                  delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
-          k1 = acq_to_res(k1, image.acq_matrix[m_dirs[j]], k1.shape,
-                  delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
-          k2 = acq_to_res(k2, image.acq_matrix[m_dirs[j]], k2.shape,
-                  delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
+        # kspace resizing and epi artifacts generation
+        delta_ph = image.FOV[m_dirs[j][1]]/image.phase_profiles
+        k0 = acq_to_res(k0, image.acq_matrix[m_dirs[j]], k0.shape,
+                delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
+        k1 = acq_to_res(k1, image.acq_matrix[m_dirs[j]], k1.shape,
+                delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
+        k2 = acq_to_res(k2, image.acq_matrix[m_dirs[j]], k2.shape,
+                delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
 
-          # kspace cropping
-          image_0[...,slice,j,i] = ktoi(k0)
-          image_1[...,slice,j,i] = ktoi(k1)
-          image_2[...,slice,j,i] = ktoi(k2)
+        # kspace cropping
+        image_0[...,slice,j,i] = ktoi(k0)
+        image_1[...,slice,j,i] = ktoi(k1)
+        image_2[...,slice,j,i] = ktoi(k2)
 
-        else:
-
-          image_0[...,slice,j,i] = tmp0
-          image_1[...,slice,j,i] = tmp1
-          image_2[...,slice,j,i] = tmp2
+        # else:
+        #
+        #   image_0[...,slice,j,i] = tmp0
+        #   image_1[...,slice,j,i] = tmp1
+        #   image_2[...,slice,j,i] = tmp2
 
     # Flip angles product
     prod = prod*np.cos(alpha[i])

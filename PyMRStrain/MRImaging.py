@@ -58,10 +58,9 @@ class EPI:
         self.off_resonance = off_resonance
         self.acq_matrix = acq_matrix
         self.spatial_shift = spatial_shift
-        self.temporal_echo_spacing = acq_matrix[1]*1.0/(2.0*self.receiver_bw)
 
     # Get kspace with EPI-like artifacts
-    def kspace(self,k,delta,dir,T2star):
+    def kspace(self,k,delta,dir,T2star=0.02):
         # kspace bandwith
         k_max = 0.5/delta
 
@@ -74,9 +73,9 @@ class EPI:
         ky = grid[dir[1]].flatten(order[dir[0]])
 
         # Parameters
-        df_off = self.off_resonance            # off-resonance frequency
-        dt_esp = self.temporal_echo_spacing    # temporal echo spacing
-        ETL = self.echo_train_length           # echo train length
+        df_off = self.off_resonance                 # off-resonance frequency
+        # dt_esp = self.acq_matrix[1]*1.0/(2.0*k_max) # temporal echo spacing
+        dt_esp = self.acq_matrix[1]*1.0/(2.0*self.receiver_bw) # temporal echo spacing
 
         # Spatial shifts
         if self.spatial_shift == 'top-down':
@@ -85,7 +84,7 @@ class EPI:
             dy_off = 2*df_off*dt_esp*self.echo_train_length*delta
 
         # Acquisition times
-        t = self.time_map(k,dir=dir)
+        t = self.time_map(k,dir,dt_esp)
 
         # Truncation
         MTF_off = np.exp(1j*2*np.pi*dy_off*np.abs(ky),order=order[dir[0]])
@@ -96,7 +95,7 @@ class EPI:
         return MTF*k
 
     # Time maps of the EPI acquisition
-    def time_map(self, k, dir):
+    def time_map(self, k, dir, temporal_echo_spacing):
 
         # kspace of the input image
         m_profiles = self.acq_matrix[dir[0]]
@@ -104,7 +103,7 @@ class EPI:
 
         # Acquisition times for different cartesian techniques:
         # EPI
-        t_train = np.linspace(0,self.temporal_echo_spacing*self.echo_train_length,
+        t_train = np.linspace(0,temporal_echo_spacing*self.echo_train_length,
                             m_profiles*self.echo_train_length)
         for i in range(self.echo_train_length):
             if (i % 2 != 0):
