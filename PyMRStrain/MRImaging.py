@@ -29,9 +29,10 @@ def acq_to_res(k, acq_matrix, resolution, delta, epi=None, dir=[0,1],
 
     # Hamming filter to reduce Gibbs ringing artifacts
     # H = Hamming_filter(acq_matrix,dir)
-    H0 = Riesz_filter(acq_matrix,dir,decay=0.2)
-    H1 = Tukey_filter(acq_matrix,dir,alpha=0.2)
-    k_meas = H0*H1*k_meas
+    Hm = Riesz_filter(acq_matrix[dir[0]],width=0.8,lift=0.3)
+    Hp = Riesz_filter(acq_matrix[dir[1]],width=0.8,lift=0.3)
+    H = np.outer(Hm,Hp).flatten('F')
+    k_meas = H*k_meas
 
     # Fill final kspace
     pshape = np.copy(acq_matrix)
