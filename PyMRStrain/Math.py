@@ -5,7 +5,7 @@ from numpy.fft import fftn, fftshift, ifftn, ifftshift
 def itok(x, axes=[0,1]):
     return fftshift(fftn(ifftshift(x,axes=axes),axes=axes),axes=axes)
 
-def ktoi(x, axes==[0,1]):
+def ktoi(x, axes=[0,1]):
     return fftshift(ifftn(ifftshift(x,axes=axes),axes=axes),axes=axes)
 
 def wrap(x, value):
