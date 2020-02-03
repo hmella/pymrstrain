@@ -79,8 +79,8 @@ if __name__=="__main__":
       plt.show()
 
       fig, ax = plt.subplots(1, 2)
-      tracker = IndexTracker(ax, np.abs(itok(u[:,:,0,0,:],axes=[0,1])),
-                             np.abs(itok(u[:,:,0,1,:],axes=[0,1])),
+      tracker = IndexTracker(ax, np.abs(itok(u[:,:,0,0,:])),
+                             np.abs(itok(u[:,:,0,1,:])),
                              vrange=[0, 1e+03])
       fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
       plt.show()
