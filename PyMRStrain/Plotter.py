@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from numpy import clip
 
+
 # Slice plotter
 class IndexTracker:
   def __init__(self, ax, X, Y, vrange=[]):

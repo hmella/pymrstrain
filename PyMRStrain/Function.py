@@ -1,5 +1,6 @@
 import numpy as np
 
+
 # Function
 class Function:
     def __init__(self, spins, dim=3, type=np.float):

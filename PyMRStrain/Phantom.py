@@ -1,10 +1,8 @@
+import matplotlib.pyplot as plt
+import numpy as np
 from PyMRStrain.Function import Function
 from PyMRStrain.IO import write_vtk
-import numpy as np
-import matplotlib.pyplot as plt
 from scipy.ndimage.filters import gaussian_filter
-
-# NOTE: 1 [cycle] = 2*np.pi [rad]
 
 
 #########################################################

@@ -1,6 +1,7 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
-import matplotlib.pyplot as plt
+
 
 def Hamming_filter(size):
     H0 = signal.hamming(size)

@@ -1,5 +1,6 @@
 import numpy as np
-from PyMRStrain.MPIUtilities import MPI_rank, MPI_comm
+from PyMRStrain.MPIUtilities import MPI_comm, MPI_rank
+
 
 def Parameters(time_steps=20):
     ''' Generate parameters for simulations

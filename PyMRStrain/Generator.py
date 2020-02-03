@@ -1,20 +1,20 @@
-from PyMRStrain.Function import Function
-from PyMRStrain.Image import Image, DENSEImage, CSPAMMImage
-from PyMRStrain.Helpers import order, m_dirs
-from PyMRStrain.Magnetizations import DENSEMagnetizations
-from PyMRStrain.Math import itok, ktoi
-from PyMRStrain.MPIUtilities import (gather_image, MPI_rank,
-    MPI_print, MPI_size)
-from PyMRStrain.MRImaging import acq_to_res
-from PyMRStrain.PySpinBasedUtils import (update_s2p2, update_s2p3,
-    check_kspace_bw, check_nb_slices)
-from Connectivity import (getConnectivity2, getConnectivity3,
-    update_p2s)
-from ImageBuilding import (get_images, CSPAMM_magnetizations,
-    DENSE_magnetizations)
+import time
+
 import matplotlib.pyplot as plt
 import numpy as np
-import time
+from Connectivity import getConnectivity2, getConnectivity3, update_p2s
+from ImageBuilding import (CSPAMM_magnetizations, DENSE_magnetizations,
+                           get_images)
+from PyMRStrain.Function import Function
+from PyMRStrain.Helpers import m_dirs, order
+from PyMRStrain.Image import CSPAMMImage, DENSEImage, Image
+from PyMRStrain.Magnetizations import DENSEMagnetizations
+from PyMRStrain.Math import itok, ktoi
+from PyMRStrain.MPIUtilities import MPI_print, MPI_rank, MPI_size, gather_image
+from PyMRStrain.MRImaging import acq_to_res
+from PyMRStrain.PySpinBasedUtils import (check_kspace_bw, check_nb_slices,
+                                         update_s2p2, update_s2p3)
+
 
 ###################
 # Common Generator

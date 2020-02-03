@@ -1,6 +1,7 @@
-from PyMRStrain.MPIUtilities import MPI_rank, MPI_size
-import numpy as np
 import meshio
+import numpy as np
+from PyMRStrain.MPIUtilities import MPI_rank, MPI_size
+
 
 class Spins:
     def __init__(self, Nb_samples=1000, parameters=[]):

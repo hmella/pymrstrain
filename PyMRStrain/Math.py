@@ -1,5 +1,6 @@
-from numpy.fft import fftshift, fftn, ifftn, ifftshift
 import numpy as np
+from numpy.fft import fftn, fftshift, ifftn, ifftshift
+
 
 def itok(x, axes=None):
     return fftshift(fftn(ifftshift(x,axes=axes),axes=axes),axes=axes)

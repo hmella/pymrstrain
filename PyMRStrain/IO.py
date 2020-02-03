@@ -1,7 +1,9 @@
+import os
+
 import meshio
 import numpy as np
-import os
 from scipy.io import savemat
+
 
 # Write scalar to vtk
 def write_vtk(functions, path=None, name=None):
