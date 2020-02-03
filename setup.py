@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import os
-from setuptools import setup, find_packages, Extension
-from setuptools.command.build_ext import build_ext
 import sys
+
 import setuptools
+from setuptools import Extension, find_packages, setup
+from setuptools.command.build_ext import build_ext
 
 
 def read(fname):
