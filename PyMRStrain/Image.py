@@ -144,20 +144,3 @@ class PCSPAMMImage(ImageBase):
     self.encoding_angle = encoding_angle
     self.taglines = taglines
     super(PCSPAMMImage, self).__init__(**kwargs)
-
-###################
-# Common Image
-###################
-class Image(ImageBase):
-  def __init__(self, type=None,
-               encoding_frequency=None,
-               encoding_angle=15*np.pi/180,
-               complementary=False,
-               venc=None,
-               taglines=None, **kwargs):
-    self.technique  = type
-    self.encoding_frequency = encoding_frequency
-    self.complementary = complementary
-    self.encoding_angle = encoding_angle
-    self.taglines   = taglines
-    super(Image, self).__init__(**kwargs)
