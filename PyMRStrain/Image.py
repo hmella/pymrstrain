@@ -100,20 +100,13 @@ class ImageBase(object):
 class DENSEImage(ImageBase):
   def __init__(self, encoding_frequency=None,**kwargs):
     self.encoding_frequency = encoding_frequency
-    self.technique = 'DENSE'
-    self._modified_resolution = False
-    self._original_resolution = []
-    self._original_grid = []
-    self._original_array_resolution = []
-    self._original_voxel_size = []
     super(DENSEImage, self).__init__(**kwargs)
 
 ###################
 # EXACT Image
 ###################
 class EXACTImage(ImageBase):
-  def __init__(self, encoding_frequency=None,**kwargs):
-    self.technique = 'EXACT'
+  def __init__(self,**kwargs):
     super(EXACTImage, self).__init__(**kwargs)
 
 ###################
@@ -126,7 +119,6 @@ class CSPAMMImage(ImageBase):
     self.encoding_frequency = encoding_frequency
     self.encoding_angle = encoding_angle
     self.taglines = taglines
-    self.technique = 'CSPAMM'
     super(CSPAMMImage, self).__init__(**kwargs)
 
 ###################
@@ -137,7 +129,6 @@ class SINEImage(ImageBase):
                taglines=None,**kwargs):
     self.encoding_frequency = encoding_frequency
     self.taglines = taglines
-    self.technique = 'SINE'
     super(SINEImage, self).__init__(**kwargs)
 
 ###################
@@ -152,7 +143,6 @@ class PCSPAMMImage(ImageBase):
     self.vel_encoding_frequency = v_encoding_frequency
     self.encoding_angle = encoding_angle
     self.taglines = taglines
-    self.technique = 'PCSPAMM'
     super(PCSPAMMImage, self).__init__(**kwargs)
 
 ###################
