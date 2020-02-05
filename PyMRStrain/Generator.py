@@ -20,28 +20,24 @@ from PyMRStrain.PySpinBasedUtils import (check_kspace_bw, check_nb_slices,
 # Common Generator
 ###################
 class Generator:
-  def __init__(self, parameters, Image, epi, phantom=None, debug=False, fem=True):
+  def __init__(self, parameters, Image, epi, phantom=None, debug=False):
     self.p = parameters
     self.Image = Image
     self.phantom = phantom
     self.debug = debug
-    self.fem = fem
     self.epi = epi
 
   # Obtain image
   def get_image(self):
-    if self.Image.technique is "CSPAMM":
+    if self.Image.__class__ is CSPAMMImage:
       o_image = get_cspamm_image(self.Image, self.epi, self.phantom, self.p, self.debug, self.fem)
-    elif self.Image.technique is "DENSE":
-      if isinstance(self.Image,Image):
-        o_image = get_dense_image(self.Image, self.phantom, self.p, self.debug, self.fem)
-      else:
-        o_image = get_complementary_dense_image(self.Image, self.epi, self.phantom, self.p, self.debug)
-    elif self.Image.technique is "PCSPAMM":
+    elif self.Image__class__ is DENSEImage:
+      o_image = get_complementary_dense_image(self.Image, self.epi, self.phantom, self.p, self.debug)
+    elif self.Image.__class__ is PCSPAMMImage:
       o_image = get_PCSPAMM_image(self.Image, self.phantom, self.p, self.debug)
-    elif self.Image.technique is "EXACT":
+    elif self.Image.__class__ is EXACTImage:
       o_image = get_exact_image(self.Image, self.phantom, self.p, self.debug)
-    elif self.Image.technique is "SINE":
+    elif self.Image.__class__ is SINEImage:
       o_image = get_sine_image(self.Image, self.phantom, self.p, self.debug)
     return o_image
 
