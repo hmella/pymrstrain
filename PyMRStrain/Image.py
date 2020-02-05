@@ -1,9 +1,7 @@
 import numpy as np
 
 
-###################
 # Base Image object
-###################
 class ImageBase(object):
   def __init__(self,
                FOV=np.array([0.1,0.1,0.08]),
@@ -94,24 +92,20 @@ class ImageBase(object):
     return Xc
 
 
-###################
 # DENSE Image
-###################
 class DENSEImage(ImageBase):
   def __init__(self, encoding_frequency=None,**kwargs):
     self.encoding_frequency = encoding_frequency
     super(DENSEImage, self).__init__(**kwargs)
 
-###################
+
 # EXACT Image
-###################
 class EXACTImage(ImageBase):
   def __init__(self,**kwargs):
     super(EXACTImage, self).__init__(**kwargs)
 
-###################
+
 # CSPAMM Image
-###################
 class CSPAMMImage(ImageBase):
   def __init__(self, encoding_frequency=None,
                encoding_angle=15*np.pi/180,
@@ -121,9 +115,8 @@ class CSPAMMImage(ImageBase):
     self.taglines = taglines
     super(CSPAMMImage, self).__init__(**kwargs)
 
-###################
+
 # SINE Image
-###################
 class SINEImage(ImageBase):
   def __init__(self, encoding_frequency=None,
                taglines=None,**kwargs):
@@ -131,9 +124,8 @@ class SINEImage(ImageBase):
     self.taglines = taglines
     super(SINEImage, self).__init__(**kwargs)
 
-###################
+
 # PCSPAMM Image
-###################
 class PCSPAMMImage(ImageBase):
   def __init__(self, encoding_frequency=None,
                v_encoding_frequency=None,
