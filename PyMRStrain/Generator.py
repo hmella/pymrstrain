@@ -8,7 +8,6 @@ from ImageBuilding import (CSPAMM_magnetizations, DENSE_magnetizations,
 from PyMRStrain.Function import Function
 from PyMRStrain.Helpers import m_dirs, order
 from PyMRStrain.Image import CSPAMMImage, DENSEImage, Image
-from PyMRStrain.Magnetizations import DENSEMagnetizations
 from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.MPIUtilities import MPI_print, MPI_rank, MPI_size, gather_image
 from PyMRStrain.MRImaging import acq_to_res
