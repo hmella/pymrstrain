@@ -162,8 +162,8 @@ def add_noise_to_SPAMM_(T, mask, sigma=[], SNR=20):
 
     # Noise
     for j in range(T.shape[-2]):
-      Nr = np.random.normal(0, sigma, T[...,j,i].shape)
-      Ni = np.random.normal(0, sigma, T[...,j,i].shape)
+      Nr = np.random.normal(0, sigma, T[...,j,i].shape)*mask[...,j,i]
+      Ni = np.random.normal(0, sigma, T[...,j,i].shape)*mask[...,j,i]
 
       # Add noise
       Tn[...,j,i] = T[...,j,i] + Nr + 1j*Ni
