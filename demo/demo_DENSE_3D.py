@@ -6,12 +6,12 @@ import time
 if __name__=="__main__":
 
   # Parameters
-  p = Parameters(time_steps=18)
-  p['phi_en'] = 20*np.pi/180
-  p['phi_ep'] = 0*np.pi/180
-  # p['R_inner'] = p['R_en']
-  # p['R_outer'] = p['R_ep']
-  np.save("p.npy", p)
+  # p = Parameters(time_steps=18)
+  # p['phi_en'] = 20*np.pi/180
+  # p['phi_ep'] = 0*np.pi/180
+  # # p['R_inner'] = p['R_en']
+  # # p['R_outer'] = p['R_ep']
+  # np.save("p.npy", p)
   p=np.load('p.npy',allow_pickle=True).item()
 
   # Field inhomogeneity
@@ -36,7 +36,7 @@ if __name__=="__main__":
             phase_profiles=40)
 
   # Spins
-  spins = Spins(Nb_samples=200000, parameters=p)
+  spins = Spins(Nb_samples=100000, parameters=p)
 
   # Create phantom object
   phantom = Phantom(spins, p, patient=False, write_vtk=False)
@@ -48,25 +48,47 @@ if __name__=="__main__":
             acq_matrix=I.acq_matrix,
             spatial_shift='top-down')
 
-  # Generator
-  g0 = Generator(p, I, epi, debug=True)
-
-  # Generation
-  g0.phantom = phantom
+  # Generate images
   start = time.time()
-  u0, u1, uin, mask = g0.get_image()
+  kspace_0, kspace_1, kspace_in, mask = I.generate(epi, phantom, p, True)
   end = time.time()
   print(end-start)
 
   # Add noise to images
-  sigma = 0.5e-32
-  un0 = add_noise_to_DENSE_(u0, mask, sigma=sigma)
-  un1 = add_noise_to_DENSE_(u1, mask, sigma=sigma)
+  sigma = 0.5e-2
+  kspace_0.k = add_noise_to_DENSE_(kspace_0.k, kspace_0.k_msk, sigma=sigma)
+  kspace_1.k = add_noise_to_DENSE_(kspace_1.k, kspace_1.k_msk, sigma=sigma)
+
+  # kspace to image
+  un0 = kspace_0.to_img()
+  un1 = kspace_1.to_img() 
+  unin = kspace_in.to_img()
 
   # Corrected image
   u = un0 - un1
 
   # Plot
+  if MPI_rank==0:
+      fig, ax = plt.subplots(1, 2)
+      tracker = IndexTracker(ax, np.abs(kspace_0.k_msk[:,:,0,0,:]),
+                                 np.abs(kspace_0.k_msk[:,:,0,1,:]))
+      fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
+      plt.show()
+
+      fig, ax = plt.subplots(1, 2)
+      tracker = IndexTracker(ax, np.abs(kspace_0.k[:,:,0,0,:]),
+                                 np.abs(kspace_0.k[:,:,0,1,:]),
+                                 vrange=[0, 1e+02])
+      fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
+      plt.show()
+
+      fig, ax = plt.subplots(1, 2)
+      tracker = IndexTracker(ax, np.abs(kspace_0.k[:,:,0,0,:] - kspace_1.k[:,:,0,0,:]),
+                                 np.abs(kspace_0.k[:,:,0,1,:] - kspace_1.k[:,:,0,1,:]),
+                                 vrange=[0, 1e+02])
+      fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
+      plt.show()
+
   if MPI_rank==0:
       fig, ax = plt.subplots(1, 2)
       tracker = IndexTracker(ax, np.abs(u[:,:,0,0,:]), np.abs(u[:,:,0,1,:]))
@@ -81,6 +103,6 @@ if __name__=="__main__":
       fig, ax = plt.subplots(1, 2)
       tracker = IndexTracker(ax, np.abs(itok(u[:,:,0,0,:])),
                              np.abs(itok(u[:,:,0,1,:])),
-                             vrange=[0, 1e+03])
+                             vrange=[0, 1e+02])
       fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
       plt.show()

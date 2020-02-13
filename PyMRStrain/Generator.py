@@ -5,40 +5,14 @@ import numpy as np
 from Connectivity import getConnectivity2, getConnectivity3, update_p2s
 from ImageBuilding import (CSPAMM_magnetizations, DENSE_magnetizations,
                            get_images)
-from PyMRStrain.Function import Function
-from PyMRStrain.Helpers import m_dirs, order
-from PyMRStrain.Image import CSPAMMImage, DENSEImage, Image
+from PyMRStrain.Helpers import m_dirs, order, cropping_ranges
+from PyMRStrain.KSpace import kspace
 from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.MPIUtilities import MPI_print, MPI_rank, MPI_size, gather_image
 from PyMRStrain.MRImaging import acq_to_res
 from PyMRStrain.PySpinBasedUtils import (check_kspace_bw, check_nb_slices,
                                          update_s2p2, update_s2p3)
-
-
-###################
-# Common Generator
-###################
-class Generator:
-  def __init__(self, parameters, Image, epi, phantom=None, debug=False):
-    self.p = parameters
-    self.Image = Image
-    self.phantom = phantom
-    self.debug = debug
-    self.epi = epi
-
-  # Obtain image
-  def get_image(self):
-    if self.Image.__class__ is CSPAMMImage:
-      o_image = get_cspamm_image(self.Image, self.epi, self.phantom, self.p, self.debug, self.fem)
-    elif self.Image__class__ is DENSEImage:
-      o_image = get_complementary_dense_image(self.Image, self.epi, self.phantom, self.p, self.debug)
-    elif self.Image.__class__ is PCSPAMMImage:
-      o_image = get_PCSPAMM_image(self.Image, self.phantom, self.p, self.debug)
-    elif self.Image.__class__ is EXACTImage:
-      o_image = get_exact_image(self.Image, self.phantom, self.p, self.debug)
-    elif self.Image.__class__ is SINEImage:
-      o_image = get_sine_image(self.Image, self.phantom, self.p, self.debug)
-    return o_image
+from PyMRStrain.Spins import Function
 
 
 #######################################
@@ -145,8 +119,8 @@ def get_sine_image(image, phantom, parameters, debug, fem=False):
   return o_image, mask
 
 
-# complementary SPAMM images
-def get_cspamm_image(image, epi, phantom, parameters, debug, fem):
+# Complementary SPAMM images
+def get_cspamm_image(image, epi, phantom, parameters, debug):
   """ Generate tagging images
   """
   # Time-steping parameters
@@ -174,6 +148,11 @@ def get_cspamm_image(image, epi, phantom, parameters, debug, fem):
   image_1 = np.zeros(size, dtype=np.complex64)
   image_2 = np.zeros(size, dtype=np.complex64)
   mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
+
+  # Output kspaces
+  k_nsa_1 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
+  k_nsa_2 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
+  k_in = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
@@ -228,13 +207,8 @@ def get_cspamm_image(image, epi, phantom, parameters, debug, fem):
   X = D['grid']
 
   # Resolutions and cropping ranges
-  fac = image.oversampling_factor
-  S = resolution
-  s = image.resolution
-  r = [int(0.5*(S[0]-fac*s[0])), int(0.5*(S[0]-fac*s[0])+fac*s[0])]
-  c = [int(0.5*(S[1]-fac*s[1])), int(0.5*(S[1]-fac*s[1])+fac*s[1])]
-  dr = [1, fac]
-  dc = [fac, 1]
+  ovrs_fac = image.oversampling_factor
+  r, c, dr, dc = cropping_ranges(image.resolution, resolution, ovrs_fac)
 
   # Spins inside the ventricle
   inside = phantom.spins.regions[:,-1]
@@ -246,13 +220,13 @@ def get_cspamm_image(image, epi, phantom, parameters, debug, fem):
   # Time stepping
   prod = 1
   upre = np.zeros([x.shape[0], dp])
-  for i in range(n_t):
+  for time_step in range(n_t):
 
     # Update time
     t += dt
 
     # Get displacements in the reference frame and deform mesh
-    u = phantom.displacement(i)
+    u = phantom.displacement(time_step)
     reshaped_u = u.vector()
 
     # Displacement in terms of pixels
@@ -279,7 +253,7 @@ def get_cspamm_image(image, epi, phantom, parameters, debug, fem):
     upre = np.copy(reshaped_u)
 
     # Get magnetization on each spin
-    (m0, m1, min) = CSPAMM_magnetizations(M, M0, alpha[i], beta, prod, t, T1,
+    (m0, m1, m_in) = CSPAMM_magnetizations(M, M0, alpha[time_step], beta, prod, t, T1,
                         ke[0:dk], x[:,0:dk])
     m0[~inside,:] = 0
     m1[~inside,:] = 0
@@ -289,7 +263,7 @@ def get_cspamm_image(image, epi, phantom, parameters, debug, fem):
         # for k in range(dk):
         #     m0[:,k] *= SP
         #     m1[:,k] *= SP
-    mags = [m0, m1, m0]
+    mags = [m0, m1, m_in]
 
     # # Debug
     # if MPI_rank==0:
@@ -316,9 +290,9 @@ def get_cspamm_image(image, epi, phantom, parameters, debug, fem):
     # using this option. Therefore the reshape must be performed accordingly
     (I, m) = get_images(mags, x_upd, voxel_coords, width, p2s)
     if debug:
-        MPI_print('Time step {:d}. Number of spins inside a voxel: {:.0f}'.format(i, MPI_size*m.max()))
+        MPI_print('Time step {:d}. Number of spins inside a voxel: {:.0f}'.format(time_step, MPI_size*m.max()))
     else:
-        MPI_print('Time step {:d}.'.format(i))
+        MPI_print('Time step {:d}.'.format(time_step))
 
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
@@ -332,36 +306,33 @@ def get_cspamm_image(image, epi, phantom, parameters, debug, fem):
       # mask[...,slice,i] = np.abs(ktoi(H*itok(m[...,slice])[r[0]:r[1]:fac, c[0]:c[1]:1]))
 
       # Complex magnetization data
-      for j in range(image_0.shape[-2]):
+      for enc_dir in range(image_0.shape[-2]):
 
         # Magnetization expressions
-        tmp0 = m0_image[...,slice,j]
-        tmp1 = m1_image[...,slice,j]
-        tmp2 = m2_image[...,slice,j]
+        tmp0 = m0_image[...,slice,enc_dir]
+        tmp1 = m1_image[...,slice,enc_dir]
+        tmp2 = m2_image[...,slice,enc_dir]
 
         # Uncorrected kspaces
-        k0 = itok(tmp0)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
-        k1 = itok(tmp1)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
-        k2 = itok(tmp2)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
+        k0 = itok(tmp0)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
+        k1 = itok(tmp1)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
+        k2 = itok(tmp2)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
 
         # kspace resizing and epi artifacts generation
-        delta_ph = image.FOV[m_dirs[j][1]]/image.phase_profiles
-        k0 = acq_to_res(k0, image.acq_matrix[m_dirs[j]], k0.shape,
-                delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
-        k1 = acq_to_res(k1, image.acq_matrix[m_dirs[j]], k1.shape,
-                delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
-        k2 = acq_to_res(k2, image.acq_matrix[m_dirs[j]], k2.shape,
-                delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
+        delta_ph = image.FOV[m_dirs[enc_dir][1]]/image.phase_profiles
+        k_nsa_1.gen_to_acq(k0, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
+        k_nsa_2.gen_to_acq(k1, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
+        k_in.gen_to_acq(k2, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
 
         # kspace cropping
-        image_0[...,slice,j,i] = ktoi(k0)
-        image_1[...,slice,j,i] = ktoi(k1)
-        image_2[...,slice,j,i] = ktoi(k2)
+        image_0[...,slice,enc_dir,time_step] = ktoi(k_nsa_1.k[...,slice,enc_dir,time_step])
+        image_1[...,slice,enc_dir,time_step] = ktoi(k_nsa_2.k[...,slice,enc_dir,time_step])
+        image_2[...,slice,enc_dir,time_step] = ktoi(k_in.k[...,slice,enc_dir,time_step])
 
     # Flip angles product
-    prod = prod*np.cos(alpha[i])
+    prod = prod*np.cos(alpha[time_step])
 
-  return image_0, image_1, image_2, mask
+  return k_nsa_1, k_nsa_2, k_in, mask
 
 
 
@@ -509,8 +480,8 @@ def get_PCSPAMM_image(image, phantom, parameters, debug=False):
   return image_0, image_1, mask
 
 
-# Generate complementary DENSE images
-def get_complementary_dense_image(image, epi, phantom, parameters, debug):
+# Complementary DENSE images
+def get_cdense_image(image, epi, phantom, parameters, debug):
   """ Generate DENSE images
   """
   # Time-steping parameters
@@ -537,6 +508,11 @@ def get_complementary_dense_image(image, epi, phantom, parameters, debug):
   image_1 = np.zeros(size, dtype=np.complex64)
   image_2 = np.zeros(size, dtype=np.complex64)
   mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
+
+  # Output kspaces
+  k_nsa_1 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
+  k_nsa_2 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
+  k_in = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
@@ -591,13 +567,8 @@ def get_complementary_dense_image(image, epi, phantom, parameters, debug):
   X = D['grid']
 
   # Resolutions and cropping ranges
-  fac = image.oversampling_factor
-  S = resolution
-  s = image.resolution
-  r = [int(0.5*(S[0]-fac*s[0])), int(0.5*(S[0]-fac*s[0])+fac*s[0])]
-  c = [int(0.5*(S[1]-fac*s[1])), int(0.5*(S[1]-fac*s[1])+fac*s[1])]
-  dr = [1, fac]
-  dc = [fac, 1]
+  ovrs_fac = image.oversampling_factor
+  r, c, dr, dc = cropping_ranges(image.resolution, resolution, ovrs_fac)
 
   # Spins inside the ventricle
   inside = phantom.spins.regions[:,-1]
@@ -609,13 +580,13 @@ def get_complementary_dense_image(image, epi, phantom, parameters, debug):
   # Time stepping
   prod = 1
   upre = np.zeros([x.shape[0], dp])
-  for i in range(n_t):
+  for time_step in range(n_t):
 
     # Update time
     t += dt
 
     # Get displacements in the reference frame and deform mesh
-    u = phantom.displacement(i)
+    u = phantom.displacement(time_step)
     reshaped_u = u.vector()
 
     # Displacement in terms of pixels
@@ -642,7 +613,7 @@ def get_complementary_dense_image(image, epi, phantom, parameters, debug):
     upre = np.copy(reshaped_u)
 
     # Get magnetization on each spin
-    (m0, m1, min) = DENSE_magnetizations(M, M0, alpha[i], prod, t, T1,
+    (m0, m1, m_in) = DENSE_magnetizations(M, M0, alpha[time_step], prod, t, T1,
                         ke[0:dk], x[:,0:dk], reshaped_u[:,0:dk])
     m0[~inside,:] = 0
     m1[~inside,:] = 0
@@ -652,7 +623,7 @@ def get_complementary_dense_image(image, epi, phantom, parameters, debug):
         # for k in range(dk):
         #     m0[:,k] *= SP
         #     m1[:,k] *= SP
-    mags = [m0, m1, m0]
+    mags = [m0, m1, m_in]
 
     # # Debug
     # if MPI_rank==0:
@@ -679,9 +650,9 @@ def get_complementary_dense_image(image, epi, phantom, parameters, debug):
     # using this option. Therefore the reshape must be performed accordingly
     (I, m) = get_images(mags, x_upd, voxel_coords, width, p2s)
     if debug:
-        MPI_print('Time step {:d}. Number of spins inside a voxel: {:.0f}'.format(i, MPI_size*m.max()))
+        MPI_print('Time step {:d}. Number of spins inside a voxel: {:.0f}'.format(time_step, MPI_size*m.max()))
     else:
-        MPI_print('Time step {:d}.'.format(i))
+        MPI_print('Time step {:d}.'.format(time_step))
 
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
@@ -695,42 +666,30 @@ def get_complementary_dense_image(image, epi, phantom, parameters, debug):
       # mask[...,slice,i] = np.abs(ktoi(H*itok(m[...,slice])[r[0]:r[1]:fac, c[0]:c[1]:1]))
 
       # Complex magnetization data
-      for j in range(image_0.shape[-2]):
+      for enc_dir in range(image_0.shape[-2]):
 
         # Magnetization expressions
-        tmp0 = m0_image[...,slice,j]
-        tmp1 = m1_image[...,slice,j]
-        tmp2 = m2_image[...,slice,j]
-
-        # # Check if images should be cropped
-        # if incr_bw:
+        tmp0 = m0_image[...,slice,enc_dir]
+        tmp1 = m1_image[...,slice,enc_dir]
+        tmp2 = m2_image[...,slice,enc_dir]
 
         # Uncorrected kspaces
-        k0 = itok(tmp0)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
-        k1 = itok(tmp1)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
-        k2 = itok(tmp2)[r[0]:r[1]:dr[j], c[0]:c[1]:dc[j]]
+        k0 = itok(tmp0)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
+        k1 = itok(tmp1)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
+        k2 = itok(tmp2)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
 
         # kspace resizing and epi artifacts generation
-        delta_ph = image.FOV[m_dirs[j][1]]/image.phase_profiles
-        k0 = acq_to_res(k0, image.acq_matrix[m_dirs[j]], k0.shape,
-                delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
-        k1 = acq_to_res(k1, image.acq_matrix[m_dirs[j]], k1.shape,
-                delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
-        k2 = acq_to_res(k2, image.acq_matrix[m_dirs[j]], k2.shape,
-                delta_ph, epi=epi, dir=m_dirs[j], oversampling=fac)
+        delta_ph = image.FOV[m_dirs[enc_dir][1]]/image.phase_profiles
+        k_nsa_1.gen_to_acq(k0, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
+        k_nsa_2.gen_to_acq(k1, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
+        k_in.gen_to_acq(k2, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
 
         # kspace cropping
-        image_0[...,slice,j,i] = ktoi(k0)
-        image_1[...,slice,j,i] = ktoi(k1)
-        image_2[...,slice,j,i] = ktoi(k2)
-
-        # else:
-        #
-        #   image_0[...,slice,j,i] = tmp0
-        #   image_1[...,slice,j,i] = tmp1
-        #   image_2[...,slice,j,i] = tmp2
+        image_0[...,slice,enc_dir,time_step] = ktoi(k_nsa_1.k[...,slice,enc_dir,time_step])
+        image_1[...,slice,enc_dir,time_step] = ktoi(k_nsa_2.k[...,slice,enc_dir,time_step])
+        image_2[...,slice,enc_dir,time_step] = ktoi(k_in.k[...,slice,enc_dir,time_step])
 
     # Flip angles product
-    prod = prod*np.cos(alpha[i])
+    prod = prod*np.cos(alpha[time_step])
 
-  return image_0, image_1, image_2, mask
+  return k_nsa_1, k_nsa_2, k_in, mask

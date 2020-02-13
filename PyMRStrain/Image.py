@@ -1,4 +1,5 @@
 import numpy as np
+from PyMRStrain.Generator import get_cdense_image, get_cspamm_image
 
 
 # Base Image object
@@ -37,6 +38,10 @@ class ImageBase(object):
     self.oversampling_factor = oversampling_factor
     self.phase_profiles = phase_profiles
     self.acq_matrix = np.array([oversampling_factor*resolution[0], phase_profiles])
+
+    # Check input resolutions
+    ass_err = 'The generation process can only handle square resolutions'
+    assert resolution[0] == resolution[1], ass_err
 
   # Flip angles
   def flip_angle_t(self, alpha):
@@ -98,6 +103,9 @@ class DENSEImage(ImageBase):
     self.encoding_frequency = encoding_frequency
     super(DENSEImage, self).__init__(**kwargs)
 
+  def generate(self, epi, phantom, parameters, debug):
+      return get_cdense_image(self, epi, phantom, parameters, debug)
+
 
 # EXACT Image
 class EXACTImage(ImageBase):
@@ -114,6 +122,9 @@ class CSPAMMImage(ImageBase):
     self.encoding_angle = encoding_angle
     self.taglines = taglines
     super(CSPAMMImage, self).__init__(**kwargs)
+
+  def generate(self, epi, phantom, parameters, debug):
+      return get_cspamm_image(self, epi, phantom, parameters, debug)
 
 
 # SINE Image

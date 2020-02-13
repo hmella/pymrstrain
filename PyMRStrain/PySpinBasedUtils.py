@@ -1,5 +1,4 @@
 import numpy as np
-from PyMRStrain.Image import *
 from PyMRStrain.MPIUtilities import MPI_print
 
 

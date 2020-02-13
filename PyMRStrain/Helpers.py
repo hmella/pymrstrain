@@ -25,3 +25,18 @@ def build_idx(n_lines, acq_matrix, dir):
         idx[-1] = np.prod(acq_matrix)
 
     return idx
+
+# Cropping ranges to correct the shape of generated images
+def cropping_ranges(im_resolution, gen_resolution, ovrs_fac):
+
+    # Abbreviations
+    S = gen_resolution
+    s = im_resolution
+
+    # Ranges
+    r = [int(0.5*(S[0]-ovrs_fac*s[0])), int(0.5*(S[0]-ovrs_fac*s[0])+ovrs_fac*s[0])]
+    c = [int(0.5*(S[1]-ovrs_fac*s[1])), int(0.5*(S[1]-ovrs_fac*s[1])+ovrs_fac*s[1])]
+    dr = [1, ovrs_fac]
+    dc = [ovrs_fac, 1]    
+
+    return r, c, dr, dc

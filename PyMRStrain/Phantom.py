@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from PyMRStrain.Function import Function
+from PyMRStrain.Spins import Function
 from PyMRStrain.IO import write_vtk
 from scipy.ndimage.filters import gaussian_filter
 

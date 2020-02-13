@@ -6,8 +6,9 @@ from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.MPIUtilities import MPI_print, MPI_rank
 
 
-# Transforms the kspace from the acquisition size (acq_matrix)
-# to the corresponding resolution
+# Transforms the kspace from the generation size (k.shape),
+# passing throught the acquisition matrix (acq_matrix),
+# to the final resolution
 def acq_to_res(k, acq_matrix, resolution, delta, epi=None, dir=[0,1],
     oversampling=2):
 
@@ -74,7 +75,6 @@ class EPI:
 
         # Parameters
         df_off = self.off_resonance                 # off-resonance frequency
-        # dt_esp = self.acq_matrix[1]*1.0/(2.0*k_max) # temporal echo spacing
         dt_esp = self.acq_matrix[1]*1.0/(2.0*self.receiver_bw) # temporal echo spacing
 
         # Spatial shifts
