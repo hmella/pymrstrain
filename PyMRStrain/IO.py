@@ -17,7 +17,7 @@ def load_pyobject(filename):
         obj = pickle.load(output)
     return obj
 
-# Write scalar to vtk
+# Write Functions to vtk
 def write_vtk(functions, path=None, name=None):
 
     # Verify if output folder exists
@@ -52,6 +52,7 @@ def write_vtk(functions, path=None, name=None):
     meshio.write(path, mesh)
 
 
+# Export images
 def export_image(data, path=None, name=None):
 
     if name is None:
@@ -61,6 +62,7 @@ def export_image(data, path=None, name=None):
     savemat(path+'.mat',{name: data})
 
 
+# Scale images
 def scale_image(I,mag=True,pha=False,real=False,compl=False):
 
     # slope and intercept
