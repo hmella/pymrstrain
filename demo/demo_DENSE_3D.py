@@ -55,9 +55,9 @@ if __name__=="__main__":
   print(end-start)
 
   # Add noise to images
-  sigma = 0.5e-2
-  kspace_0.k = add_noise_to_DENSE_(kspace_0.k, kspace_0.k_msk, sigma=sigma)
-  kspace_1.k = add_noise_to_DENSE_(kspace_1.k, kspace_1.k_msk, sigma=sigma)
+  sigma = 0.05
+  kspace_0.k = add_cpx_noise(kspace_0.k, mask=kspace_0.k_msk, sigma=sigma)
+  kspace_1.k = add_cpx_noise(kspace_1.k, mask=kspace_1.k_msk, sigma=sigma)
 
   # kspace to image
   un0 = kspace_0.to_img()

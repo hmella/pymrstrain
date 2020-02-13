@@ -6,13 +6,13 @@ import time
 if __name__=="__main__":
 
   # Parameters
-  # p = Parameters(time_steps=18)
-  # # p['phi_en'] = 20*np.pi/180
-  # # p['phi_ep'] = 0*np.pi/180
-  # # p['R_inner'] = p['R_en']
-  # # p['R_outer'] = p['R_ep']
-  # p['xi'] = 0.5
-  # np.save("p.npy", p)
+  p = Parameters(time_steps=18)
+  p['phi_en'] = 20*np.pi/180
+  p['phi_ep'] = 0*np.pi/180
+  # p['R_inner'] = p['R_en']
+  # p['R_outer'] = p['R_ep']
+  p['xi'] = 0.5
+  np.save("p.npy", p)
   p=np.load('p.npy',allow_pickle=True).item()
 
   # Field inhomogeneity
@@ -57,9 +57,9 @@ if __name__=="__main__":
   print(end-start)
 
   # Add noise to images
-  sigma = 0.5e-2
-  kspace_0.k = add_noise_to_SPAMM_(kspace_0.k, kspace_0.k_msk, sigma=sigma)
-  kspace_1.k = add_noise_to_SPAMM_(kspace_1.k, kspace_1.k_msk, sigma=sigma)
+  sigma = 0.05
+  kspace_0.k = add_cpx_noise(kspace_0.k, mask=kspace_0.k_msk, sigma=sigma)
+  kspace_1.k = add_cpx_noise(kspace_1.k, mask=kspace_1.k_msk, sigma=sigma)
 
   # kspace to image
   un0 = kspace_0.to_img()
@@ -80,14 +80,14 @@ if __name__=="__main__":
       fig, ax = plt.subplots(1, 2)
       tracker = IndexTracker(ax, np.abs(kspace_0.k[:,:,0,0,:]),
                                  np.abs(kspace_0.k[:,:,0,1,:]),
-                                 vrange=[0, 1e+02])
+                                 vrange=[0, 5e+02])
       fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
       plt.show()
 
       fig, ax = plt.subplots(1, 2)
       tracker = IndexTracker(ax, np.abs(kspace_0.k[:,:,0,0,:] - kspace_1.k[:,:,0,0,:]),
                                  np.abs(kspace_0.k[:,:,0,1,:] - kspace_1.k[:,:,0,1,:]),
-                                 vrange=[0, 1e+02])
+                                 vrange=[0, 5e+02])
       fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
       plt.show()
 
@@ -105,6 +105,6 @@ if __name__=="__main__":
       fig, ax = plt.subplots(1, 2)
       tracker = IndexTracker(ax, np.abs(itok(u[:,:,0,0,:])),
                              np.abs(itok(u[:,:,0,1,:])),
-                             vrange=[0, 1e+02])
+                             vrange=[0, 5e+02])
       fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
       plt.show()
