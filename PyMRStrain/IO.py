@@ -11,11 +11,13 @@ def save_pyobject(obj, filename):
     with open(filename, 'wb') as output:
         pickle.dump(obj, output, -1)
 
+
 # Load Python objects
 def load_pyobject(filename):
     with open(filename, 'rb') as output:
         obj = pickle.load(output)
     return obj
+
 
 # Write Functions to vtk
 def write_vtk(functions, path=None, name=None):
