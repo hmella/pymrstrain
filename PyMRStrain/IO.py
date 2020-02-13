@@ -1,9 +1,21 @@
 import os
+import pickle
 
 import meshio
 import numpy as np
 from scipy.io import savemat
 
+
+# Save Python objects
+def save_pyobject(obj, filename):
+    with open(filename, 'wb') as output:
+        pickle.dump(obj, output, -1)
+
+# Load Python objects
+def load_pyobject(filename):
+    with open(filename, 'rb') as output:
+        obj = pickle.load(output)
+    return obj
 
 # Write scalar to vtk
 def write_vtk(functions, path=None, name=None):
