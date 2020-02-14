@@ -14,7 +14,6 @@ class ImageBase(object):
                M0=1.0, M=1.0,
                off_resonance=[],
                kspace_factor=6.5,
-               slice_following = False,
                slice_thickness = [],
                oversampling_factor=2,
                phase_profiles=64):
@@ -30,7 +29,6 @@ class ImageBase(object):
     self.grid = self.generate_grid()
     self.off_resonance = off_resonance
     self.kspace_factor = kspace_factor
-    self.slice_following = slice_following
     if slice_thickness != []:
         self.slice_thickness = slice_thickness
     else:
@@ -74,7 +72,7 @@ class ImageBase(object):
 
     # np.meshgrid generation
     X = [pxsz[i]*np.linspace(0,resolution[i]-1,resolution[i]) + self.center[i] for i in range(d)]
-    X = [X[i] - X[i].mean() if i<2 else X[i] for i in range(d)]
+    X = [X[i] - X[i].mean() if resolution[i]>1 else X[i] for i in range(d)]
 
     if d == 2:
       grid = np.meshgrid(X[0], X[1], indexing='ij', sparse=sparse)

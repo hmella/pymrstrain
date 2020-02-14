@@ -179,8 +179,8 @@ def get_cspamm_image(image, epi, phantom, parameters, debug):
   # Check if the number of slices needs to be increased
   # for the generation of the connectivity when generating
   # Slice-Following (SF) images
-  if image.slice_following:
-      Xf, SL = check_nb_slices(Xf, x, width, res)
+  # if image.slice_following:
+  #     Xf, SL = check_nb_slices(Xf, x, width, res)
 
   # Connectivity (this is done just once)
   voxel_coords = [X.flatten('F') for X in Xf]
@@ -195,8 +195,8 @@ def get_cspamm_image(image, epi, phantom, parameters, debug):
   x_rel = x[:, 0:dp] - corners
 
   # List of spins inside the excited slice
-  if image.slice_following:
-      voxel_coords  = [X.flatten('F') for X in D['grid']] # reset voxel coords
+  # if image.slice_following:
+  #     voxel_coords  = [X.flatten('F') for X in D['grid']] # reset voxel coords
 
   # Magnetization images and spins magnetizations
   m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
@@ -212,10 +212,8 @@ def get_cspamm_image(image, epi, phantom, parameters, debug):
 
   # Spins inside the ventricle
   inside = phantom.spins.regions[:,-1]
-  if image.slice_following:
-      sf = (x[:,2] < image.center[2] + 0.5*image.slice_thickness)
-      sf *= (x[:,2] > image.center[2] - 0.5*image.slice_thickness)
-      # SP = slice_profile(x[:,2], image.center[2], image.slice_thickness)
+  exc_slice  = (x[:,2] < image.center[2] + 0.5*image.slice_thickness)
+  exc_slice *= (x[:,2] > image.center[2] - 0.5*image.slice_thickness)
 
   # Time stepping
   prod = 1
@@ -238,10 +236,11 @@ def get_cspamm_image(image, epi, phantom, parameters, debug):
     globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution)
 
     # Update pixel-to-spins connectivity
-    if image.slice_following:
-      p2s = update_p2s(s2p-SL, excited_spins, nr_voxels)
-    else:
-      p2s = update_p2s(s2p, excited_spins, nr_voxels)
+    # if image.slice_following:
+    #   p2s = update_p2s(s2p-SL, excited_spins, nr_voxels)
+    # else:
+      # p2s = update_p2s(s2p, excited_spins, nr_voxels)
+    p2s = update_p2s(s2p, excited_spins, nr_voxels)
 
     # Update relative spins positions
     x_rel[:,:] = subpixel_u
@@ -255,35 +254,26 @@ def get_cspamm_image(image, epi, phantom, parameters, debug):
     # Get magnetization on each spin
     (m0, m1, m_in) = CSPAMM_magnetizations(M, M0, alpha[time_step], beta, prod, t, T1,
                         ke[0:dk], x[:,0:dk])
-    m0[~inside,:] = 0
-    m1[~inside,:] = 0
-    if image.slice_following:
-        m0[~sf,:] = 0
-        m1[~sf,:] = 0
-        # for k in range(dk):
-        #     m0[:,k] *= SP
-        #     m1[:,k] *= SP
+    m0[(~inside + ~exc_slice),:] = 0
+    m1[(~inside + ~exc_slice),:] = 0
     mags = [m0, m1, m_in]
 
     # # Debug
     # if MPI_rank==0:
     #     from PyMRStrain.IO import write_vtk
     #     from PyMRStrain.Math import wrap
-    #     s2p_fun = Function(u.spins, dim=1)
-    #     s2p_fun.vector()[:] = 0
-    #     slicef = Function(u.spins, dim=2)
-    #     slicef.vector()[:] = 0
+    #     S2P = Function(u.spins, dim=1)  # spins-to-pixel connectivity
+    #     EXC = Function(u.spins, dim=1)  # excited slice (spins)
     #     rot = Function(u.spins, dim=1)
     #     theta = np.arctan(x[:,1]/x[:,0])
     #     rot.vector()[:] = wrap(theta.reshape((-1,1)), np.pi/8)
+    #     EXC.vector()[exc_slice] = 1
     #     if image.slice_following:
-    #       slicef.vector()[sf] = 1
-    #       s2p_fun.vector()[excited_spins] = (s2p-SL).reshape((-1,1))
-    #       write_vtk([u,s2p_fun,slicef,rot], path='output/uu_SF_{:04d}.vtu'.format(i), name=['u','s2p','ex_slice','rot'])
+    #       S2P.vector()[excited_spins] = s2p.reshape((-1,1))
+    #       write_vtk([u,S2P,EXC,rot], path='output/SF_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
     #     else:
-    #       slicef.vector()[:] = 1
-    #       s2p_fun.vector()[excited_spins] = s2p.reshape((-1,1))
-    #       write_vtk([u,s2p_fun,slicef,rot], path='output/uu_{:04d}.vtu'.format(i), name=['u','s2p','ex_slice','rot'])
+    #       S2P.vector()[excited_spins] = s2p.reshape((-1,1))
+    #       write_vtk([u,S2P,EXC,rot], path='output/Normal_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
 
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
@@ -539,8 +529,8 @@ def get_cdense_image(image, epi, phantom, parameters, debug):
   # Check if the number of slices needs to be increased
   # for the generation of the connectivity when generating
   # Slice-Following (SF) images
-  if image.slice_following:
-      Xf, SL = check_nb_slices(Xf, x, width, res)
+  # if image.slice_following:
+  #     Xf, SL = check_nb_slices(Xf, x, width, res)
 
   # Connectivity (this is done just once)
   voxel_coords = [X.flatten('F') for X in Xf]
@@ -555,8 +545,8 @@ def get_cdense_image(image, epi, phantom, parameters, debug):
   x_rel = x[:, 0:dp] - corners
 
   # List of spins inside the excited slice
-  if image.slice_following:
-      voxel_coords  = [X.flatten('F') for X in D['grid']] # reset voxel coords
+  # if image.slice_following:
+  #     voxel_coords  = [X.flatten('F') for X in D['grid']] # reset voxel coords
 
   # Magnetization images and spins magnetizations
   m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
@@ -572,10 +562,8 @@ def get_cdense_image(image, epi, phantom, parameters, debug):
 
   # Spins inside the ventricle
   inside = phantom.spins.regions[:,-1]
-  if image.slice_following:
-      sf = (x[:,2] < image.center[2] + 0.5*image.slice_thickness)
-      sf *= (x[:,2] > image.center[2] - 0.5*image.slice_thickness)
-      # SP = slice_profile(x[:,2], image.center[2], image.slice_thickness)
+  exc_slice  = (x[:,2] < image.center[2] + 0.5*image.slice_thickness)
+  exc_slice *= (x[:,2] > image.center[2] - 0.5*image.slice_thickness)
 
   # Time stepping
   prod = 1
@@ -598,10 +586,11 @@ def get_cdense_image(image, epi, phantom, parameters, debug):
     globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution)
 
     # Update pixel-to-spins connectivity
-    if image.slice_following:
-      p2s = update_p2s(s2p-SL, excited_spins, nr_voxels)
-    else:
-      p2s = update_p2s(s2p, excited_spins, nr_voxels)
+    # if image.slice_following:
+    #   p2s = update_p2s(s2p-SL, excited_spins, nr_voxels)
+    # else:
+    #   p2s = update_p2s(s2p, excited_spins, nr_voxels)
+    p2s = update_p2s(s2p, excited_spins, nr_voxels)
 
     # Update relative spins positions
     x_rel[:,:] = subpixel_u
@@ -615,35 +604,26 @@ def get_cdense_image(image, epi, phantom, parameters, debug):
     # Get magnetization on each spin
     (m0, m1, m_in) = DENSE_magnetizations(M, M0, alpha[time_step], prod, t, T1,
                         ke[0:dk], x[:,0:dk], reshaped_u[:,0:dk])
-    m0[~inside,:] = 0
-    m1[~inside,:] = 0
-    if image.slice_following:
-        m0[~sf,:] = 0
-        m1[~sf,:] = 0
-        # for k in range(dk):
-        #     m0[:,k] *= SP
-        #     m1[:,k] *= SP
+    m0[(~inside + ~exc_slice),:] = 0
+    m1[(~inside + ~exc_slice),:] = 0
     mags = [m0, m1, m_in]
 
     # # Debug
     # if MPI_rank==0:
     #     from PyMRStrain.IO import write_vtk
     #     from PyMRStrain.Math import wrap
-    #     s2p_fun = Function(u.spins, dim=1)
-    #     s2p_fun.vector()[:] = 0
-    #     slicef = Function(u.spins, dim=2)
-    #     slicef.vector()[:] = 0
+    #     S2P = Function(u.spins, dim=1)  # spins-to-pixel connectivity
+    #     EXC = Function(u.spins, dim=1)  # excited slice (spins)
     #     rot = Function(u.spins, dim=1)
     #     theta = np.arctan(x[:,1]/x[:,0])
     #     rot.vector()[:] = wrap(theta.reshape((-1,1)), np.pi/8)
+    #     EXC.vector()[exc_slice] = 1
     #     if image.slice_following:
-    #       slicef.vector()[sf] = 1
-    #       s2p_fun.vector()[excited_spins] = (s2p-SL).reshape((-1,1))
-    #       write_vtk([u,s2p_fun,slicef,rot], path='output/uu_SF_{:04d}.vtu'.format(i), name=['u','s2p','ex_slice','rot'])
+    #       S2P.vector()[excited_spins] = s2p.reshape((-1,1))
+    #       write_vtk([u,S2P,EXC,rot], path='output/SF_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
     #     else:
-    #       slicef.vector()[:] = 1
-    #       s2p_fun.vector()[excited_spins] = s2p.reshape((-1,1))
-    #       write_vtk([u,s2p_fun,slicef,rot], path='output/uu_{:04d}.vtu'.format(i), name=['u','s2p','ex_slice','rot'])
+    #       S2P.vector()[excited_spins] = s2p.reshape((-1,1))
+    #       write_vtk([u,S2P,EXC,rot], path='output/Normal_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
 
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
