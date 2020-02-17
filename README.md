@@ -1,22 +1,77 @@
 # PyMRStrain
 
-A Python library for Magnetic Resonance strain phantoms generation
+PyMRStrain is a open source generator of synthetic Complementary SPAMM and DENSE images.
 
-### TODO list ###
-* Create Parameter class
-* Create Noise class *
+#### Get started
+To generate CSPAMM images, in Python simply do
+```python
+from PyMRStrain import *
+import numpy as np
 
-### Guidelines ###
+# Parameters
+p = Parameters(time_steps=18)
 
-* This project ...
-* Version 0.1
+# Encoding frequency
+ke = 0.07               # encoding frequency [cycles/mm]
+ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
 
-### How do I get set up? ###
+# Create complimentary image
+I = CSPAMMImage(FOV=np.array([0.2, 0.2, 0.04]),
+          center=np.array([0.0,0.0,0.03]),
+          resolution=np.array([100, 100, 1]),
+          encoding_frequency=np.array([ke,ke,0]),
+          T1=0.85,
+          flip_angle=15*np.pi/180,
+          encoding_angle=90*np.pi/180,
+          off_resonance=phi,
+          kspace_factor=15,
+          slice_thickness=0.008,
+          oversampling_factor=2,
+          phase_profiles=50)
 
-	git clone https://bitbucket.org/hernanmella/pymrstrain
-	cd pymrstrain && python3 setup.py install
+# Spins
+spins = Spins(Nb_samples=1000000, parameters=p)
 
-### Dependencies ###
-* [meshio: https://github.com/nschloe/meshio](https://github.com/nschloe/meshio)
-* [SciPy:  https://www.scipy.org/](https://www.scipy.org/)
-* [NumPy:  http://www.numpy.org/](http://www.numpy.org/)
+# Create phantom object
+phantom = Phantom(spins, p, patient=False, write_vtk=False)
+
+# EPI acquisiton object
+artifact = EPI(receiver_bw=128*1000,
+               echo_train_length=10,
+               off_resonance=200,
+               acq_matrix=I.acq_matrix,
+               spatial_shift='top-down')
+
+# Generate images
+kspace_0, kspace_1, kspace_in, mask = I.generate(artifact, phantom, p)
+
+# Complementary images
+u = u0 - u1
+
+# Plots
+if MPI_rank==0:
+    multi_slice_viewer(np.abs(u[:,:,0,0,:]))
+    multi_slice_viewer(np.abs(u[:,:,0,1,:]))
+    multi_slice_viewer(np.abs(kspace_0.k[:,:,0,0,:]))
+    multi_slice_viewer(np.abs(kspace_0.k[:,:,0,1,:]))
+```
+
+and run from a terminal with
+```bash
+mpirun -n nb_proc python3 foo.py
+```
+
+#### Installation
+```bash
+git clone https://github.com/hernanmella/pymrstrain
+cd pymrstrain
+python3 setup.py install
+```
+
+#### Dependencies
+* Eigen: [https://github.com/eigenteam/eigen-git-mirror.git](https://github.com/eigenteam/eigen-git-mirror.git)
+* matplotlib: [https://github.com/matplotlib/matplotlib](https://github.com/matplotlib/matplotlib)
+* meshio: [https://github.com/nschloe/meshio](https://github.com/nschloe/meshio)
+* MPI4py: [https://github.com/mpi4py/mpi4py](https://github.com/mpi4py/mpi4py)
+* pybind11: [https://github.com/pybind/pybind11](https://github.com/pybind/pybind11)
+* SciPy: [https://www.scipy.org/](https://www.scipy.org/)
