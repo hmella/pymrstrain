@@ -54,7 +54,7 @@ if __name__=="__main__":
   print(end-start)
 
   # Add noise to images
-  sigma = 0.025*1e-32
+  sigma = 0.025
   kspace_0.k = add_cpx_noise(kspace_0.k, mask=kspace_0.k_msk, sigma=sigma)
   kspace_1.k = add_cpx_noise(kspace_1.k, mask=kspace_1.k_msk, sigma=sigma)
 
@@ -68,13 +68,7 @@ if __name__=="__main__":
 
   # Plot
   if MPI_rank==0:
-      fig, ax = plt.subplots(1, 2)
-      tracker = IndexTracker(ax, np.abs(u[:,:,0,0,:]), np.angle(u[:,:,0,0,:]))
-      fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
-      plt.show()
-
-      fig, ax = plt.subplots(1, 2)
-      tracker = IndexTracker(ax, np.abs(kspace_0.k[:,:,0,0,:]),
-                             np.abs(kspace_0.k[:,:,0,1,:]))
-      fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
-      plt.show()
+      multi_slice_viewer(np.abs(u[:,:,0,0,:]))
+      multi_slice_viewer(np.abs(u[:,:,0,1,:]))
+      multi_slice_viewer(np.abs(kspace_0.k[:,:,0,0,:]))
+      multi_slice_viewer(np.abs(kspace_0.k[:,:,0,1,:]))
