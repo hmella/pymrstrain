@@ -40,15 +40,13 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
 
   # Output image
   size = np.append(image.resolution, [dk, n_t])
-  image_0 = np.zeros(size, dtype=np.complex64)
-  image_1 = np.zeros(size, dtype=np.complex64)
-  image_2 = np.zeros(size, dtype=np.complex64)
   mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
 
   # Output kspaces
   k_nsa_1 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
   k_nsa_2 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
   k_in = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
+  k_mask = kspace(size, image.acq_matrix, image.oversampling_factor, None)
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
@@ -189,10 +187,10 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
     for slice in range(resolution[2]):
 
       # Update mask
-      # mask[...,slice,i] = np.abs(ktoi(H*itok(m[...,slice])[r[0]:r[1]:fac, c[0]:c[1]:1]))
+      # mask[...,slice,i] = np.abs(ktoi(itok(m[...,slice])[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]))
 
       # Complex magnetization data
-      for enc_dir in range(image_0.shape[-2]):
+      for enc_dir in range(dk):
 
         # Magnetization expressions
         tmp0 = m0_image[...,slice,enc_dir]
@@ -209,11 +207,6 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
         k_nsa_1.gen_to_acq(k0, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
         k_nsa_2.gen_to_acq(k1, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
         k_in.gen_to_acq(k2, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
-
-        # kspace cropping
-        image_0[...,slice,enc_dir,time_step] = ktoi(k_nsa_1.k[...,slice,enc_dir,time_step])
-        image_1[...,slice,enc_dir,time_step] = ktoi(k_nsa_2.k[...,slice,enc_dir,time_step])
-        image_2[...,slice,enc_dir,time_step] = ktoi(k_in.k[...,slice,enc_dir,time_step])
 
     # Flip angles product
     prod = prod*np.cos(alpha[time_step])
@@ -245,9 +238,6 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
 
   # Output image
   size = np.append(image.resolution, [dk, n_t])
-  image_0 = np.zeros(size, dtype=np.complex64)
-  image_1 = np.zeros(size, dtype=np.complex64)
-  image_2 = np.zeros(size, dtype=np.complex64)
   mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
 
   # Output kspaces
@@ -399,7 +389,7 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
       # mask[...,slice,i] = np.abs(ktoi(H*itok(m[...,slice])[r[0]:r[1]:fac, c[0]:c[1]:1]))
 
       # Complex magnetization data
-      for enc_dir in range(image_0.shape[-2]):
+      for enc_dir in range(dk):
 
         # Magnetization expressions
         tmp0 = m0_image[...,slice,enc_dir]
@@ -416,11 +406,6 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
         k_nsa_1.gen_to_acq(k0, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
         k_nsa_2.gen_to_acq(k1, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
         k_in.gen_to_acq(k2, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
-
-        # kspace cropping
-        image_0[...,slice,enc_dir,time_step] = ktoi(k_nsa_1.k[...,slice,enc_dir,time_step])
-        image_1[...,slice,enc_dir,time_step] = ktoi(k_nsa_2.k[...,slice,enc_dir,time_step])
-        image_2[...,slice,enc_dir,time_step] = ktoi(k_in.k[...,slice,enc_dir,time_step])
 
     # Flip angles product
     prod = prod*np.cos(alpha[time_step])
@@ -551,12 +536,8 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
     #     theta = np.arctan(x[:,1]/x[:,0])
     #     rot.vector()[:] = wrap(theta.reshape((-1,1)), np.pi/8)
     #     EXC.vector()[exc_slice] = 1
-    #     if image.slice_following:
-    #       S2P.vector()[excited_spins] = s2p.reshape((-1,1))
-    #       write_vtk([u,S2P,EXC,rot], path='output/SF_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
-    #     else:
-    #       S2P.vector()[excited_spins] = s2p.reshape((-1,1))
-    #       write_vtk([u,S2P,EXC,rot], path='output/Normal_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
+    #     S2P.vector()[excited_spins] = s2p.reshape((-1,1))
+    #     write_vtk([u,S2P,EXC,rot], path='output/Normal_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
 
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
