@@ -1,7 +1,7 @@
-from PyMRStrain import *
-import matplotlib.pyplot as plt
-import numpy as np
 import time
+
+import numpy as np
+from PyMRStrain import *
 
 if __name__=="__main__":
 
@@ -32,7 +32,7 @@ if __name__=="__main__":
             kspace_factor=15,
             slice_thickness=0.008,
             oversampling_factor=1,
-            phase_profiles=40)
+            phase_profiles=44)
 
   # Spins
   spins = Spins(Nb_samples=100000, parameters=p)
@@ -42,33 +42,33 @@ if __name__=="__main__":
 
   # EPI acquisiton object
   epi = EPI(receiver_bw=128*1000,
-            echo_train_length=10,
+            echo_train_length=11,
             off_resonance=200,
             acq_matrix=I.acq_matrix,
             spatial_shift='top-down')
 
   # Generate images
   start = time.time()
-  kspace_0, kspace_1, kspace_in, mask = I.generate(epi, phantom, p, debug=True)
+  NSA_1, NSA_2, REF, mask = I.generate(epi, phantom, p, debug=True)
   end = time.time()
   print(end-start)
 
   # Add noise to images
   sigma = 0.025
-  kspace_0.k = add_cpx_noise(kspace_0.k, mask=kspace_0.k_msk, sigma=sigma)
-  kspace_1.k = add_cpx_noise(kspace_1.k, mask=kspace_1.k_msk, sigma=sigma)
+  NSA_1.k = add_cpx_noise(NSA_1.k, mask=NSA_1.k_msk, sigma=sigma)
+  NSA_2.k = add_cpx_noise(NSA_2.k, mask=NSA_2.k_msk, sigma=sigma)
 
   # kspace to image
-  un0 = kspace_0.to_img()
-  un1 = kspace_1.to_img() 
-  unin = kspace_in.to_img()
+  In1 = NSA_1.to_img()
+  In2 = NSA_2.to_img() 
+  Inin = REF.to_img()
 
   # Corrected image
-  u = un0 - un1
+  I = In1 - In2
 
   # Plot
   if MPI_rank==0:
-      multi_slice_viewer(np.abs(u[:,:,0,0,:]))
-      multi_slice_viewer(np.abs(u[:,:,0,1,:]))
-      multi_slice_viewer(np.abs(kspace_0.k[:,:,0,0,:]))
-      multi_slice_viewer(np.abs(kspace_0.k[:,:,0,1,:]))
+      multi_slice_viewer(np.abs(I[:,:,0,0,:]))
+      multi_slice_viewer(np.abs(I[:,:,0,1,:]))
+      multi_slice_viewer(np.abs(NSA_1.k[:,:,0,0,:]))
+      multi_slice_viewer(np.abs(NSA_1.k[:,:,0,1,:]))
