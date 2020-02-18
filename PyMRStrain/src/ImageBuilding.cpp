@@ -157,7 +157,7 @@ Eigen::MatrixXcf EXACT_magnetizations(const Eigen::VectorXf &ke,
 
     // Build magnetizations
     for (int i=0; i<ke.size(); i++){
-        Mxy.array()(Eigen::all,i) += (-cu*ke(i)*u(Eigen::all,i)).array().exp();
+        Mxy.array()(Eigen::all,i) += (cu*ke(i)*u(Eigen::all,i)).array().exp();
     }
 
     return Mxy;
