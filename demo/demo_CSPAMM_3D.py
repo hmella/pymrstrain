@@ -51,7 +51,7 @@ if __name__=="__main__":
 
   # Generate images
   start = time.time()
-  kspace_0, kspace_1, kspace_in, mask = I.generate(epi, phantom, p, True)
+  kspace_0, kspace_1, kspace_in, mask = I.generate(epi, phantom, p, debug=True)
   end = time.time()
   print(end-start)
 
