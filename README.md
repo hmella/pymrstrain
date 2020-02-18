@@ -60,6 +60,10 @@ and run from a terminal with
 ```bash
 mpirun -n nb_proc python3 foo.py
 ```
+Resulting images look like this:
+| CSPAMM image with epi-like artifacts  | CSPAMM kspace with epi-like artifacts |
+| ------------- | ------------- |
+| ![CSPAMM image](/screenshots/Figure_1.png "CSPAMM image with epi-like artifacts")  | ![CSPAMM image](/screenshots/Figure_2.png "CSPAMM image with epi-like artifacts")  |
 
 #### Installation
 ```bash
@@ -69,9 +73,9 @@ python3 setup.py install
 ```
 
 #### Dependencies
-* Eigen: [https://github.com/eigenteam/eigen-git-mirror.git](https://github.com/eigenteam/eigen-git-mirror.git)
-* matplotlib: [https://github.com/matplotlib/matplotlib](https://github.com/matplotlib/matplotlib)
-* meshio: [https://github.com/nschloe/meshio](https://github.com/nschloe/meshio)
-* MPI4py: [https://github.com/mpi4py/mpi4py](https://github.com/mpi4py/mpi4py)
-* pybind11: [https://github.com/pybind/pybind11](https://github.com/pybind/pybind11)
-* SciPy: [https://www.scipy.org/](https://www.scipy.org/)
+- *Eigen:* [https://github.com/eigenteam/eigen-git-mirror.git](https://github.com/eigenteam/eigen-git-mirror.git)
+- *matplotlib:* [https://github.com/matplotlib/matplotlib](https://github.com/matplotlib/matplotlib)
+- *meshio:* [https://github.com/nschloe/meshio](https://github.com/nschloe/meshio)
+- *MPI4py:* [https://github.com/mpi4py/mpi4py](https://github.com/mpi4py/mpi4py)
+- *pybind11:* [https://github.com/pybind/pybind11](https://github.com/pybind/pybind11)
+- *SciPy:* [https://www.scipy.org/](https://www.scipy.org/)
