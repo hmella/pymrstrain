@@ -15,7 +15,8 @@ def multi_slice_viewer(volume):
     fig, ax = plt.subplots()
     ax.volume = volume
     ax.index = 0
-    ax.imshow(volume[...,ax.index], cmap=plt.get_cmap('Greys_r'))
+    ax.imshow(volume[...,ax.index], cmap=plt.get_cmap('Greys_r'),
+              vmin=volume.min(), vmax=volume.max())
     ax.invert_yaxis()
     fig.canvas.mpl_connect('key_press_event', process_key)
     plt.show()
