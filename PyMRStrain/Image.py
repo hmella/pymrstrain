@@ -1,5 +1,6 @@
 import numpy as np
-from PyMRStrain.Generator import get_cdense_image, get_cspamm_image
+from PyMRStrain.Generator import (get_cdense_image, get_cspamm_image,
+                                  get_exact_image)
 
 
 # Base Image object
@@ -101,14 +102,18 @@ class DENSEImage(ImageBase):
     self.encoding_frequency = encoding_frequency
     super(DENSEImage, self).__init__(**kwargs)
 
-  def generate(self, epi, phantom, parameters, debug):
+  def generate(self, epi, phantom, parameters, debug=False):
       return get_cdense_image(self, epi, phantom, parameters, debug)
 
 
 # EXACT Image
 class EXACTImage(ImageBase):
-  def __init__(self,**kwargs):
+  def __init__(self,encoding_frequency=None,**kwargs):
+    self.encoding_frequency = encoding_frequency
     super(EXACTImage, self).__init__(**kwargs)
+
+  def generate(self, epi, phantom, parameters, debug=False):
+      return get_exact_image(self, epi, phantom, parameters, debug)
 
 
 # CSPAMM Image
@@ -121,7 +126,7 @@ class CSPAMMImage(ImageBase):
     self.taglines = taglines
     super(CSPAMMImage, self).__init__(**kwargs)
 
-  def generate(self, epi, phantom, parameters, debug):
+  def generate(self, epi, phantom, parameters, debug=False):
       return get_cspamm_image(self, epi, phantom, parameters, debug)
 
 
