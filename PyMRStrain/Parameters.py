@@ -33,8 +33,8 @@ def Parameters(time_steps=20):
         S_en   = np.random.uniform(0.6, 0.8)                      # end-systolic endo. scaling
         S_ar   = np.random.uniform(0.9, 1.1)                      # end-systolic area scaling
         # phi_en = np.random.uniform(0, 30.0*np.pi/180.0)           # end-systolic epi. twist
-        phi_en = np.random.uniform(0, 30.0*np.pi/180.0)           # end-systolic epi. twist
-        phi_ep = np.random.uniform(0, phi_en)
+        phi_en = np.random.uniform(-30.0*np.pi/180.0, 0)           # end-systolic epi. twist
+        phi_ep = np.random.uniform(phi_en, 0)
 
         # Pacient parameters
         psi = np.random.uniform(0.0, 2.0*np.pi)
