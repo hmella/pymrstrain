@@ -8,21 +8,36 @@ from scipy.io import savemat
 
 
 # Save Python objects
-def save_pyobject(obj, filename):
-    if MPI_rank == 0:
-        with open(filename, 'wb') as output:
+def save_pyobject(obj, filename, sep_proc=False):
+    # Write file
+    if not sep_proc:
+        if MPI_rank == 0:
+            with open(filename, 'wb') as output:
+                pickle.dump(obj, output, -1)
+    else:
+        # Split filename path
+        root, ext = os.path.splitext(filename)
+        with open(root+'_{:d}'.format(MPI_rank)+ext, 'wb') as output:
             pickle.dump(obj, output, -1)
 
 # Load Python objects
-def load_pyobject(filename):
-    if MPI_rank==0:
-        with open(filename, 'rb') as output:
-            obj = pickle.load(output)
-    else:
-        obj = None
+def load_pyobject(filename, sep_proc=False):
 
-    # Broadcast object
-    obj = MPI_comm.bcast(obj, root=0)
+    # Load files
+    if not sep_proc:
+        if MPI_rank==0:
+            with open(filename, 'rb') as output:
+                obj = pickle.load(output)
+        else:
+            obj = None
+
+        # Broadcast object
+        obj = MPI_comm.bcast(obj, root=0)
+    else:
+        # Split filename path
+        root, ext = os.path.splitext(filename)
+        with open(root+'_{:d}'.format(MPI_rank)+ext, 'rb') as output:
+            obj = pickle.load(output)
 
     return obj
 
