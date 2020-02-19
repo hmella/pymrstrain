@@ -6,8 +6,9 @@ from PyMRStrain import *
 if __name__=="__main__":
 
   # Parameters
-  # p.phi_en = 20*np.pi/180
-  # p.phi_ep = 0*np.pi/180
+  # p = Parameters(time_steps=18)
+  # p.phi_en = -20*np.pi/180
+  # p.phi_ep = -10*np.pi/180
   # # p.R_inner = p.R_en
   # # p.R_outer = p.R_ep
   # # p.xi = 0.5
