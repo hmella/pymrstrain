@@ -2,13 +2,8 @@ import numpy as np
 from PyMRStrain.MPIUtilities import MPI_print
 
 
-# Two dimensional meshgrids
-def update_s2p2(s2p, pixel_u, resolution):
-    s2p[:] += (resolution[1]*pixel_u[:,1] + pixel_u[:,0]).astype(np.int64)
-
-
 # Three dimensional images with number of slices greater than 1
-def update_s2p3(s2p, pixel_u, resolution):
+def update_s2p(s2p, pixel_u, resolution):
     s2p += (resolution[0]*pixel_u[:,1]             # jump betwen rows
         + resolution[0]*resolution[1]*pixel_u[:,2] # jump betwen slices
         + pixel_u[:,0]).astype(np.int64)           # jump between columns

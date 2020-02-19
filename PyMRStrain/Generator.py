@@ -2,7 +2,7 @@ import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-from Connectivity import getConnectivity2, getConnectivity3, update_p2s
+from Connectivity import getConnectivity3, update_p2s
 from ImageBuilding import (CSPAMM_magnetizations, DENSE_magnetizations,
                            EXACT_magnetizations, get_images)
 from PyMRStrain.Helpers import cropping_ranges, m_dirs, order
@@ -11,7 +11,7 @@ from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.MPIUtilities import MPI_print, MPI_rank, MPI_size, gather_image
 from PyMRStrain.MRImaging import acq_to_res
 from PyMRStrain.PySpinBasedUtils import (check_kspace_bw, check_nb_slices,
-                                         update_s2p2, update_s2p3)
+                                         update_s2p)
 from PyMRStrain.Spins import Function
 
 
@@ -78,8 +78,7 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
 
   # Connectivity (this is done just once)
   voxel_coords = [X.flatten('F') for X in Xf]
-  get_connectivity = globals()["getConnectivity{:d}".format(dp)]
-  (s2p, excited_spins) = get_connectivity(x, voxel_coords, width)
+  (s2p, excited_spins) = getConnectivity3(x, voxel_coords, width)
   s2p = np.array(s2p)
 
   # Spins positions with respect to its containing voxel center
@@ -127,7 +126,7 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
     subpixel_u = x_new - np.multiply(pixel_u, width)
 
     # Change spins connectivity according to the new positions
-    globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution)
+    update_s2p(s2p, pixel_u, resolution)
 
     # Update pixel-to-spins connectivity
     # if image.slice_following:
@@ -271,8 +270,7 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
 
   # Connectivity (this is done just once)
   voxel_coords = [X.flatten('F') for X in Xf]
-  get_connectivity = globals()["getConnectivity{:d}".format(dp)]
-  (s2p, excited_spins) = get_connectivity(x, voxel_coords, width)
+  (s2p, excited_spins) = getConnectivity3(x, voxel_coords, width)
   s2p = np.array(s2p)
 
   # Spins positions with respect to its containing voxel center
@@ -320,7 +318,7 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
     subpixel_u = x_new - np.multiply(pixel_u, width)
 
     # Change spins connectivity according to the new positions
-    globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution)
+    update_s2p(s2p, pixel_u, resolution)
 
     # Update pixel-to-spins connectivity
     # if image.slice_following:
@@ -456,8 +454,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
   # Connectivity (this is done just once)
   voxel_coords = [X.flatten('F') for X in Xf]
-  get_connectivity = globals()["getConnectivity{:d}".format(dp)]
-  (s2p, excited_spins) = get_connectivity(x, voxel_coords, width)
+  (s2p, excited_spins) = getConnectivity3(x, voxel_coords, width)
   s2p = np.array(s2p)
 
   # Spins positions with respect to its containing voxel center
@@ -501,7 +498,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
     subpixel_u = x_new - np.multiply(pixel_u, width)
 
     # Change spins connectivity according to the new positions
-    globals()["update_s2p{:d}".format(dp)](s2p, pixel_u, resolution)
+    update_s2p(s2p, pixel_u, resolution)
 
     # Update pixel-to-spins connectivity
     # if image.slice_following:
