@@ -162,12 +162,8 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
     #     theta = np.arctan(x[:,1]/x[:,0])
     #     rot.vector()[:] = wrap(theta.reshape((-1,1)), np.pi/8)
     #     EXC.vector()[exc_slice] = 1
-    #     if image.slice_following:
-    #       S2P.vector()[excited_spins] = s2p.reshape((-1,1))
-    #       write_vtk([u,S2P,EXC,rot], path='output/SF_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
-    #     else:
-    #       S2P.vector()[excited_spins] = s2p.reshape((-1,1))
-    #       write_vtk([u,S2P,EXC,rot], path='output/Normal_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
+    #     S2P.vector()[excited_spins] = s2p.reshape((-1,1))
+    #     write_vtk([u,S2P,EXC,rot], path='output/Normal_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
 
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
