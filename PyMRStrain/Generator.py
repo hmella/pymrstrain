@@ -22,7 +22,6 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
   # Time-steping parameters
   t     = parameters.t
   dt    = parameters.dt
-  t_end = parameters.t_end
   n_t   = parameters.time_steps
 
  # Sequence parameters
@@ -216,7 +215,6 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
   # Time-steping parameters
   t     = parameters.t
   dt    = parameters.dt
-  t_end = parameters.t_end
   n_t   = parameters.time_steps
 
  # Sequence parameters
@@ -414,7 +412,6 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
   # Time-steping parameters
   t     = parameters.t
   dt    = parameters.dt
-  t_end = parameters.t_end
   n_t   = parameters.time_steps
 
  # Sequence parameters
@@ -428,7 +425,6 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
   # Output image
   size = np.append(image.resolution, [dk, n_t])
-  image_0 = np.zeros(size, dtype=np.complex64)
   mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
 
   # Output kspaces
@@ -552,7 +548,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
       # mask[...,slice,i] = np.abs(ktoi(H*itok(m[...,slice])[r[0]:r[1]:fac, c[0]:c[1]:1]))
 
       # Complex magnetization data
-      for enc_dir in range(image_0.shape[-2]):
+      for enc_dir in range(dk):
 
         # Magnetization expressions
         tmp0 = m0_image[...,slice,enc_dir]
@@ -563,9 +559,6 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
         # kspace resizing and epi artifacts generation
         delta_ph = image.FOV[m_dirs[enc_dir][1]]/image.phase_profiles
         k_nsa_1.gen_to_acq(k0, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
-
-        # kspace cropping
-        image_0[...,slice,enc_dir,time_step] = ktoi(k_nsa_1.k[...,slice,enc_dir,time_step])
 
   return k_nsa_1, mask
 
