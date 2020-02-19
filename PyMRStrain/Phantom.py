@@ -64,12 +64,13 @@ class PhantomBase:
 #########################################################
 # Phantom Class
 class Phantom(PhantomBase):
-  def __init__(self, spins, p, patient=False, z_motion=True, write_vtk=False):
+  def __init__(self, spins, p, patient=False, z_motion=True, zero_twist=0.35, write_vtk=False):
     super().__init__(spins)
     self.p = p
     self.patient = patient
     self.write_vtk = write_vtk
     self.z_motion = z_motion
+    self.zero_twist = zero_twist
 
   def get_data(self, i):
 
@@ -120,7 +121,12 @@ class Phantom(PhantomBase):
 
         # Scale in-plane components (keeps displacement at base but
         # increases displacement at appex)
-        scale = (0.35-z)/0.35
+        # Obs: zero_twist controls where the transition clockwise to
+        # counterclockwise twist is going to happen. If the length of
+        # the long-axis is 1.0, and distances are measured from base
+        # to appex, zero_twist is the distance from base where this
+        # transition happens.
+        scale = (self.zero_twist-z)/self.zero_twist
 
         # Define through-plane displacement
         self.u_real[:,2] = (z - 1)*0.02
