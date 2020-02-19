@@ -64,11 +64,12 @@ class PhantomBase:
 #########################################################
 # Phantom Class
 class Phantom(PhantomBase):
-  def __init__(self, spins, p, patient=False, write_vtk=False):
+  def __init__(self, spins, p, patient=False, z_motion=True, write_vtk=False):
     super().__init__(spins)
     self.p = p
     self.patient = patient
     self.write_vtk = write_vtk
+    self.z_motion = z_motion
 
   def get_data(self, i):
 
@@ -78,9 +79,6 @@ class Phantom(PhantomBase):
     # Time steps
     # t = np.linspace(p.t_end/p['time_steps'],p.t_end,p['time_steps'])
     t = np.linspace(0.0, p.t_end, p.time_steps+1)
-
-    # Component dofmaps
-    geo_dim = self.x.shape[-1]
 
     # Ventricle region
     ventricle = self.spins.regions[:,-1]
@@ -113,16 +111,16 @@ class Phantom(PhantomBase):
 
     # If the phantom is 3D add longitudinal displacement
     # and angle scaling factor
-    if geo_dim == 3:
+    if self.z_motion:
         # Normalize coordinates
         z = np.copy(self.x[:,2])
         z_max = z.max()
         z_min = z.min()
-        z = -(z - z_max)/(z_max - z_min) # z=0 at top, z=1 at bottom
+        z = -(z - z_max)/(z_max - z_min) # z=0 at base, z=1 at appex
 
-        # Scale in-plane components (keeps displacement on top but
-        # increases displacement on bottom)
-        scale = (0.65-z)/0.65
+        # Scale in-plane components (keeps displacement at base but
+        # increases displacement at appex)
+        scale = (0.35-z)/0.35
 
         # Define through-plane displacement
         self.u_real[:,2] = (z - 1)*0.02
