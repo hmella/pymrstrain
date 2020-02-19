@@ -6,12 +6,12 @@ from PyMRStrain.MPIUtilities import MPI_rank, MPI_size
 class Spins:
     def __init__(self, Nb_samples=1000, parameters=[]):
         self.Nb_samples = np.ceil(Nb_samples/MPI_size).astype(int)
-        self.R_en = parameters['R_en']
-        self.R_ep = parameters['R_ep']
-        self.R_inner = parameters['R_inner']
-        self.R_outer = parameters['R_outer']
-        self.h = parameters['h']
-        self.center = parameters['center']
+        self.R_en = parameters.R_en
+        self.R_ep = parameters.R_ep
+        self.R_inner = parameters.R_inner
+        self.R_outer = parameters.R_outer
+        self.h = parameters.h
+        self.center = parameters.center
         self.samples, self.regions = self.generate_samples()
         self.mesh = self.build_mesh()
 

@@ -6,13 +6,13 @@ from PyMRStrain import *
 if __name__=="__main__":
 
   # Parameters
-  # p = Parameters(time_steps=18)
-  # p['phi_en'] = 20*np.pi/180
-  # p['phi_ep'] = 0*np.pi/180
-  # # p['R_inner'] = p['R_en']
-  # # p['R_outer'] = p['R_ep']
-  # np.save("p.npy", p)
-  p=np.load('p.npy',allow_pickle=True).item()
+  # p.phi_en = 20*np.pi/180
+  # p.phi_ep = 0*np.pi/180
+  # # p.R_inner = p.R_en
+  # # p.R_outer = p.R_ep
+  # # p.xi = 0.5
+  # save_pyobject(p, 'p.pkl')
+  p=load_pyobject('p.pkl')
 
   # Field inhomogeneity
   phi = lambda X, Y: 0*(X+Y)/0.1*0.2

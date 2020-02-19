@@ -20,10 +20,10 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
   """ Generate tagging images
   """
   # Time-steping parameters
-  t     = parameters["t"]
-  dt    = parameters["dt"]
-  t_end = parameters["t_end"]
-  n_t   = parameters["time_steps"]
+  t     = parameters.t
+  dt    = parameters.dt
+  t_end = parameters.t_end
+  n_t   = parameters.time_steps
 
  # Sequence parameters
   T1    = image.T1                     # relaxation
@@ -219,10 +219,10 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
   """ Generate DENSE images
   """
   # Time-steping parameters
-  t     = parameters["t"]
-  dt    = parameters["dt"]
-  t_end = parameters["t_end"]
-  n_t   = parameters["time_steps"]
+  t     = parameters.t
+  dt    = parameters.dt
+  t_end = parameters.t_end
+  n_t   = parameters.time_steps
 
  # Sequence parameters
   T1    = image.T1                     # relaxation
@@ -418,10 +418,10 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
   """ Generate EXACT images
   """
   # Time-steping parameters
-  t     = parameters["t"]
-  dt    = parameters["dt"]
-  t_end = parameters["t_end"]
-  n_t   = parameters["time_steps"]
+  t     = parameters.t
+  dt    = parameters.dt
+  t_end = parameters.t_end
+  n_t   = parameters.time_steps
 
  # Sequence parameters
   ke    = image.encoding_frequency     # encoding frequency
