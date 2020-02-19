@@ -14,6 +14,10 @@ if __name__=="__main__":
   # # p.xi = 0.5
   # save_pyobject(p, 'p.pkl')
   p=load_pyobject('p.pkl')
+  p.R_inner = p.R_en
+  p.R_outer = p.R_ep
+  p.phi_en = -20*np.pi/180
+  p.phi_ep = -10*np.pi/180
 
   # Field inhomogeneity
   phi = lambda X, Y: 0*(X+Y)/0.1*0.2
@@ -37,7 +41,7 @@ if __name__=="__main__":
             phase_profiles=66)
 
   # Spins
-  spins = Spins(Nb_samples=100000, parameters=p)
+  spins = Spins(Nb_samples=1000000, parameters=p)
 
   # Create phantom object
   phantom = Phantom(spins, p, patient=False, write_vtk=False)
@@ -56,7 +60,7 @@ if __name__=="__main__":
   print(end-start)
 
   # Add noise to images
-  sigma = 0.025
+  sigma = 0.025*1e-20
   NSA_1.k = add_cpx_noise(NSA_1.k, mask=NSA_1.k_msk, sigma=sigma)
   NSA_2.k = add_cpx_noise(NSA_2.k, mask=NSA_2.k_msk, sigma=sigma)
 
