@@ -3,19 +3,27 @@ import pickle
 
 import meshio
 import numpy as np
+from PyMRStrain.MPIUtilities import MPI_comm, MPI_rank
 from scipy.io import savemat
 
 
 # Save Python objects
 def save_pyobject(obj, filename):
-    with open(filename, 'wb') as output:
-        pickle.dump(obj, output, -1)
-
+    if MPI_rank == 0:
+        with open(filename, 'wb') as output:
+            pickle.dump(obj, output, -1)
 
 # Load Python objects
 def load_pyobject(filename):
-    with open(filename, 'rb') as output:
-        obj = pickle.load(output)
+    if MPI_rank==0:
+        with open(filename, 'rb') as output:
+            obj = pickle.load(output)
+    else:
+        obj = None
+
+    # Broadcast object
+    obj = MPI_comm.bcast(obj, root=0)
+
     return obj
 
 
