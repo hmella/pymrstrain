@@ -72,6 +72,8 @@ class EPI:
                             np.linspace(-k_max,k_max,ph_profiles),
                             indexing='ij')
         ky = grid[dir[1]].flatten(order[dir[0]])
+        # ky = np.sqrt(np.power(grid[dir[1]].flatten(order[dir[0]]), 2)
+        #    + np.power(grid[dir[0]].flatten(order[dir[0]]), 2))
 
         # Parameters
         df_off = self.off_resonance                 # off-resonance frequency
