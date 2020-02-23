@@ -1,8 +1,9 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from PyMRStrain.Filters import Hamming_filter, Riesz_filter, Tukey_filter
 from PyMRStrain.Helpers import build_idx, order
+from PyMRStrain.IO import scale_image, rescale_image
 from PyMRStrain.Math import itok, ktoi
-import matplotlib.pyplot as plt
 
 
 # kspace class
@@ -14,7 +15,7 @@ class kspace:
         self.oversampling_factor = oversampling_factor
         self.artifact = artifact
         self.k = np.zeros(shape,dtype=np.complex64)
-        self.k_msk = np.zeros(shape,dtype=np.complex64)
+        self.k_msk = np.zeros(shape,dtype=np.float32)
         self.k_acq = np.zeros(np.append(acq_matrix,shape[2:5]),dtype=np.complex64)
         self.filter = []
 
@@ -67,3 +68,16 @@ class kspace:
         # Store mask
         k_tmp_msk = np.reshape(k_mask[::self.oversampling_factor], pshape, order=order[dir[0]])
         self.k_msk[...,slice,enc_dir,timestep] = k_tmp_msk
+
+    def scale(self):
+        self.k = scale_image(self.k,mag=False,real=True,compl=True)
+        self.k_msk = scale_image(self.k_msk,mag=False,real=True,compl=False)
+        self.k_acq = scale_image(self.k_acq,mag=False,real=True,compl=True)
+
+    def rescale(self):
+        tmp = rescale_image(self.k)
+        self.k = tmp['real'] + 1j*tmp['complex']
+        tmp = rescale_image(self.k_msk)
+        self.k_msk = tmp['real']
+        tmp = rescale_image(self.k_acq)
+        self.k_acq = tmp['real'] + 1j*tmp['complex']

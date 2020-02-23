@@ -88,21 +88,21 @@ def export_image(data, path=None, name=None):
 
 
 # Scale images
-def scale_image(I,mag=True,pha=False,real=False,compl=False):
+def scale_image(I,mag=True,pha=False,real=False,compl=False,type=np.uint16):
 
     # slope and intercept
     ScaleIntercept = np.ceil(np.abs(I).max())
-    ScaleSlope =  2**12
+    ScaleSlope =  np.iinfo(type).max/(2*ScaleIntercept)
 
     # Data extraction
     if mag:
-        I_mag = (ScaleSlope*np.abs(I)+ScaleIntercept).astype(np.uint16)
+        I_mag = (ScaleSlope*np.abs(I)+ScaleIntercept).astype(type)
     if pha:
-        I_pha = (ScaleSlope*1000*(np.angle(I)+np.pi)).astype(np.uint16)
+        I_pha = (ScaleSlope*1000*(np.angle(I)+np.pi)).astype(type)
     if real:
-        I_real = (ScaleSlope*(np.real(I)+ScaleIntercept)).astype(np.uint16)
+        I_real = (ScaleSlope*(np.real(I)+ScaleIntercept)).astype(type)
     if compl:
-        I_comp = (ScaleSlope*(np.imag(I)+ScaleIntercept)).astype(np.uint16)
+        I_comp = (ScaleSlope*(np.imag(I)+ScaleIntercept)).astype(type)
 
     # Rescaling parameters
     RescaleSlope = 1.0/ScaleSlope
@@ -128,3 +128,14 @@ def scale_image(I,mag=True,pha=False,real=False,compl=False):
                         "RescaleIntercept": RescaleIntercept}
 
     return output
+
+
+# Rescale image
+def rescale_image(I):
+
+    # Get images, slope and intercept
+    Im = dict()
+    for (key, value) in I.items():
+        Im[key] = I[key]['Image']*I[key]['RescaleSlope'] + I[key]['RescaleIntercept']
+
+    return Im
