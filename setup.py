@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 import os
-from setuptools import setup, find_packages, Extension
-from setuptools.command.build_ext import build_ext
 import sys
+
 import setuptools
+from setuptools import Extension, find_packages, setup
+from setuptools.command.build_ext import build_ext
 
 
 def read(fname):
@@ -37,8 +38,19 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        'ImageUtilities',
-        ['PyMRStrain/src/ImageUtilities.cpp'],
+        'ImageBuilding',
+        ['PyMRStrain/src/ImageBuilding.cpp'],
+        include_dirs=[
+            # Path to pybind11 headers
+            get_pybind_include(),
+            get_pybind_include(user=True),
+            '/usr/include/eigen3/'
+        ],
+        language='c++'
+    ),
+    Extension(
+        'Connectivity',
+        ['PyMRStrain/src/Connectivity.cpp'],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),

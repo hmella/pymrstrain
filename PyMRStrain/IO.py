@@ -1,88 +1,83 @@
-import numpy as np
-from scipy.io import savemat
 import os
+import pickle
 
-# Write scalar to vtk
-def write_scalar_vtk(u, path=None, name=None):
-    # Verify if folder exist
-    directory = os.path.dirname(path)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+import meshio
+import numpy as np
+from PyMRStrain.MPIUtilities import MPI_comm, MPI_rank
+from scipy.io import savemat
 
-    # Mesh
-    mesh = u.function_space().mesh()
 
-    # Type of cell
-    if mesh.cell=="triangle":
-        cell_type = 5
-    if mesh.cell=="quad":
-        cell_type = 9
-    if mesh.cell=="hexahedron":
-        cell_type = 12
-
-    # Define DATASET type
-    element_shape = u.function_space().element_shape()[0]
-    if element_shape == 1:
-        DATASET = "SCALARS"
-    elif element_shape > 1:
-        DATASET = "VECTORS"
-
-    # Points, cells and data
-    points = mesh.vertex_coordinates()
-    cells  = mesh.cells_connectivity()
-    if element_shape == 2:
-      d = u.vector().reshape((-1, element_shape))
-      data = np.zeros([d.shape[0], d.shape[1]+1])
-      data[:,:-1] = d
+# Save Python objects
+def save_pyobject(obj, filename, sep_proc=False):
+    # Write file
+    if not sep_proc:
+        if MPI_rank == 0:
+            with open(filename, 'wb') as output:
+                pickle.dump(obj, output, -1)
     else:
-      data = u.vector().reshape((-1, element_shape))
+        # Split filename path
+        root, ext = os.path.splitext(filename)
+        with open(root+'_{:d}'.format(MPI_rank)+ext, 'wb') as output:
+            pickle.dump(obj, output, -1)
+
+# Load Python objects
+def load_pyobject(filename, sep_proc=False):
+
+    # Load files
+    if not sep_proc:
+        if MPI_rank==0:
+            with open(filename, 'rb') as output:
+                obj = pickle.load(output)
+        else:
+            obj = None
+
+        # Broadcast object
+        obj = MPI_comm.bcast(obj, root=0)
+    else:
+        # Split filename path
+        root, ext = os.path.splitext(filename)
+        with open(root+'_{:d}'.format(MPI_rank)+ext, 'rb') as output:
+            obj = pickle.load(output)
+
+    return obj
 
 
-    # Open file and write header
-    file = open(path, "w")
-    file.write("# vtk DataFile Version 2.0\n")
-    file.write("Unstructured Grid example\n")
-    file.write("ASCII\n")
-    file.write("DATASET UNSTRUCTURED_GRID\n")
+# Write Functions to vtk
+def write_vtk(functions, path=None, name=None):
 
-    # Write DOF coordinates
-    file.write("\nPOINTS {:d} float\n".format(points.shape[0]))
-    file.close()
-    with open(path, 'ba') as f:
-      np.savetxt(f, points, fmt='%0.10f')
+    # Verify if output folder exists
+    directory = os.path.dirname(path)
+    if directory != []:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
-    # Cells connectivity
-    [m, n] = cells.shape
-    connectivity = np.zeros([m, n + 1])
-    connectivity[:,0] = n
+    # Get mesh
+    try:
+        mesh = functions.spins.mesh
+    except:
+        mesh = functions[0].spins.mesh
 
-    for i in range(n):
-        connectivity[:,i+1] = cells[:, i]
+    # Prepare data as a dictionary
+    point_data = {}
+    for i, (u, n) in enumerate(zip(functions,name)):
 
-    file = open(path, "a")
-    file.write("\nCELLS {:d} {:d}\n".format(m, m*n + m))
-    file.close()
-    with open(path, 'ba') as f:
-      np.savetxt(f, connectivity, fmt='%d')
+        # Element shape
+        element_shape = u.dim
 
-    # Write cell types
-    cell_types = np.zeros([m, 1]) + cell_type
-    file = open(path, "a")
-    file.write("\nCELL_TYPES %d\n" % (m))
-    file.close()
-    with open(path, "ba") as f:
-      np.savetxt(f, cell_types, fmt='%d')
+        if element_shape == 2:
+          d = u.vector()
+          data = np.zeros([d.shape[0], d.shape[1]+1], dtype=d.dtype)
+          data[:,:-1] = d
+        else:
+          data = u.vector()
 
-    # Write scalar values
-    file = open(path, "a")
-    file.write("\nPOINT_DATA %d\n" % (data.shape[0]))
-    file.write(DATASET+" "+name+" float\n")
-    if DATASET=="SCALARS": file.write("LOOKUP_TABLE default\n")
-    file.close()
-    with open(path, "ba") as f:
-      np.savetxt(f, data, fmt='%.10f')
+        point_data[n] = data
+
+    mesh.point_data = point_data
+    meshio.write(path, mesh)
 
 
+# Export images
 def export_image(data, path=None, name=None):
 
     if name is None:
@@ -92,21 +87,22 @@ def export_image(data, path=None, name=None):
     savemat(path+'.mat',{name: data})
 
 
-def scale_image(I,mag=True,pha=False,real=False,compl=False):
+# Scale images
+def scale_image(I,mag=True,pha=False,real=False,compl=False,type=np.uint16):
 
     # slope and intercept
     ScaleIntercept = np.ceil(np.abs(I).max())
-    ScaleSlope =  2**12
+    ScaleSlope =  np.iinfo(type).max/(2*ScaleIntercept)
 
     # Data extraction
     if mag:
-        I_mag = (ScaleSlope*np.abs(I)+ScaleIntercept).astype(np.uint16)
+        I_mag = (ScaleSlope*np.abs(I)+ScaleIntercept).astype(type)
     if pha:
-        I_pha = (ScaleSlope*1000*(np.angle(I)+np.pi)).astype(np.uint16)
+        I_pha = (ScaleSlope*1000*(np.angle(I)+np.pi)).astype(type)
     if real:
-        I_real = (ScaleSlope*(np.real(I)+ScaleIntercept)).astype(np.uint16)
+        I_real = (ScaleSlope*(np.real(I)+ScaleIntercept)).astype(type)
     if compl:
-        I_comp = (ScaleSlope*(np.imag(I)+ScaleIntercept)).astype(np.uint16)
+        I_comp = (ScaleSlope*(np.imag(I)+ScaleIntercept)).astype(type)
 
     # Rescaling parameters
     RescaleSlope = 1.0/ScaleSlope
@@ -132,3 +128,14 @@ def scale_image(I,mag=True,pha=False,real=False,compl=False):
                         "RescaleIntercept": RescaleIntercept}
 
     return output
+
+
+# Rescale image
+def rescale_image(I):
+
+    # Get images, slope and intercept
+    Im = dict()
+    for (key, value) in I.items():
+        Im[key] = I[key]['Image']*I[key]['RescaleSlope'] + I[key]['RescaleIntercept']
+
+    return Im
