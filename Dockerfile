@@ -8,7 +8,7 @@ RUN apt-get update && \
 
 # Install PyMRStrain dependencies
 RUN apt-get install -y python3-tk python3-setuptools libopenmpi-dev
-RUN apt-get install -y mpich gmsh git cmake screen
+RUN apt-get install -y mpich git cmake screen
 RUN apt-get install -y build-essential python3-dev python3-pip
 RUN pip3 install pybind11 && \
     pip3 install mpi4py && \
