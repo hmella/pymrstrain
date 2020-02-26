@@ -43,6 +43,8 @@ class kspace:
         # H = Hamming_filter(acq_matrix,dir)
         Hm = Riesz_filter(acq_matrix[dir[0]],width=0.8,lift=0.3)
         Hp = Riesz_filter(acq_matrix[dir[1]],width=0.8,lift=0.3)
+        # Hm = Tukey_filter(acq_matrix[dir[0]],width=0.8,lift=0.3)
+        # Hp = Tukey_filter(acq_matrix[dir[1]],width=0.8,lift=0.3)
         self.filter = np.outer(Hm,Hp).flatten('F')
         k_acq_filt = self.filter*k_acq
 
