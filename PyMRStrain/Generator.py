@@ -42,9 +42,9 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
   mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
 
   # Output kspaces
-  k_nsa_1 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
-  k_nsa_2 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
-  k_in = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
+  k_nsa_1 = kspace(size, image, epi)
+  k_nsa_2 = kspace(size, image, epi)
+  k_in = kspace(size, image, epi)
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
@@ -233,9 +233,9 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
   mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
 
   # Output kspaces
-  k_nsa_1 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
-  k_nsa_2 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
-  k_in = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
+  k_nsa_1 = kspace(size, image, epi)
+  k_nsa_2 = kspace(size, image, epi)
+  k_in = kspace(size, image, epi)
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
@@ -427,7 +427,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
   mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
 
   # Output kspaces
-  k_nsa_1 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
+  k_nsa_1 = kspace(size, image, epi)
 
   # Spins positions
   x = phantom.x

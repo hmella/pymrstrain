@@ -17,7 +17,10 @@ class ImageBase(object):
                kspace_factor=6.5,
                slice_thickness = [],
                oversampling_factor=2,
-               phase_profiles=64):
+               phase_profiles=64,
+               filter='Riesz',
+               filter_width=0.8,
+               filter_lift=0.3):
     self.FOV = FOV
     self.resolution = resolution
     self.center = center
@@ -37,6 +40,9 @@ class ImageBase(object):
     self.oversampling_factor = oversampling_factor
     self.phase_profiles = phase_profiles
     self.acq_matrix = np.array([oversampling_factor*resolution[0], phase_profiles])
+    self.filter = filter
+    self.filter_width = filter_width
+    self.filter_lift = filter_lift
 
     # Check input resolutions
     ass_err = 'The generation process can only handle square resolutions'

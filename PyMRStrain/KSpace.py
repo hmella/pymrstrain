@@ -8,16 +8,18 @@ from PyMRStrain.Math import itok, ktoi
 
 # kspace class
 class kspace:
-    def __init__(self, shape, acq_matrix, oversampling_factor, artifact):
+    def __init__(self, shape, image, artifact):
         # Output kspace shape
         self.shape = shape
-        self.acq_matrix = acq_matrix
-        self.oversampling_factor = oversampling_factor
+        self.acq_matrix = image.acq_matrix
+        self.oversampling_factor = image.oversampling_factor
         self.artifact = artifact
         self.k = np.zeros(shape,dtype=np.complex64)
         self.k_msk = np.zeros(shape,dtype=np.float32)
-        self.k_acq = np.zeros(np.append(acq_matrix,shape[2:5]),dtype=np.complex64)
-        self.filter = []
+        self.k_acq = np.zeros(np.append(self.acq_matrix,shape[2:5]),dtype=np.complex64)
+        self.filter = image.filter
+        self.filter_width = image.filter_width
+        self.filter_lift = image.filter_lift
 
     def to_img(self):
         return ktoi(self.k)
@@ -39,14 +41,22 @@ class kspace:
         if self.artifact != None:
             k_acq = self.artifact.kspace(k_acq, delta_ph, dir, T2star=0.02)
 
-        # Hamming filter to reduce Gibbs ringing artifacts
-        # H = Hamming_filter(acq_matrix,dir)
-        Hm = Riesz_filter(acq_matrix[dir[0]],width=0.8,lift=0.3)
-        Hp = Riesz_filter(acq_matrix[dir[1]],width=0.8,lift=0.3)
-        # Hm = Tukey_filter(acq_matrix[dir[0]],width=0.8,lift=0.3)
-        # Hp = Tukey_filter(acq_matrix[dir[1]],width=0.8,lift=0.3)
-        self.filter = np.outer(Hm,Hp).flatten('F')
-        k_acq_filt = self.filter*k_acq
+        # Filter to reduce Gibbs ringing artifacts
+        if self.filter is 'Tukey':
+            Hm = Tukey_filter(acq_matrix[dir[0]],width=self.filter_width,
+                              lift=self.filter_lift)
+            Hp = Tukey_filter(acq_matrix[dir[1]],width=self.filter_width,
+                              lift=self.filter_lift)
+        if self.filter is 'Riesz':
+            Hm = Riesz_filter(acq_matrix[dir[0]],width=self.filter_width,
+                              lift=self.filter_lift)
+            Hp = Riesz_filter(acq_matrix[dir[1]],width=self.filter_width,
+                              lift=self.filter_lift)
+        if self.filter is None:
+            Hm = 1
+            Hp = 1
+        H = np.outer(Hm,Hp).flatten('F')
+        k_acq_filt = H*k_acq
 
         # Fill final kspace
         pshape = np.copy(acq_matrix)
@@ -56,7 +66,7 @@ class kspace:
 
         # Mask
         k_mask = np.zeros(pshape, dtype=float).flatten(order[dir[0]])
-        k_mask[idx[0]:idx[1]] = self.filter
+        k_mask[idx[0]:idx[1]] = H
 
         # Remove oversampled values
         pshape[dir[0]] /= self.oversampling_factor
