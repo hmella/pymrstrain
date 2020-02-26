@@ -45,7 +45,6 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
   k_nsa_1 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
   k_nsa_2 = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
   k_in = kspace(size, image.acq_matrix, image.oversampling_factor, epi)
-  k_mask = kspace(size, image.acq_matrix, image.oversampling_factor, None)
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
