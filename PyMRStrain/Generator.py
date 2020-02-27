@@ -44,7 +44,7 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
   # Output kspaces
   k_nsa_1 = kspace(size, image, epi)
   k_nsa_2 = kspace(size, image, epi)
-  k_in = kspace(size, image, epi)
+  k_mask = kspace(size, image, epi)
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
@@ -143,9 +143,8 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
     upre = np.copy(reshaped_u)
 
     # Get magnetization on each spin
-    (m0, m1, m_in) = CSPAMM_magnetizations(M, M0, alpha[time_step], beta, prod, t, T1,
+    mags = CSPAMM_magnetizations(M, M0, alpha[time_step], beta, prod, t, T1,
                         ke[0:dk], x[:,0:dk])
-    mags = [m0, m1, m_in]
     for i in range(len(mags)):
         mags[i][(~inside + ~exc_slice),:] = 0
 
@@ -199,12 +198,12 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
         delta_ph = image.FOV[m_dirs[enc_dir][1]]/image.phase_profiles
         k_nsa_1.gen_to_acq(k0, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
         k_nsa_2.gen_to_acq(k1, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
-        k_in.gen_to_acq(k2, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
+        k_mask.gen_to_acq(k2, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
 
     # Flip angles product
     prod = prod*np.cos(alpha[time_step])
 
-  return k_nsa_1, k_nsa_2, k_in, mask
+  return k_nsa_1, k_nsa_2, k_mask
 
 
 # Complementary DENSE images
@@ -235,7 +234,7 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
   # Output kspaces
   k_nsa_1 = kspace(size, image, epi)
   k_nsa_2 = kspace(size, image, epi)
-  k_in = kspace(size, image, epi)
+  k_mask = kspace(size, image, epi)
 
   # Flip angles
   if isinstance(alpha,float) or isinstance(alpha,int):
@@ -336,9 +335,6 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
     # Get magnetization on each spin
     mags = DENSE_magnetizations(M, M0, alpha[time_step], prod, t, T1,
                         ke[0:dk], x[:,0:dk], reshaped_u[:,0:dk])
-    # m0[(~inside + ~exc_slice),:] = 0
-    # m1[(~inside + ~exc_slice),:] = 0
-    # mags = [m0, m1, m_in]
     for i in range(len(mags)):
         mags[i][(~inside + ~exc_slice),:] = 0
 
@@ -371,13 +367,10 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
     m1_image[...] = gather_image(I[1].reshape(m1_image.shape,order='F'))
-    m = gather_image(m.reshape(resolution, order='F'))
+    m2_image[...] = gather_image(I[2].reshape(resolution, order='F'))
 
     # Iterates over slices
     for slice in range(resolution[2]):
-
-      # Update mask
-      # mask[...,slice,i] = np.abs(ktoi(H*itok(m[...,slice])[r[0]:r[1]:fac, c[0]:c[1]:1]))
 
       # Complex magnetization data
       for enc_dir in range(dk):
@@ -396,12 +389,12 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
         delta_ph = image.FOV[m_dirs[enc_dir][1]]/image.phase_profiles
         k_nsa_1.gen_to_acq(k0, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
         k_nsa_2.gen_to_acq(k1, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
-        k_in.gen_to_acq(k2, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
+        k_mask.gen_to_acq(k2, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
 
     # Flip angles product
     prod = prod*np.cos(alpha[time_step])
 
-  return k_nsa_1, k_nsa_2, k_in, mask
+  return k_nsa_1, k_nsa_2, k_mask
 
 
 # Exact image
@@ -428,6 +421,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
   # Output kspaces
   k_nsa_1 = kspace(size, image, epi)
+  k_mask = kspace(size, image, epi)
 
   # Spins positions
   x = phantom.x
@@ -509,8 +503,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
     x_upd = x
 
     # Get magnetization on each spin
-    mag = EXACT_magnetizations(ke[0:dk], reshaped_u[:,0:dk])
-    mags = [mag]
+    mags = EXACT_magnetizations(ke[0:dk], reshaped_u[:,0:dk])
     for i in range(len(mags)):
         mags[i][(~inside + ~exc_slice),:] = 0
 
@@ -538,28 +531,28 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
-    m = gather_image(m.reshape(resolution, order='F'))
+    m = gather_image(I[1].reshape(resolution, order='F'))
 
     # Iterates over slices
     for slice in range(resolution[2]):
-
-      # Update mask
-      # mask[...,slice,i] = np.abs(ktoi(H*itok(m[...,slice])[r[0]:r[1]:fac, c[0]:c[1]:1]))
 
       # Complex magnetization data
       for enc_dir in range(dk):
 
         # Magnetization expressions
         tmp0 = m0_image[...,slice,enc_dir]
+        tmp1 = m[...,slice,enc_dir]
 
         # Uncorrected kspaces
         k0 = itok(tmp0)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
+        k1 = itok(tmp1)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
 
         # kspace resizing and epi artifacts generation
         delta_ph = image.FOV[m_dirs[enc_dir][1]]/image.phase_profiles
         k_nsa_1.gen_to_acq(k0, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
+        k_mask.gen_to_acq(k1, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
 
-  return k_nsa_1, mask
+  return k_nsa_1, k_mask
 
 
 # PC-SPAMM images

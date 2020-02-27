@@ -51,7 +51,7 @@ if __name__=="__main__":
 
   # Generate images
   start = time.time()
-  NSA_1, NSA_2, REF, mask = I.generate(epi, phantom, p, debug=True)
+  NSA_1, NSA_2, mask = I.generate(epi, phantom, p, debug=True)
   end = time.time()
   print(end-start)
 
@@ -63,7 +63,7 @@ if __name__=="__main__":
   # kspace to image
   In1 = NSA_1.to_img()
   In2 = NSA_2.to_img() 
-  Inin = REF.to_img()
+  mask = mask.to_img()
 
   # Corrected image
   I = In1 - In2

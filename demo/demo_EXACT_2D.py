@@ -38,6 +38,7 @@ if __name__=="__main__":
 
   # Image
   I = kspace.to_img()
+  mask = mask.to_img()
 
   # Plot
   if MPI_rank==0:

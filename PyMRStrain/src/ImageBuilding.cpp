@@ -7,8 +7,9 @@ typedef std::vector<Eigen::VectorXcf> ImageVector;
 typedef std::tuple<ImageVector, Eigen::VectorXf> ImageTuple;
 typedef std::tuple<Eigen::MatrixXcf,
                    Eigen::MatrixXcf,
-                   Eigen::MatrixXcf> Magnetization_Images;
-
+                   Eigen::MatrixXf> Magnetization_Images;
+typedef std::tuple<Eigen::MatrixXcf,
+                   Eigen::MatrixXf> Exact_Images;
 
 // Calculates the pixel intensity of the images based on the pixel-to-spins
 // connectivity. The intensity is estimated using the mean of all the spins
@@ -83,7 +84,7 @@ Magnetization_Images CSPAMM_magnetizations(const float &M,
     // Output images
     Eigen::MatrixXcf Mxy0 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
     Eigen::MatrixXcf Mxy1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());;
-    Eigen::MatrixXcf Mxyin = Eigen::MatrixXcf::Zero(X.rows(),X.cols());;
+    Eigen::MatrixXf Mask = Eigen::MatrixXf::Zero(X.rows(),X.cols());;
 
     // Temp variables
     Eigen::MatrixXcf tmp1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
@@ -102,8 +103,9 @@ Magnetization_Images CSPAMM_magnetizations(const float &M,
     }
     Mxy0 += (tmp1 + tmp2)*prod*std::sin(alpha);
     Mxy1 += (-tmp1 + tmp2)*prod*std::sin(alpha);
+    Mask.array() += 1.0;
 
-    return std::make_tuple(Mxy0, Mxy1, Mxyin);
+    return std::make_tuple(Mxy0, Mxy1, Mask);
 
 }
 
@@ -122,7 +124,7 @@ Magnetization_Images DENSE_magnetizations(const float &M,
     // Output images
     Eigen::MatrixXcf Mxy0 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
     Eigen::MatrixXcf Mxy1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());;
-    Eigen::MatrixXcf Mxyin = Eigen::MatrixXcf::Zero(X.rows(),X.cols());;
+    Eigen::MatrixXf Mask = Eigen::MatrixXf::Zero(X.rows(),X.cols());;
 
     // Temp variables
     Eigen::MatrixXcf tmp1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
@@ -139,18 +141,20 @@ Magnetization_Images DENSE_magnetizations(const float &M,
     }
     Mxy0 += (tmp1 + tmp2)*prod*std::sin(alpha);
     Mxy1 += (-tmp1 + tmp2)*prod*std::sin(alpha);
+    Mask.array() += 1;
 
-    return std::make_tuple(Mxy0, Mxy1, Mxyin);
+    return std::make_tuple(Mxy0, Mxy1, Mask);
 
 }
 
 
 // Exact magnetization
-Eigen::MatrixXcf EXACT_magnetizations(const Eigen::VectorXf &ke,
+Exact_Images EXACT_magnetizations(const Eigen::VectorXf &ke,
                                     const Eigen::MatrixXf &u){
 
     // Output images
     Eigen::MatrixXcf Mxy = Eigen::MatrixXcf::Zero(u.rows(),u.cols());
+    Eigen::MatrixXf Mask = Eigen::MatrixXf::Zero(u.rows(),u.cols());
 
     // Complex unit
     std::complex<float> cu(0, 1);
@@ -159,8 +163,9 @@ Eigen::MatrixXcf EXACT_magnetizations(const Eigen::VectorXf &ke,
     for (int i=0; i<ke.size(); i++){
         Mxy.array()(Eigen::all,i) += (cu*ke(i)*u(Eigen::all,i)).array().exp();
     }
+    Mask.array() += 1;
 
-    return Mxy;
+    return std::make_tuple(Mxy,Mask);
 
 }
 
