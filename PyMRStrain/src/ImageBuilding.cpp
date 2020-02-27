@@ -8,7 +8,8 @@ typedef std::tuple<ImageVector, Eigen::VectorXf> ImageTuple;
 typedef std::tuple<Eigen::MatrixXcf,
                    Eigen::MatrixXcf,
                    Eigen::MatrixXcf> Magnetization_Images;
-
+typedef std::tuple<Eigen::MatrixXcf,
+                   Eigen::MatrixXf> Sine_Images;
 
 // Calculates the pixel intensity of the images based on the pixel-to-spins
 // connectivity. The intensity is estimated using the mean of all the spins
@@ -165,6 +166,32 @@ Eigen::MatrixXcf EXACT_magnetizations(const Eigen::VectorXf &ke,
 }
 
 
+// Evaluate the SINE magnetizations on all the spins
+Sine_Images SINE_magnetizations(const float &t,
+                                    const float &T1,
+                                    const Eigen::VectorXf &ke,
+                                    const Eigen::MatrixXf &X){
+
+    // Output images
+    Eigen::MatrixXcf Mxy = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
+    Eigen::MatrixXf Msk = Eigen::MatrixXf::Zero(X.rows(),X.cols());
+
+    // Temp variables
+    Eigen::MatrixXcf tmp0 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
+    Eigen::MatrixXf tmp1 = Eigen::MatrixXf::Zero(X.rows(),X.cols());
+
+    // Build magnetizations
+    for (int i=0; i<ke.size(); i++){
+        tmp0.array()(Eigen::all,i) += std::exp(-t/T1)*(ke(i)*X(Eigen::all,i)).array().cos();
+        tmp1.array()(Eigen::all,i) += 1.0;
+    }
+    Mxy += tmp0;
+    Msk += tmp1;
+
+    return std::make_tuple(Mxy,Msk);
+
+}
+
 
 PYBIND11_MODULE(ImageBuilding, m) {
     m.doc() = "Utilities for spins-based image generation"; // optional module docstring
@@ -173,4 +200,5 @@ PYBIND11_MODULE(ImageBuilding, m) {
     m.def("CSPAMM_magnetizations", &CSPAMM_magnetizations, py::return_value_policy::reference);
     m.def("DENSE_magnetizations", &DENSE_magnetizations, py::return_value_policy::reference);
     m.def("EXACT_magnetizations", &EXACT_magnetizations, py::return_value_policy::reference);
+    m.def("SINE_magnetizations", &SINE_magnetizations, py::return_value_policy::reference);
 }

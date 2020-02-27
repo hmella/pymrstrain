@@ -1,6 +1,6 @@
 import numpy as np
 from PyMRStrain.Generator import (get_cdense_image, get_cspamm_image,
-                                  get_exact_image)
+                                  get_exact_image, get_sine_image)
 
 
 # Base Image object
@@ -141,9 +141,10 @@ class SINEImage(ImageBase):
   def __init__(self, encoding_frequency=None,
                taglines=None,**kwargs):
     self.encoding_frequency = encoding_frequency
-    self.taglines = taglines
     super(SINEImage, self).__init__(**kwargs)
 
+  def generate(self, epi, phantom, parameters, debug=False):
+      return get_sine_image(self, epi, phantom, parameters, debug)
 
 # PCSPAMM Image
 class PCSPAMMImage(ImageBase):
