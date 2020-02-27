@@ -33,6 +33,10 @@ def add_cpx_noise(I, mask=[], sigma=[], SNR=20, ref=0, recover_noise=False):
     peak = max([np.abs(I[...,0,0]).max(), np.abs(I[...,1,0]).max()])
     sigma = sigma*peak
 
+  # Check mask argument
+  if (mask is None) or (mask is []):
+      mask = 1
+
   # Noise generation and addition
   noise = np.random.normal(0, sigma, I.shape) + 1j*np.random.normal(0, sigma, I.shape)
   In = I + noise*mask
