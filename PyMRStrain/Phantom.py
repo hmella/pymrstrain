@@ -24,47 +24,49 @@ class PhantomBase:
   # Temporal modulation function
   def TemporalModulation(self, t, tA, tB, tC):
 
-    # time resampling
-    t_tmp = np.linspace(t[0],t[-1],3*t.size)
-
-    # modulation
-    Tp = np.zeros(t_tmp.shape,dtype=t.dtype)
-
-    for i in range(t_tmp.size):
-        if t_tmp[i] < tA:
-            Tp[i] = 0.0
-        elif t_tmp[i] >= tA and t_tmp[i] < tB:
-            Tp[i] = 1.005 - 1.005*np.exp(-5*(t_tmp[i] - tA)/(tB-tA))
-        elif t_tmp[i] >= tB and t_tmp[i] < tC:
-            Tp[i] = 1.0
-        else:
-            Tp[i] = np.exp(-11*(t_tmp[i] - tC))
-
-    # # filtering
-    Tp = gaussian_filter(Tp, sigma=3)
-    Tp = Tp/Tp.max()
-
-    # modulation resampling
-    Tp = Tp[::3]
+    # # # # time resampling
+    # # # t_tmp = np.linspace(t[0],t[-1],3*t.size)
 
     # # # # modulation
-    # # # Tp = np.zeros(t.shape,dtype=t.dtype)
+    # # # Tp = np.zeros(t_tmp.shape,dtype=t.dtype)
 
-    # # # for i in range(t.size):
-    # # #   Tp[i] = t[i]/1.0
+    # # # for i in range(t_tmp.size):
+    # # #     if t_tmp[i] < tA:
+    # # #         Tp[i] = 0.0
+    # # #     elif t_tmp[i] >= tA and t_tmp[i] < tB:
+    # # #         Tp[i] = 1.005 - 1.005*np.exp(-5*(t_tmp[i] - tA)/(tB-tA))
+    # # #     elif t_tmp[i] >= tB and t_tmp[i] < tC:
+    # # #         Tp[i] = 1.0
+    # # #     else:
+    # # #         Tp[i] = np.exp(-11*(t_tmp[i] - tC))
+
+    # # # # # filtering
+    # # # Tp = gaussian_filter(Tp, sigma=3)
+    # # # Tp = Tp/Tp.max()
+
+    # # # # modulation resampling
+    # # # Tp = Tp[::3]
+
+    # modulation
+    Tp = np.zeros(t.shape,dtype=t.dtype)
+
+    for i in range(t.size):
+      Tp[i] = t[i]/1.0
 
     return Tp
 
 
 # Phantom Class
 class Phantom(PhantomBase):
-  def __init__(self, spins, p, patient=False, z_motion=True, zero_twist=0.35, write_vtk=False):
+  def __init__(self, spins, p, patient=False, z_motion=True, zero_twist=0.35,
+              write_vtk=False, add_inclusion=False):
     super().__init__(spins)
     self.p = p
     self.patient = patient
     self.write_vtk = write_vtk
     self.z_motion = z_motion
     self.zero_twist = zero_twist
+    self.add_inclusion = add_inclusion
 
   def get_data(self, i):
 
@@ -147,22 +149,22 @@ class Phantom(PhantomBase):
       self.u_real[:,1] = R_ES*(self.ssin*np.cos(phi_n*scale) \
                             + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin
 
-    # # # # Inclusion
-    # # # f = Function(self.V)
-    # # # R = np.sqrt(np.power(self.x[:,0]-0.4*(p.R_en+p.R_ep),2) + np.power(self.x[:,1],2))
-    # # # s = (p.R_ep-p.R_en)
-    # # # f.vector()[dofmap_x] = (1-0.55*np.exp(-np.power(R/s,2)))
-    # # # f.vector()[dofmap_y] = (1-0.55*np.exp(-np.power(R/s,2)))
-    # # # write_scalar_vtk(f, path='output/f.vtk', name='f')
-
     # Modulation function
     dt = 1e-08
 
     # Displacements at different time-steps
     g  = self.TemporalModulation(t, p.tA, p.tB, p.tC)
     self.u.vector()[:] = g[i]*self.u_real
-    # # # self.u.vector()[:] = g[i]*(np.multiply(self.u_real,f.vector()))
-    # # # write_scalar_vtk(self.u, path='output/u.vtk', name='u')
+
+    # Inclusion
+    if self.add_inclusion:
+        f = np.zeros(self.u_real.shape)
+        R = np.sqrt(np.power(self.x[:,0]-0.4*(p.R_en+p.R_ep),2) + np.power(self.x[:,1],2))
+        s = (p.R_ep-p.R_en)
+        f[:,0] = (1-0.55*np.exp(-np.power(R/s,2)))
+        f[:,1] = (1-0.55*np.exp(-np.power(R/s,2)))
+        # self.u.vector()[:] = g[i]*(np.multiply(self.u_real,f))
+        self.u.vector()[:] *= f
 
     # Velocity at different time-steps
     dgdt = - self.TemporalModulation(t + 2*dt, p.tA, p.tB, p.tC) \
