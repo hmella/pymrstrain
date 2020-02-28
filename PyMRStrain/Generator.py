@@ -39,7 +39,6 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
 
   # Output image
   size = np.append(image.resolution, [dk, n_t])
-  mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
 
   # Output kspaces
   k_nsa_1 = kspace(size, image, epi)
@@ -173,7 +172,7 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
     m1_image[...] = gather_image(I[1].reshape(m1_image.shape,order='F'))
-    m = gather_image(m.reshape(resolution, order='F'))
+    m2_image[...] = gather_image(I[2].reshape(m2_image.shape, order='F'))
 
     # Iterates over slices
     for slice in range(resolution[2]):
@@ -229,7 +228,6 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
 
   # Output image
   size = np.append(image.resolution, [dk, n_t])
-  mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
 
   # Output kspaces
   k_nsa_1 = kspace(size, image, epi)
@@ -367,7 +365,7 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
     m1_image[...] = gather_image(I[1].reshape(m1_image.shape,order='F'))
-    m2_image[...] = gather_image(I[2].reshape(resolution, order='F'))
+    m2_image[...] = gather_image(I[2].reshape(m2_image.shape, order='F'))
 
     # Iterates over slices
     for slice in range(resolution[2]):
