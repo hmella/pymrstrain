@@ -91,8 +91,12 @@ def export_image(data, path=None, name=None):
 def scale_image(I,mag=True,pha=False,real=False,compl=False,type=np.uint16):
 
     # slope and intercept
-    ScaleIntercept = np.ceil(np.abs(I).max())
-    ScaleSlope =  np.iinfo(type).max/(2*ScaleIntercept)
+    if MPI_rank==0:
+        ScaleIntercept = np.ceil(np.abs(I).max())
+        ScaleSlope =  np.iinfo(type).max/(2*ScaleIntercept)
+    else:
+        ScaleIntercept = 1
+        ScaleSlope = 1
 
     # Data extraction
     if mag:
