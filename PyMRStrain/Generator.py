@@ -425,10 +425,10 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
   # Output image
   size = np.append(image.resolution, [dk, n_t])
-  mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
 
   # Output kspaces
   k_nsa_1 = kspace(size, image, epi)
+  k_mask = kspace(size, image, epi)
 
   # Spins positions
   x = phantom.x
@@ -465,6 +465,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
   # Magnetization images and spins magnetizations
   m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
+  m1_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
 
   # Grid to evaluate magnetizations
   X = D['grid']
@@ -510,8 +511,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
     x_upd = x
 
     # Get magnetization on each spin
-    mag = EXACT_magnetizations(ke[0:dk], reshaped_u[:,0:dk])
-    mags = [mag]
+    mags = EXACT_magnetizations(ke[0:dk], reshaped_u[:,0:dk])
     for i in range(len(mags)):
         mags[i][(~inside + ~exc_slice),:] = 0
 
@@ -539,28 +539,28 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
-    m = gather_image(m.reshape(resolution, order='F'))
+    m1_image[...] = gather_image(I[1].reshape(m1_image.shape, order='F'))
 
     # Iterates over slices
     for slice in range(resolution[2]):
-
-      # Update mask
-      # mask[...,slice,i] = np.abs(ktoi(H*itok(m[...,slice])[r[0]:r[1]:fac, c[0]:c[1]:1]))
 
       # Complex magnetization data
       for enc_dir in range(dk):
 
         # Magnetization expressions
         tmp0 = m0_image[...,slice,enc_dir]
+        tmp1 = m1_image[...,slice,enc_dir]
 
         # Uncorrected kspaces
         k0 = itok(tmp0)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
+        k1 = itok(tmp1)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
 
         # kspace resizing and epi artifacts generation
         delta_ph = image.FOV[m_dirs[enc_dir][1]]/image.phase_profiles
         k_nsa_1.gen_to_acq(k0, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
+        k_mask.gen_to_acq(k1, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
 
-  return k_nsa_1, mask
+  return k_nsa_1, k_mask
 
 
 # Sine image

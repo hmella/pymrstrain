@@ -147,11 +147,12 @@ Magnetization_Images DENSE_magnetizations(const float &M,
 
 
 // Exact magnetization
-Eigen::MatrixXcf EXACT_magnetizations(const Eigen::VectorXf &ke,
+Sine_Images EXACT_magnetizations(const Eigen::VectorXf &ke,
                                     const Eigen::MatrixXf &u){
 
     // Output images
     Eigen::MatrixXcf Mxy = Eigen::MatrixXcf::Zero(u.rows(),u.cols());
+    Eigen::MatrixXf Msk = Eigen::MatrixXf::Zero(u.rows(),u.cols());
 
     // Complex unit
     std::complex<float> cu(0, 1);
@@ -159,9 +160,10 @@ Eigen::MatrixXcf EXACT_magnetizations(const Eigen::VectorXf &ke,
     // Build magnetizations
     for (int i=0; i<ke.size(); i++){
         Mxy.array()(Eigen::all,i) += (cu*ke(i)*u(Eigen::all,i)).array().exp();
+        Msk.array()(Eigen::all,i) += 1.0;
     }
 
-    return Mxy;
+    return std::make_tuple(Mxy,Msk);
 
 }
 
