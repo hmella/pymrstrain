@@ -130,7 +130,6 @@ class Phantom(PhantomBase):
     else:
         scale = 1.0
 
-
     # Get in-plane displacements
     if self.patient:
       # Abnormality
@@ -158,14 +157,15 @@ class Phantom(PhantomBase):
 
     # Inclusion
     if self.add_inclusion:
-        xhat = self.x[:,0]-0.4*(p.R_en+p.R_ep)
+        # xhat = self.x[:,0]-0.4*(p.R_en+p.R_ep)
+        xhat = self.x[:,0]-(p.R_en+0.5*p.tau)
         yhat = self.x[:,1]
         Rhat = np.sqrt(np.power(xhat,2) + np.power(yhat,2))
-        sinhat = yhat/Rhat
-        coshat = xhat/Rhat
         f = np.zeros(self.u_real.shape)
-        f[:,0] = (1-0.55*np.exp(-np.power(Rhat/p.tau,2)))*-sinhat
-        f[:,1] = (1-0.55*np.exp(-np.power(Rhat/p.tau,2)))*coshat
+        # f[:,0] = (1-0.55*np.exp(-np.power(Rhat/p.tau,2))*-sinhat)
+        # f[:,1] = (1-0.55*np.exp(-np.power(Rhat/p.tau,2))*coshat)
+        f[:,0] = (1-0.55*np.exp(-np.power(Rhat/p.tau,2))*-self.ssin)
+        f[:,1] = (1-0.55*np.exp(-np.power(Rhat/p.tau,2))*self.scos)
         self.u.vector()[:] *= f
 
     # Velocity at different time-steps
