@@ -74,8 +74,7 @@ class Phantom(PhantomBase):
     p = self.p
 
     # Time steps
-    # t = np.linspace(p.t_end/p['time_steps'],p.t_end,p['time_steps'])
-    t = np.linspace(0.0, p.t_end, p.time_steps+1)
+    t = np.linspace(0.0, p.t_end, p.time_steps)
 
     # Ventricle region
     ventricle = self.spins.regions[:,-1]
@@ -86,11 +85,6 @@ class Phantom(PhantomBase):
     mu[ventricle] = mu[ventricle]/mu[ventricle].max()
     mu[ventricle] = np.power(mu[ventricle], p.sigma)
 
-    ##########################
-    # plt.scatter(self.x[:,0],self.x[:,1],c=mu,cmap="jet",edgecolors=None,marker='.')
-    # plt.colorbar()
-    # plt.show()
-
     # End-systolic endocardial displacement
     d_en  = (1 - p.S_en)*p.R_en
 
@@ -99,7 +93,7 @@ class Phantom(PhantomBase):
           + (p.R_en - d_en)**2)**0.5
 
     # End systolic radial displcements
-    phi_n = ((1 - mu)*p.phi_ep + mu*p.phi_en)*np.sin(2*np.pi/p.t_end*t[i])
+    phi_n = (1 - mu)*p.phi_ep + mu*p.phi_en
     d_n   = (1 - mu)*d_ep + mu*d_en
 
     # End-diastolic and end-systolic radius
@@ -157,13 +151,10 @@ class Phantom(PhantomBase):
 
     # Inclusion
     if self.add_inclusion:
-        # xhat = self.x[:,0]-0.4*(p.R_en+p.R_ep)
         xhat = self.x[:,0]-(p.R_en+0.5*p.tau)
         yhat = self.x[:,1]
         Rhat = np.sqrt(np.power(xhat,2) + np.power(yhat,2))
         f = np.zeros(self.u_real.shape)
-        # f[:,0] = (1-0.55*np.exp(-np.power(Rhat/p.tau,2))*-sinhat)
-        # f[:,1] = (1-0.55*np.exp(-np.power(Rhat/p.tau,2))*coshat)
         f[:,0] = (1-0.55*np.exp(-np.power(Rhat/p.tau,2))*-self.ssin)
         f[:,1] = (1-0.55*np.exp(-np.power(Rhat/p.tau,2))*self.scos)
         self.u.vector()[:] *= f

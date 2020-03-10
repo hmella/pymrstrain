@@ -641,9 +641,6 @@ def get_sine_image(image, epi, phantom, parameters, debug=False):
   upre = np.zeros([x.shape[0], dp])
   for time_step in range(n_t):
 
-    # Update time
-    t += dt
-
     # Get displacements in the reference frame and deform mesh
     u = phantom.displacement(time_step)
     reshaped_u = u.vector()
@@ -721,6 +718,9 @@ def get_sine_image(image, epi, phantom, parameters, debug=False):
         delta_ph = image.FOV[m_dirs[enc_dir][1]]/image.phase_profiles
         k_nsa_1.gen_to_acq(k0, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
         k_mask.gen_to_acq(k1, delta_ph, m_dirs[enc_dir], slice, enc_dir, time_step)
+
+    # Update time
+    t += dt
 
   return k_nsa_1, k_mask
 

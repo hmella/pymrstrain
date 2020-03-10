@@ -178,17 +178,11 @@ Sine_Images SINE_magnetizations(const float &t,
     Eigen::MatrixXcf Mxy = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
     Eigen::MatrixXf Msk = Eigen::MatrixXf::Zero(X.rows(),X.cols());
 
-    // Temp variables
-    Eigen::MatrixXcf tmp0 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
-    Eigen::MatrixXf tmp1 = Eigen::MatrixXf::Zero(X.rows(),X.cols());
-
     // Build magnetizations
     for (int i=0; i<ke.size(); i++){
-        tmp0.array()(Eigen::all,i) += std::exp(-t/T1)*(ke(i)*X(Eigen::all,i)).array().cos();
-        tmp1.array()(Eigen::all,i) += 1.0;
+        Mxy.array()(Eigen::all,i) += std::exp(-t/T1)*((ke(i)*X(Eigen::all,i)).array().cos());
+        Msk.array()(Eigen::all,i) += 1.0;
     }
-    Mxy += tmp0;
-    Msk += tmp1;
 
     return std::make_tuple(Mxy,Msk);
 
