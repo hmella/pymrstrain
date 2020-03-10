@@ -169,8 +169,6 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
     (I, m) = get_images(mags, x_upd, voxel_coords, width, p2s)
     if debug:
         MPI_print('Time step {:d}. Average nb. of spins inside a voxel: {:.0f}'.format(time_step, MPI_size*0.5*(m.max()-m.min())))
-    else:
-        MPI_print('Time step {:d}'.format(time_step))
 
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
@@ -366,8 +364,6 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
     (I, m) = get_images(mags, x_upd, voxel_coords, width, p2s)
     if debug:
         MPI_print('Time step {:d}. Average nb. of spins inside a voxel: {:.0f}'.format(time_step, MPI_size*0.5*(m.max()-m.min())))
-    else:
-        MPI_print('Time step {:d}'.format(time_step))
 
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
@@ -534,8 +530,6 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
     (I, m) = get_images(mags, x_upd, voxel_coords, width, p2s)
     if debug:
         MPI_print('Time step {:d}. Average nb. of spins inside a voxel: {:.0f}'.format(time_step, MPI_size*0.5*(m.max()-m.min())))
-    else:
-        MPI_print('Time step {:d}'.format(time_step))
 
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
@@ -693,8 +687,6 @@ def get_sine_image(image, epi, phantom, parameters, debug=False):
     (I, m) = get_images(mags, x_upd, voxel_coords, width, p2s)
     if debug:
         MPI_print('Time step {:d}. Average nb. of spins inside a voxel: {:.0f}'.format(time_step, MPI_size*0.5*(m.max()-m.min())))
-    else:
-        MPI_print('Time step {:d}'.format(time_step))
 
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
