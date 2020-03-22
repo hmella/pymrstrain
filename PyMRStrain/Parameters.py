@@ -21,9 +21,9 @@ class Parameters:
 
             # Ventricle geometry
             h = 0.1
-            tau  = np.random.uniform(0.0075, 0.0125)
+            tau  = np.random.uniform(0.0085, 0.0125)#tau  = np.random.uniform(0.0075, 0.0125)
             center = np.array([0.0,0.0,0.0])
-            R_en = np.random.uniform(0.01, 0.03)
+            R_en = np.random.uniform(0.02, 0.03)#R_en = np.random.uniform(0.01, 0.03)
             R_ep = R_en+tau
             R_inner = R_en-tau
             if R_inner <= 0:
