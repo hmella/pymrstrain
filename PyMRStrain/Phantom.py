@@ -154,9 +154,10 @@ class Phantom(PhantomBase):
         xhat = self.x[:,0]-(p.R_en+0.5*p.tau)
         yhat = self.x[:,1]
         Rhat = np.sqrt(np.power(xhat,2) + np.power(yhat,2))
+        sigma = 0.8*p.tau
         f = np.zeros(self.u_real.shape)
-        f[:,0] = (1-0.55*np.exp(-np.power(Rhat/p.tau,2))*-self.ssin)
-        f[:,1] = (1-0.55*np.exp(-np.power(Rhat/p.tau,2))*self.scos)
+        f[:,0] = (1-0.55*np.exp(-np.power(Rhat/sigma,2)))
+        f[:,1] = (1-0.55*np.exp(-np.power(Rhat/sigma,2)))
         self.u.vector()[:] *= f
 
     # Velocity at different time-steps
