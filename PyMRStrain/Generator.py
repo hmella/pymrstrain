@@ -419,7 +419,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
   # Output kspaces
   k_nsa_1 = kspace(size, image, epi)
-  k_mask = kspace(size, image, epi)
+  k_mask  = kspace(size, image, epi)
 
   # Spins positions
   x = phantom.x
@@ -428,10 +428,10 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
   res, incr_bw, D = check_kspace_bw(image, x)
 
   # Grid, voxel width, image resolution and number of voxels
-  Xf = D['grid']
-  width = D['voxel_size']
+  Xf         = D['grid']
+  width      = D['voxel_size']
   resolution = D['resolution']
-  nr_voxels = Xf[0].size
+  nr_voxels  = Xf[0].size
 
   # Check if the number of slices needs to be increased
   # for the generation of the connectivity when generating
@@ -456,6 +456,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
   # Magnetization images and spins magnetizations
   m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
+  m1_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
 
   # Grid to evaluate magnetizations
   X = D['grid']
@@ -529,7 +530,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
-    m = gather_image(I[1].reshape(resolution, order='F'))
+    m1_image[...] = gather_image(I[1].reshape(m1_image.shape, order='F'))
 
     # Iterates over slices
     for slice in range(resolution[2]):
@@ -539,7 +540,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
         # Magnetization expressions
         tmp0 = m0_image[...,slice,enc_dir]
-        tmp1 = m[...,slice,enc_dir]
+        tmp1 = m1_image[...,slice,enc_dir]
 
         # Uncorrected kspaces
         k0 = itok(tmp0)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
