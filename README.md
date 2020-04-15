@@ -72,6 +72,30 @@ cd pymrstrain
 python3 setup.py install
 ```
 
+#### Installation with Docker
+Build the docker image using:
+```bash
+docker build . -t pymrstrain
+```
+
+and then do:
+```bash
+sudo apt-get install x11-xserver-utils &&
+xhost +
+```
+Finally, to run the image with plotting support just run:
+```bash
+docker run --rm -it \
+   --user="root" \
+   --env="DISPLAY" \
+   --volume="/etc/group:/etc/group:ro" \
+   --volume="/etc/passwd:/etc/passwd:ro" \
+   --volume="/etc/shadow:/etc/shadow:ro" \
+   --volume="/etc/sudoers.d:/etc/sudoers.d:ro" \
+   --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" \
+   -v "/home/hernan/Git/pymrstrain/demo":"/home/shared" pymrstrain
+```
+
 #### Dependencies
 - *Eigen:* [https://github.com/eigenteam/eigen-git-mirror.git](https://github.com/eigenteam/eigen-git-mirror.git)
 - *matplotlib:* [https://github.com/matplotlib/matplotlib](https://github.com/matplotlib/matplotlib)

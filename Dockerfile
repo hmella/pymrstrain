@@ -1,5 +1,6 @@
 # Download base image ubuntu 18.04
 FROM ubuntu:18.04
+MAINTAINER Hernan Mella <hmella@uc.cl>
 
 # Update Ubuntu Software repository
 USER root
@@ -29,3 +30,10 @@ COPY setup.py /tmp/pymrstrain/
 RUN cd /tmp/pymrstrain/ && ls && python3 setup.py install --user && \
     rm -rf build/ tmp/ dist/ PyMRStrain.egg-info/
 RUN cd && cd /tmp/ && rm -rf eigen-git-mirror pymrstrain
+
+# Add user and WORKDIR
+# RUN useradd -ms /bin/bash pymrstrain
+# USER pymrstrain
+#WORKDIR /home/pymrstrain
+RUN mkdir /home/shared
+WORKDIR /home/shared
