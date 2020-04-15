@@ -27,8 +27,8 @@ class Parameters:
             R_en = np.random.uniform(0.02, 0.03)
             R_ep = R_en+tau
             R_inner = R_en-tau
-            if R_inner <= 0:
-                R_inner = R_en
+            while R_inner <= 0:
+                R_inner = 0.9*R_inner
             R_outer = R_ep+tau
 
             # Temporal modulation
