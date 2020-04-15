@@ -2,7 +2,7 @@
 
 PyMRStrain is a open source generator of synthetic Complementary SPAMM and DENSE images.
 
-#### Get started
+## Get started
 To generate CSPAMM images, in Python simply do
 ```python
 from PyMRStrain import *
@@ -65,14 +65,14 @@ Resulting images look like this:
 | ------------- | ------------- |
 | ![CSPAMM image](/screenshots/Figure_1.png "CSPAMM image with epi-like artifacts")  | ![CSPAMM image](/screenshots/Figure_2.png "CSPAMM image with epi-like artifacts")  |
 
-#### Installation
+## Installation
 ```bash
 git clone https://github.com/hernanmella/pymrstrain
 cd pymrstrain
 python3 setup.py install
 ```
 
-#### Installation with Docker
+## Installation with Docker
 Build the docker image using:
 ```bash
 docker build . -t pymrstrain
@@ -96,7 +96,7 @@ docker run --rm -it \
    -v "/home/hernan/Git/pymrstrain/demo":"/home/shared" pymrstrain
 ```
 
-#### Dependencies
+## Dependencies
 - *Eigen:* [https://github.com/eigenteam/eigen-git-mirror.git](https://github.com/eigenteam/eigen-git-mirror.git)
 - *matplotlib:* [https://github.com/matplotlib/matplotlib](https://github.com/matplotlib/matplotlib)
 - *meshio:* [https://github.com/nschloe/meshio](https://github.com/nschloe/meshio)
