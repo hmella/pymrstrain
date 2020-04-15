@@ -3,12 +3,14 @@ FROM ubuntu:18.04
 
 # Update Ubuntu Software repository
 USER root
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 RUN apt-get update && \
+    apt-get install -y apt-utils && \
     apt-get upgrade -y -o Dpkg::Options::="--force-confold"
 
 # Install PyMRStrain dependencies
-RUN apt-get install -y python3-tk python3-setuptools libopenmpi-dev
-RUN apt-get install -y mpich git cmake screen
+RUN apt-get install -y python3-tk python3-setuptools cmake git
+RUN apt-get install -y libopenmpi-dev mpich screen nano
 RUN apt-get install -y build-essential python3-dev python3-pip
 RUN pip3 install pybind11 && \
     pip3 install mpi4py && \
