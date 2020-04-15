@@ -9,7 +9,6 @@ from PyMRStrain.Helpers import cropping_ranges, m_dirs, order
 from PyMRStrain.KSpace import kspace
 from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.MPIUtilities import MPI_print, MPI_rank, MPI_size, gather_image
-from PyMRStrain.MRImaging import acq_to_res
 from PyMRStrain.PySpinBasedUtils import (check_kspace_bw, check_nb_slices,
                                          update_s2p)
 from PyMRStrain.Spins import Function
