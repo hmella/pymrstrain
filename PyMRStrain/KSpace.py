@@ -14,9 +14,9 @@ class kspace:
         self.acq_matrix = image.acq_matrix
         self.oversampling_factor = image.oversampling_factor
         self.artifact = artifact
-        self.k = np.zeros(shape,dtype=np.complex64)
+        self.k = np.zeros(shape,dtype=np.complex128)
         self.k_msk = np.zeros(shape,dtype=np.float32)
-        self.k_acq = np.zeros(np.append(self.acq_matrix,shape[2:5]),dtype=np.complex64)
+        self.k_acq = np.zeros(np.append(self.acq_matrix,shape[2:5]),dtype=np.complex128)
         self.filter = image.filter
         self.filter_width = image.filter_width
         self.filter_lift = image.filter_lift
@@ -61,7 +61,7 @@ class kspace:
         # Fill final kspace
         pshape = np.copy(acq_matrix)
         pshape[dir[1]] += n_lines
-        k_new = np.zeros(pshape, dtype=np.complex64).flatten(order[dir[0]])
+        k_new = np.zeros(pshape, dtype=np.complex128).flatten(order[dir[0]])
         k_new[idx[0]:idx[1]] = k_acq_filt
 
         # Mask

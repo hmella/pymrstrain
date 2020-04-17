@@ -88,7 +88,7 @@ def export_image(data, path=None, name=None):
 
 
 # Scale images
-def scale_image(I,mag=True,pha=False,real=False,compl=False,type=np.uint16):
+def scale_image(I,mag=True,pha=False,real=False,compl=False,type=np.uint64):
 
     # slope and intercept
     ScaleIntercept = np.ceil(np.abs(I).max())

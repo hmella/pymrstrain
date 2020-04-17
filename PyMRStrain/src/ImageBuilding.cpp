@@ -3,21 +3,21 @@
 #include <pybind11/stl.h>
 
 namespace py = pybind11;
-typedef std::vector<Eigen::VectorXcf> ImageVector;
-typedef std::tuple<ImageVector, Eigen::VectorXf> ImageTuple;
-typedef std::tuple<Eigen::MatrixXcf,
-                   Eigen::MatrixXcf,
-                   Eigen::MatrixXf> Magnetization_Images;
-typedef std::tuple<Eigen::MatrixXcf,
-                   Eigen::MatrixXf> Exact_Images;
+typedef std::vector<Eigen::VectorXcd> ImageVector;
+typedef std::tuple<ImageVector, Eigen::VectorXd> ImageTuple;
+typedef std::tuple<Eigen::MatrixXcd,
+                   Eigen::MatrixXcd,
+                   Eigen::MatrixXd> Magnetization_Images;
+typedef std::tuple<Eigen::MatrixXcd,
+                   Eigen::MatrixXd> Exact_Images;
 
 // Calculates the pixel intensity of the images based on the pixel-to-spins
 // connectivity. The intensity is estimated using the mean of all the spins
 // inside a given pixel
-ImageTuple get_images(const std::vector<Eigen::MatrixXcf> &I,
-                    const Eigen::MatrixXf &x,
-                    const std::vector<Eigen::VectorXf> &xi,
-                    const Eigen::VectorXf &voxel_size,
+ImageTuple get_images(const std::vector<Eigen::MatrixXcd> &I,
+                    const Eigen::MatrixXd &x,
+                    const std::vector<Eigen::VectorXd> &xi,
+                    const Eigen::VectorXd &voxel_size,
                     const std::vector<std::vector<int>> &p2s){
 
     // Number of voxels
@@ -28,8 +28,8 @@ ImageTuple get_images(const std::vector<Eigen::MatrixXcf> &I,
     const size_t nr_enc = I[0].cols();
 
     // Output
-    ImageVector Im(nr_im, Eigen::VectorXcf::Zero(nr_voxels*nr_enc));
-    Eigen::VectorXf mask = Eigen::VectorXf::Zero(nr_voxels);
+    ImageVector Im(nr_im, Eigen::VectorXcd::Zero(nr_voxels*nr_enc));
+    Eigen::VectorXd mask = Eigen::VectorXd::Zero(nr_voxels);
 
     // Iterators and distance
     size_t i, j, k, l;
@@ -40,7 +40,7 @@ ImageTuple get_images(const std::vector<Eigen::MatrixXcf> &I,
         if (!p2s[i].empty()){
 
             // Build weigths
-            Eigen::VectorXf w = Eigen::VectorXf::Zero(p2s[i].size());
+            Eigen::VectorXd w = Eigen::VectorXd::Zero(p2s[i].size());
             for (j=0; j<p2s[i].size(); j++){
                 w(j) = std::pow(std::pow(x(p2s[i][j],0) - xi[0](i), 2)
                      + std::pow(x(p2s[i][j],1) - xi[1](i), 2)
@@ -71,29 +71,29 @@ ImageTuple get_images(const std::vector<Eigen::MatrixXcf> &I,
 
 
 // Evaluate the CSPAMM magnetizations on all the spins
-Magnetization_Images CSPAMM_magnetizations(const float &M,
-                                    const float &M0,
-                                    const float &alpha,
-                                    const float &beta,
-                                    const float &prod,
-                                    const float &t,
-                                    const float &T1,
-                                    const Eigen::VectorXf &ke,
-                                    const Eigen::MatrixXf &X){
+Magnetization_Images CSPAMM_magnetizations(const double &M,
+                                    const double &M0,
+                                    const double &alpha,
+                                    const double &beta,
+                                    const double &prod,
+                                    const double &t,
+                                    const double &T1,
+                                    const Eigen::VectorXd &ke,
+                                    const Eigen::MatrixXd &X){
 
     // Output images
-    Eigen::MatrixXcf Mxy0 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
-    Eigen::MatrixXcf Mxy1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());;
-    Eigen::MatrixXf Mask = Eigen::MatrixXf::Zero(X.rows(),X.cols());;
+    Eigen::MatrixXcd Mxy0 = Eigen::MatrixXcd::Zero(X.rows(),X.cols());
+    Eigen::MatrixXcd Mxy1 = Eigen::MatrixXcd::Zero(X.rows(),X.cols());;
+    Eigen::MatrixXd Mask = Eigen::MatrixXd::Zero(X.rows(),X.cols());;
 
     // Temp variables
-    Eigen::MatrixXcf tmp1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
-    Eigen::MatrixXcf tmp2 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
+    Eigen::MatrixXcd tmp1 = Eigen::MatrixXcd::Zero(X.rows(),X.cols());
+    Eigen::MatrixXcd tmp2 = Eigen::MatrixXcd::Zero(X.rows(),X.cols());
 
     // Complex unit
-    std::complex<float> cu(0, 1);
-    float sin2b = std::pow(std::sin(beta),2);
-    float cos2b = std::pow(std::cos(beta),2);
+    std::complex<double> cu(0, 1);
+    double sin2b = std::pow(std::sin(beta),2);
+    double cos2b = std::pow(std::cos(beta),2);
 
     // Build magnetizations
     for (int i=0; i<ke.size(); i++){
@@ -111,27 +111,27 @@ Magnetization_Images CSPAMM_magnetizations(const float &M,
 
 
 // Evaluate the DENSE magnetizations on all the spins
-Magnetization_Images DENSE_magnetizations(const float &M,
-                                    const float &M0,
-                                    const float &alpha,
-                                    const float &prod,
-                                    const float &t,
-                                    const float &T1,
-                                    const Eigen::VectorXf &ke,
-                                    const Eigen::MatrixXf &X,
-                                    const Eigen::MatrixXf &u){
+Magnetization_Images DENSE_magnetizations(const double &M,
+                                    const double &M0,
+                                    const double &alpha,
+                                    const double &prod,
+                                    const double &t,
+                                    const double &T1,
+                                    const Eigen::VectorXd &ke,
+                                    const Eigen::MatrixXd &X,
+                                    const Eigen::MatrixXd &u){
 
     // Output images
-    Eigen::MatrixXcf Mxy0 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
-    Eigen::MatrixXcf Mxy1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());;
-    Eigen::MatrixXf Mask = Eigen::MatrixXf::Zero(X.rows(),X.cols());;
+    Eigen::MatrixXcd Mxy0 = Eigen::MatrixXcd::Zero(X.rows(),X.cols());
+    Eigen::MatrixXcd Mxy1 = Eigen::MatrixXcd::Zero(X.rows(),X.cols());;
+    Eigen::MatrixXd Mask = Eigen::MatrixXd::Zero(X.rows(),X.cols());;
 
     // Temp variables
-    Eigen::MatrixXcf tmp1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
-    Eigen::MatrixXcf tmp2 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
+    Eigen::MatrixXcd tmp1 = Eigen::MatrixXcd::Zero(X.rows(),X.cols());
+    Eigen::MatrixXcd tmp2 = Eigen::MatrixXcd::Zero(X.rows(),X.cols());
 
     // Complex unit
-    std::complex<float> cu(0, 1);
+    std::complex<double> cu(0, 1);
 
     // Build magnetizations
     for (int i=0; i<ke.size(); i++){
@@ -149,15 +149,15 @@ Magnetization_Images DENSE_magnetizations(const float &M,
 
 
 // Exact magnetization
-Exact_Images EXACT_magnetizations(const Eigen::VectorXf &ke,
-                                    const Eigen::MatrixXf &u){
+Exact_Images EXACT_magnetizations(const Eigen::VectorXd &ke,
+                                    const Eigen::MatrixXd &u){
 
     // Output images
-    Eigen::MatrixXcf Mxy = Eigen::MatrixXcf::Zero(u.rows(),u.cols());
-    Eigen::MatrixXf Mask = Eigen::MatrixXf::Zero(u.rows(),u.cols());
+    Eigen::MatrixXcd Mxy = Eigen::MatrixXcd::Zero(u.rows(),u.cols());
+    Eigen::MatrixXd Mask = Eigen::MatrixXd::Zero(u.rows(),u.cols());
 
     // Complex unit
-    std::complex<float> cu(0, 1);
+    std::complex<double> cu(0, 1);
 
     // Build magnetizations
     for (int i=0; i<ke.size(); i++){

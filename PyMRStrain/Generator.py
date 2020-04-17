@@ -88,9 +88,9 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
   #     voxel_coords  = [X.flatten('F') for X in D['grid']] # reset voxel coords
 
   # Magnetization images and spins magnetizations
-  m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
-  m1_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
-  m2_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
+  m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex128)
+  m1_image = np.zeros(np.append(resolution, dk), dtype=np.complex128)
+  m2_image = np.zeros(np.append(resolution, dk), dtype=np.complex128)
 
   # Grid to evaluate magnetizations
   X = D['grid']
@@ -277,9 +277,9 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
   #     voxel_coords  = [X.flatten('F') for X in D['grid']] # reset voxel coords
 
   # Magnetization images and spins magnetizations
-  m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
-  m1_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
-  m2_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
+  m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex128)
+  m1_image = np.zeros(np.append(resolution, dk), dtype=np.complex128)
+  m2_image = np.zeros(np.append(resolution, dk), dtype=np.complex128)
 
   # Grid to evaluate magnetizations
   X = D['grid']
@@ -454,8 +454,8 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
   #     voxel_coords  = [X.flatten('F') for X in D['grid']] # reset voxel coords
 
   # Magnetization images and spins magnetizations
-  m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
-  m1_image = np.zeros(np.append(resolution, dk), dtype=np.complex64)
+  m0_image = np.zeros(np.append(resolution, dk), dtype=np.complex128)
+  m1_image = np.zeros(np.append(resolution, dk), dtype=np.complex128)
 
   # Grid to evaluate magnetizations
   X = D['grid']
