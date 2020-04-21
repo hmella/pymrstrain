@@ -145,7 +145,7 @@ Magnetization_Images DENSE_magnetizations(const double &alpha,
 
 
 // Exact magnetization
-Exact_Images EXACT_magnetizations(const Eigen::VectorXd &M0
+Exact_Images EXACT_magnetizations(const Eigen::VectorXd &M0,
                                   const Eigen::VectorXd &ke,
                                   const Eigen::MatrixXd &u){
 
