@@ -28,7 +28,7 @@ class Parameters:
             R_ep = R_en+tau
             R_inner = R_en-tau
             while R_inner <= 0:
-                R_inner = 0.9*R_inner
+                R_inner += 0.05*R_inner
             R_outer = R_ep+tau
 
             # Temporal modulation
