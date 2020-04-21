@@ -6,7 +6,7 @@ from PyMRStrain import *
 if __name__=="__main__":
 
   # Parameters
-  p = Parameters(time_steps=18)
+  p = Parameters(time_steps=20)
   p.h = 0.008
   p.phi_en = -15*np.pi/180
   p.phi_ep = 0*np.pi/180
@@ -21,18 +21,18 @@ if __name__=="__main__":
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
 
   # Create complimentary image
-  I = DENSEImage(FOV=np.array([0.2, 0.2, 0.04]),
+  I = DENSEImage(FOV=np.array([0.1, 0.1, 0.008]),
             center=np.array([0.0,0.0,0.0]),
-            resolution=np.array([70, 70, 1]),
+            resolution=np.array([33, 33, 1]),
             encoding_frequency=np.array([ke,ke,0]),
             T1=np.array([1e-10,1e-10,0.85]),
             M0=np.array([0,0,1]),
             flip_angle=15*np.pi/180,
             off_resonance=phi,
-            kspace_factor=15,
+            kspace_factor=30,
             slice_thickness=0.008,
             oversampling_factor=1,
-            phase_profiles=40)
+            phase_profiles=33)
 
   # Spins
   spins = Spins(Nb_samples=250000, parameters=p)
@@ -49,24 +49,25 @@ if __name__=="__main__":
 
   # Generate images
   start = time.time()
-  NSA_1, NSA_2, mask = I.generate(epi, phantom, p, debug=True)
+  NSA_1, NSA_2, mask = I.generate(epi, phantom, p, debug=False)
   end = time.time()
   print(end-start)
 
   # Add noise to images
-  sigma = 0.025
+  sigma = 0.01
   NSA_1.k = add_cpx_noise(NSA_1.k, mask=NSA_1.k_msk, sigma=sigma)
   NSA_2.k = add_cpx_noise(NSA_2.k, mask=NSA_2.k_msk, sigma=sigma)
 
   # kspace to image
   In1 = NSA_1.to_img()
   In2 = NSA_2.to_img() 
-  mask = mask.to_img()
+  mask = np.abs(mask.to_img()) > 0.5*np.abs(mask.to_img()).max()
 
   # Corrected image
   I = In1 - In2
 
   # Plot
   if MPI_rank==0:
-      multi_slice_viewer(np.abs(itok(I[:,:,0,0,:])))
-      multi_slice_viewer(np.angle(I[:,:,0,0,:]))
+      multi_slice_viewer(mask[:,:,0,0,:])
+      multi_slice_viewer(mask[:,:,0,0,:]*np.abs(I[:,:,0,0,:]))
+      multi_slice_viewer(mask[:,:,0,0,:]*np.angle(I[:,:,0,0,:]))
