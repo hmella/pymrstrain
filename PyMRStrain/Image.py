@@ -11,8 +11,7 @@ class ImageBase(object):
                center=np.array([0.0, 0.0, 0.0]),
                encoding_direction=[0, 1],
                flip_angle=0.5*np.pi,
-               T1=1.0, T2=0.5,
-               M0=1.0, M=1.0,
+               T1=1.0, T2=0.5, M0=1.0,
                off_resonance=[],
                kspace_factor=6.5,
                slice_thickness = [],
@@ -29,7 +28,6 @@ class ImageBase(object):
     self.T1 = T1
     self.T2 = T2
     self.M0 = M0
-    self.M  = M
     self.grid = self.generate_grid()
     self.off_resonance = off_resonance
     self.kspace_factor = kspace_factor

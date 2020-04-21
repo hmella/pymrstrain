@@ -71,13 +71,11 @@ ImageTuple get_images(const std::vector<Eigen::MatrixXcd> &I,
 
 
 // Evaluate the CSPAMM magnetizations on all the spins
-Magnetization_Images CSPAMM_magnetizations(const double &M,
-                                    const double &M0,
-                                    const double &alpha,
+Magnetization_Images CSPAMM_magnetizations(const double &alpha,
                                     const double &beta,
                                     const double &prod,
-                                    const double &t,
-                                    const double &T1,
+                                    const Eigen::VectorXd &M0,
+                                    const Eigen::VectorXd &exp_T1,
                                     const Eigen::VectorXd &ke,
                                     const Eigen::MatrixXd &X){
 
@@ -97,9 +95,9 @@ Magnetization_Images CSPAMM_magnetizations(const double &M,
 
     // Build magnetizations
     for (int i=0; i<ke.size(); i++){
-        tmp1.array()(Eigen::all,i) += 0.5*M*sin2b*std::exp(-t/T1)*(-cu*ke(i)*X(Eigen::all,i)).array().exp();
-        tmp1.array()(Eigen::all,i) += 0.5*M*sin2b*std::exp(-t/T1)*(+cu*ke(i)*X(Eigen::all,i)).array().exp();
-        tmp2.array()(Eigen::all,i) += M0*(1.0-std::exp(-t/T1)) + M*cos2b*std::exp(-t/T1);
+        tmp1.array()(Eigen::all,i) += 0.5*M0.array()*sin2b*exp_T1.array()*(-cu*ke(i)*X(Eigen::all,i)).array().exp();
+        tmp1.array()(Eigen::all,i) += 0.5*M0.array()*sin2b*exp_T1.array()*(+cu*ke(i)*X(Eigen::all,i)).array().exp();
+        tmp2.array()(Eigen::all,i) += M0.array()*(1.0-exp_T1.array()) + M0.array()*cos2b*exp_T1.array();
     }
     Mxy0 += (tmp1 + tmp2)*prod*std::sin(alpha);
     Mxy1 += (-tmp1 + tmp2)*prod*std::sin(alpha);
@@ -111,12 +109,10 @@ Magnetization_Images CSPAMM_magnetizations(const double &M,
 
 
 // Evaluate the DENSE magnetizations on all the spins
-Magnetization_Images DENSE_magnetizations(const double &M,
-                                    const double &M0,
-                                    const double &alpha,
+Magnetization_Images DENSE_magnetizations(const double &alpha,
                                     const double &prod,
-                                    const double &t,
-                                    const double &T1,
+                                    const Eigen::VectorXd &M0,
+                                    const Eigen::VectorXd &exp_T1,
                                     const Eigen::VectorXd &ke,
                                     const Eigen::MatrixXd &X,
                                     const Eigen::MatrixXd &u){
@@ -135,9 +131,9 @@ Magnetization_Images DENSE_magnetizations(const double &M,
 
     // Build magnetizations
     for (int i=0; i<ke.size(); i++){
-        tmp1.array()(Eigen::all,i) += 0.5*M*std::exp(-t/T1)*(-cu*ke(i)*u(Eigen::all,i)).array().exp();
-        tmp1.array()(Eigen::all,i) += 0.5*M*std::exp(-t/T1)*(-cu*ke(i)*(2*X(Eigen::all,i) + u(Eigen::all,i)).array()).exp();
-        tmp2.array()(Eigen::all,i) += M0*(1-std::exp(-t/T1))*(-cu*ke(i)*(X(Eigen::all,i) + u(Eigen::all,i)).array()).exp();
+        tmp1.array()(Eigen::all,i) += 0.5*M0.array()*exp_T1.array()*(-cu*ke(i)*u(Eigen::all,i)).array().exp();
+        tmp1.array()(Eigen::all,i) += 0.5*M0.array()*exp_T1.array()*(-cu*ke(i)*(2*X(Eigen::all,i) + u(Eigen::all,i)).array()).exp();
+        tmp2.array()(Eigen::all,i) += M0.array()*(1-exp_T1.array())*(-cu*ke(i)*(X(Eigen::all,i) + u(Eigen::all,i)).array()).exp();
     }
     Mxy0 += (tmp1 + tmp2)*prod*std::sin(alpha);
     Mxy1 += (-tmp1 + tmp2)*prod*std::sin(alpha);
@@ -149,8 +145,9 @@ Magnetization_Images DENSE_magnetizations(const double &M,
 
 
 // Exact magnetization
-Exact_Images EXACT_magnetizations(const Eigen::VectorXd &ke,
-                                    const Eigen::MatrixXd &u){
+Exact_Images EXACT_magnetizations(const Eigen::VectorXd &M0
+                                  const Eigen::VectorXd &ke,
+                                  const Eigen::MatrixXd &u){
 
     // Output images
     Eigen::MatrixXcd Mxy = Eigen::MatrixXcd::Zero(u.rows(),u.cols());
@@ -161,7 +158,7 @@ Exact_Images EXACT_magnetizations(const Eigen::VectorXd &ke,
 
     // Build magnetizations
     for (int i=0; i<ke.size(); i++){
-        Mxy.array()(Eigen::all,i) += (-cu*ke(i)*u(Eigen::all,i)).array().exp();
+        Mxy.array()(Eigen::all,i) += M0.array()*(-cu*ke(i)*u(Eigen::all,i)).array().exp();
     }
     Mask.array() += 1;
 

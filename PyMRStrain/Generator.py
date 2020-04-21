@@ -28,8 +28,25 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
   alpha = image.flip_angle             # flip angle
   beta  = image.encoding_angle         # tip angle
   ke    = image.encoding_frequency     # encoding frequency
-  M0    = 1.0                          # thermal equilibrium magnetization
-  M     = M0
+  M0    = image.M0                     # thermal equilibrium magnetization
+
+  # Regional M0
+  M0r = np.zeros([phantom.spins.Nb_samples,1])
+  if isinstance(T1,np.ndarray) or isinstance(T1,list):
+      M0r[phantom.spins.regions[:,0]] = M0[0]  # inner
+      M0r[phantom.spins.regions[:,1]] = M0[1]  # outer
+      M0r[phantom.spins.regions[:,2]] = M0[2]  # ventricle
+  else:
+      M0r[phantom.spins.regions[:,2]] = M0  # ventricle
+
+  # T1 parameters across regions
+  T1r = np.zeros([phantom.spins.Nb_samples,1])
+  if isinstance(T1,np.ndarray) or isinstance(T1,list):
+      T1r[phantom.spins.regions[:,0]] = T1[0]  # inner
+      T1r[phantom.spins.regions[:,1]] = T1[1]  # outer
+      T1r[phantom.spins.regions[:,2]] = T1[2]  # ventricle
+  else:
+      T1r[phantom.spins.regions[:,2]] = T1  # ventricle
 
   # Determine if the image and phantom geometry are 2D or 3D
   di = image.type_dim()                      # image geometric dimension
@@ -100,7 +117,6 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
   r, c, dr, dc = cropping_ranges(image.resolution, resolution, ovrs_fac)
 
   # Spins inside the ventricle
-  inside = phantom.spins.regions[:,-1]
   exc_slice  = (x[:,2] < image.center[2] + 0.5*image.slice_thickness)
   exc_slice *= (x[:,2] > image.center[2] - 0.5*image.slice_thickness)
 
@@ -141,10 +157,10 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
     upre = np.copy(reshaped_u)
 
     # Get magnetization on each spin
-    mags = CSPAMM_magnetizations(M, M0, alpha[time_step], beta, prod, t, T1,
-                        ke[0:dk], x[:,0:dk])
+    mags = CSPAMM_magnetizations(alpha[time_step], beta, prod, M0r,
+                                 np.exp(-t/T1r), ke[0:dk], x[:,0:dk])
     for i in range(len(mags)):
-        mags[i][(~inside + ~exc_slice),:] = 0
+        mags[i][(~exc_slice),:] = 0
 
     # # Debug
     # if MPI_rank==0:
@@ -217,8 +233,25 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
   T1    = image.T1                     # relaxation
   alpha = image.flip_angle             # flip angle
   ke    = image.encoding_frequency     # encoding frequency
-  M0    = 1.0                          # thermal equilibrium magnetization
-  M     = M0
+  M0    = image.M0                     # thermal equilibrium magnetization
+
+  # Regional M0
+  M0r = np.zeros([phantom.spins.Nb_samples,1])
+  if isinstance(T1,np.ndarray) or isinstance(T1,list):
+      M0r[phantom.spins.regions[:,0]] = M0[0]  # inner
+      M0r[phantom.spins.regions[:,1]] = M0[1]  # outer
+      M0r[phantom.spins.regions[:,2]] = M0[2]  # ventricle
+  else:
+      M0r[phantom.spins.regions[:,2]] = M0  # ventricle
+
+  # Regional T1
+  T1r = np.zeros([phantom.spins.Nb_samples,1])
+  if isinstance(T1,np.ndarray) or isinstance(T1,list):
+      T1r[phantom.spins.regions[:,0]] = T1[0]  # inner
+      T1r[phantom.spins.regions[:,1]] = T1[1]  # outer
+      T1r[phantom.spins.regions[:,2]] = T1[2]  # ventricle
+  else:
+      T1r[phantom.spins.regions[:,2]] = T1  # ventricle
 
   # Determine if the image and phantom geometry are 2D or 3D
   di = image.type_dim()                      # image geometric dimension
@@ -289,7 +322,6 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
   r, c, dr, dc = cropping_ranges(image.resolution, resolution, ovrs_fac)
 
   # Spins inside the ventricle
-  inside = phantom.spins.regions[:,-1]
   exc_slice  = (x[:,2] < image.center[2] + 0.5*image.slice_thickness)
   exc_slice *= (x[:,2] > image.center[2] - 0.5*image.slice_thickness)
 
@@ -330,10 +362,10 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
     upre = np.copy(reshaped_u)
 
     # Get magnetization on each spin
-    mags = DENSE_magnetizations(M, M0, alpha[time_step], prod, t, T1,
-                        ke[0:dk], x[:,0:dk], reshaped_u[:,0:dk])
+    mags = DENSE_magnetizations(alpha[time_step], prod, M0r, np.exp(-t/T1r),
+                                ke[0:dk], x[:,0:dk], reshaped_u[:,0:dk])
     for i in range(len(mags)):
-        mags[i][(~inside + ~exc_slice),:] = 0
+        mags[i][(~exc_slice),:] = 0
 
     # # Debug
     # if MPI_rank==0:
@@ -405,7 +437,16 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
  # Sequence parameters
   ke    = image.encoding_frequency     # encoding frequency
-  M0    = 1.0                          # thermal equilibrium magnetization
+  M0    = image.M0                     # thermal equilibrium magnetization
+
+  # Regional M0
+  M0r = np.zeros([phantom.spins.Nb_samples,1])
+  if isinstance(T1,np.ndarray) or isinstance(T1,list):
+      M0r[phantom.spins.regions[:,0]] = M0[0]  # inner
+      M0r[phantom.spins.regions[:,1]] = M0[1]  # outer
+      M0r[phantom.spins.regions[:,2]] = M0[2]  # ventricle
+  else:
+      M0r[phantom.spins.regions[:,2]] = M0  # ventricle
 
   # Determine if the image and phantom geometry are 2D or 3D
   di = image.type_dim()                      # image geometric dimension
@@ -465,7 +506,6 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
   r, c, dr, dc = cropping_ranges(image.resolution, resolution, ovrs_fac)
 
   # Spins inside the ventricle
-  inside = phantom.spins.regions[:,-1]
   exc_slice  = (x[:,2] < image.center[2] + 0.5*image.slice_thickness)
   exc_slice *= (x[:,2] > image.center[2] - 0.5*image.slice_thickness)
 
@@ -501,9 +541,9 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
     x_upd = x
 
     # Get magnetization on each spin
-    mags = EXACT_magnetizations(ke[0:dk], reshaped_u[:,0:dk])
+    mags = EXACT_magnetizations(M0r, ke[0:dk], reshaped_u[:,0:dk])
     for i in range(len(mags)):
-        mags[i][(~inside + ~exc_slice),:] = 0
+        mags[i][(~exc_slice),:] = 0
 
     # # Debug
     # if MPI_rank==0:

@@ -7,15 +7,11 @@ if __name__=="__main__":
 
   # Parameters
   p = Parameters(time_steps=18)
-  p.R_en = 0.02
-  p.R_ep = 0.03
-  p.tau = p.R_ep - p.R_en
   p.h = 0.008
-  p.phi_en = -20*np.pi/180
-  p.phi_ep = -10*np.pi/180
-  p.xi = 0.5
-  save_pyobject(p, 'p.pkl')
-  p=load_pyobject('p.pkl')
+  p.phi_en = -15*np.pi/180
+  p.phi_ep = 0*np.pi/180
+  # save_pyobject(p, 'p.pkl')
+  # p=load_pyobject('p.pkl')
 
 
   # Field inhomogeneity
@@ -30,17 +26,18 @@ if __name__=="__main__":
             center=np.array([0.0,0.0,0.0]),
             resolution=np.array([100, 100, 1]),
             encoding_frequency=np.array([ke,ke,0]),
-            T1=0.85,
+            T1=np.array([1e-10,1e-10,0.85]),
+            M0=np.array([0,0,1]),
             flip_angle=15*np.pi/180,
             encoding_angle=90*np.pi/180,
             off_resonance=phi,
             kspace_factor=15,
             slice_thickness=0.008,
-            oversampling_factor=2,
+            oversampling_factor=1,
             phase_profiles=66)
 
   # Spins
-  spins = Spins(Nb_samples=500000, parameters=p)
+  spins = Spins(Nb_samples=250000, parameters=p)
 
   # Create phantom object
   phantom = Phantom(spins, p, patient=False, z_motion=False, write_vtk=False)
@@ -68,13 +65,11 @@ if __name__=="__main__":
   In2 = NSA_2.to_img() 
   mask = mask.to_img()
 
-  # Corrected image
+  # CSPAMM image
   I = In1 - In2
 
   # Plot
   if MPI_rank==0:
-      multi_slice_viewer(np.abs(I[:,:,0,0,:]))
+      multi_slice_viewer(np.abs(NSA_1.k[:,:,0,0,:]-NSA_2.k[:,:,0,0,:] + 
+                         (NSA_1.k[:,:,0,1,:]-NSA_2.k[:,:,0,1,:])))
       multi_slice_viewer(np.abs(I[:,:,0,1,:]))
-      multi_slice_viewer(np.abs(I[:,:,0,1,:])*np.abs(I[:,:,0,0,:]))
-      multi_slice_viewer(np.abs(NSA_1.k[:,:,0,0,:]))
-      multi_slice_viewer(np.abs(NSA_1.k[:,:,0,1,:]))

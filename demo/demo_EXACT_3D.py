@@ -20,6 +20,7 @@ if __name__=="__main__":
             center=np.array([0.0,0.0,0.03]),
             resolution=np.array([100, 100, 1]),
             encoding_frequency=np.array([500.0,500.0,0.0]),
+            M0=np.array([0,0,1]),
             kspace_factor=15,
             slice_thickness=0.008,
             oversampling_factor=1,

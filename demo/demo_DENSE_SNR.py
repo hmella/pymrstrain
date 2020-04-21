@@ -27,7 +27,8 @@ if __name__=="__main__":
   I0 = DENSEImage(FOV=np.array([0.1, 0.1]),
             resolution=np.array([N, N]),
             encoding_frequency=np.array([ke,ke]),
-            T1=0.85,
+            T1=np.array([1e-10,1e-10,0.85]),
+            M0=np.array([0,0,1]),
             flip_angle=15*np.pi/180,
             off_resonance=phi)
 
