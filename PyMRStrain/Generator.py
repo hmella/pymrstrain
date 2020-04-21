@@ -32,7 +32,7 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
 
   # Regional M0
   M0r = np.zeros([phantom.spins.Nb_samples,1])
-  if isinstance(T1,np.ndarray) or isinstance(T1,list):
+  if isinstance(M0,np.ndarray) or isinstance(M0,list):
       M0r[phantom.spins.regions[:,0]] = M0[0]  # inner
       M0r[phantom.spins.regions[:,1]] = M0[1]  # outer
       M0r[phantom.spins.regions[:,2]] = M0[2]  # ventricle
@@ -161,6 +161,7 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
                                  np.exp(-t/T1r), ke[0:dk], x[:,0:dk])
     for i in range(len(mags)):
         mags[i][(~exc_slice),:] = 0
+    mags[-1][~phantom.spins.regions[:,2]] = 0
 
     # # Debug
     # if MPI_rank==0:
@@ -187,13 +188,10 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
     m1_image[...] = gather_image(I[1].reshape(m1_image.shape,order='F'))
-    m2_image[...] = gather_image(I[2].reshape(m2_image.shape, order='F'))
+    m2_image[...] = gather_image(I[2].reshape(m2_image.shape,order='F'))
 
     # Iterates over slices
     for slice in range(resolution[2]):
-
-      # Update mask
-      # mask[...,slice,i] = np.abs(ktoi(itok(m[...,slice])[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]))
 
       # Complex magnetization data
       for enc_dir in range(dk):
@@ -237,7 +235,7 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
 
   # Regional M0
   M0r = np.zeros([phantom.spins.Nb_samples,1])
-  if isinstance(T1,np.ndarray) or isinstance(T1,list):
+  if isinstance(M0,np.ndarray) or isinstance(M0,list):
       M0r[phantom.spins.regions[:,0]] = M0[0]  # inner
       M0r[phantom.spins.regions[:,1]] = M0[1]  # outer
       M0r[phantom.spins.regions[:,2]] = M0[2]  # ventricle
@@ -366,6 +364,7 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
                                 ke[0:dk], x[:,0:dk], reshaped_u[:,0:dk])
     for i in range(len(mags)):
         mags[i][(~exc_slice),:] = 0
+    mags[-1][~phantom.spins.regions[:,2]] = 0
 
     # # Debug
     # if MPI_rank==0:
@@ -396,7 +395,7 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
     m1_image[...] = gather_image(I[1].reshape(m1_image.shape,order='F'))
-    m2_image[...] = gather_image(I[2].reshape(m2_image.shape, order='F'))
+    m2_image[...] = gather_image(I[2].reshape(m2_image.shape,order='F'))
 
     # Iterates over slices
     for slice in range(resolution[2]):
@@ -441,7 +440,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
   # Regional M0
   M0r = np.zeros([phantom.spins.Nb_samples,1])
-  if isinstance(T1,np.ndarray) or isinstance(T1,list):
+  if isinstance(M0,np.ndarray) or isinstance(M0,list):
       M0r[phantom.spins.regions[:,0]] = M0[0]  # inner
       M0r[phantom.spins.regions[:,1]] = M0[1]  # outer
       M0r[phantom.spins.regions[:,2]] = M0[2]  # ventricle
@@ -544,6 +543,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
     mags = EXACT_magnetizations(M0r, ke[0:dk], reshaped_u[:,0:dk])
     for i in range(len(mags)):
         mags[i][(~exc_slice),:] = 0
+    mags[-1][~phantom.spins.regions[:,2]] = 0
 
     # # Debug
     # if MPI_rank==0:
