@@ -1,4 +1,5 @@
 import numpy as np
+from PyMRStrain.Helpers import iseven, isodd
 from PyMRStrain.MPIUtilities import MPI_print
 
 
@@ -37,25 +38,25 @@ def check_kspace_bw(image, x):
   pxsz = np.array([2*np.pi/(kf*freq) if (freq != 0 and kf*freq > kl[i])
                    else vs[i] for (i,freq) in enumerate(ke)])
 
-  # Modified image resolution
-  res = np.floor(np.divide(FOV,pxsz)).astype(np.int64)
-  incr_bw = np.any([image.resolution[i] < res[i] for i in range(ke.size)])
+  # Virtual resolution for the generation process
+  virtual_resolution = np.floor(np.divide(FOV,pxsz)).astype(np.int64)
+  incr_bw = np.any([image.resolution[i] < virtual_resolution[i] for i in range(ke.size)])
 
   # If the resolution needs modification then check if the new
   # one has even or odd components to make the cropping process
   # easier
   if incr_bw:
       # Check if resolutions are even or odd
-      for i in range(res.size):
-          if (image.resolution[i] % 2 == 0) and (res[i] % 2 != 0):
-              res[i] += 1
-          elif (image.resolution[i] % 2 != 0) and (res[i] % 2 == 0):
-              res[i] += 1
+      for i in range(virtual_resolution.size):
+          if iseven(image.resolution[i]) and isodd(virtual_resolution[i]):
+              virtual_resolution[i] += 1
+          elif isodd(image.resolution[i]) and iseven(virtual_resolution[i]):
+              virtual_resolution[i] += 1 
 
       # Create a new image object with the new FOV and resolution
       new_image = image.__class__(FOV=FOV,
               center=image.center,
-              resolution=res,
+              resolution=virtual_resolution,
               encoding_frequency=ke,
               T1=image.T1,
               off_resonance=image.off_resonance)
@@ -72,10 +73,10 @@ def check_kspace_bw(image, x):
   # Debug printings
   MPI_print(' Acq. matrix: ({:d},{:d})'.format(image.acq_matrix[0],
       image.acq_matrix[1]))
-  MPI_print(' Generation matrix: ({:d},{:d})'.format(res[0],
-      res[1]))
+  MPI_print(' Generation matrix: ({:d},{:d})'.format(virtual_resolution[0],
+      virtual_resolution[1]))
 
-  return res, incr_bw, D
+  return virtual_resolution, incr_bw, D
 
 
 #

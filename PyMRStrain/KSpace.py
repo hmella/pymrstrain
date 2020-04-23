@@ -53,8 +53,8 @@ class kspace:
             Hp = Riesz_filter(acq_matrix[dir[1]],width=self.filter_width,
                               lift=self.filter_lift)
         if self.filter is None:
-            Hm = 1
-            Hp = 1
+            Hm = np.ones([acq_matrix[dir[0]],])
+            Hp = np.ones([acq_matrix[dir[1]],])
         H = np.outer(Hm,Hp).flatten('F')
         k_acq_filt = H*k_acq
 

@@ -30,13 +30,25 @@ def build_idx(n_lines, acq_matrix, dir):
 def cropping_ranges(im_resolution, gen_resolution, ovrs_fac):
 
     # Abbreviations
-    S = gen_resolution
-    s = im_resolution
+    gr = gen_resolution
+    ir = im_resolution
+
+    # Number of measurements in the extended kspace
+    n = gr - ovrs_fac*ir
+
+    # Shift in the kspace due to the oversampling
+    shift = np.mod(n, 2)
 
     # Ranges
-    r = [int(0.5*(S[0]-ovrs_fac*s[0])), int(0.5*(S[0]-ovrs_fac*s[0])+ovrs_fac*s[0])]
-    c = [int(0.5*(S[1]-ovrs_fac*s[1])), int(0.5*(S[1]-ovrs_fac*s[1])+ovrs_fac*s[1])]
+    r = [int(n[0]/2) + shift[0], int(n[0]/2 + shift[0] + ovrs_fac*ir[0])]
+    c = [int(n[1]/2) + shift[1], int(n[1]/2 + shift[1] + ovrs_fac*ir[1])]
     dr = [1, ovrs_fac]
-    dc = [ovrs_fac, 1]    
+    dc = [ovrs_fac, 1]
 
     return r, c, dr, dc
+
+def iseven(arg):
+    return (arg % 2 == 0)
+
+def isodd(arg):
+    return (arg % 2 != 0)
