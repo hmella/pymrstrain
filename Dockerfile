@@ -2,8 +2,11 @@
 FROM ubuntu:18.04
 MAINTAINER Hernan Mella <hmella@uc.cl>
 
+# Create new user
+RUN useradd --create-home --shel /bin/bash pymrstrain
+
 # Update Ubuntu Software repository
-USER root
+# USER root
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 RUN apt-get update && \
     apt-get install -y apt-utils && \
@@ -27,13 +30,10 @@ RUN cd /tmp/ && git clone https://github.com/eigenteam/eigen-git-mirror.git && \
 RUN mkdir /tmp/pymrstrain/ && mkdir /tmp/pymrstrain/PyMRStrain/
 COPY PyMRStrain /tmp/pymrstrain/PyMRStrain/
 COPY setup.py /tmp/pymrstrain/
-RUN cd /tmp/pymrstrain/ && ls && python3 setup.py install --user && \
+RUN cd /tmp/pymrstrain/ && ls && python3 setup.py install && \
     rm -rf build/ tmp/ dist/ PyMRStrain.egg-info/
 RUN cd && cd /tmp/ && rm -rf eigen-git-mirror pymrstrain
 
-# Add user and WORKDIR
-# RUN useradd -ms /bin/bash pymrstrain
-# USER pymrstrain
-#WORKDIR /home/pymrstrain
-RUN mkdir /home/shared
-WORKDIR /home/shared
+# Change default user
+USER pymrstrain
+WORKDIR /home/pymrstrain
