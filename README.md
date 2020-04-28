@@ -73,16 +73,21 @@ python3 setup.py install
 ```
 
 ## Installation with Docker
-Build the docker image using:
+To build the docker image run the following instruction in the command line:
 ```bash
-docker build . -t pymrstrain
+docker build --rm . -t pymrstrain
 ```
 
-and then do:
+Once the building process has finished, run the following to start the PyMRStrain Docker container:
+```bash
+docker run -ti -v "path/to/folder":"/home/pymrstrain" pymrstrain
+```
+
+If you wish to run the container with plotting support, i.e., allowing to the container to show images, first run:
 ```bash
 sudo apt-get install x11-xserver-utils && xhost +
 ```
-Finally, to run the image with plotting support just run:
+and finally, use the following instruction to start the container:
 ```bash
 docker run --rm -it \
    --user="pymrstrain" \
@@ -96,9 +101,4 @@ docker run --rm -it \
 ```
 
 ## Dependencies
-- *Eigen:* [https://github.com/eigenteam/eigen-git-mirror.git](https://github.com/eigenteam/eigen-git-mirror.git)
-- *matplotlib:* [https://github.com/matplotlib/matplotlib](https://github.com/matplotlib/matplotlib)
-- *meshio:* [https://github.com/nschloe/meshio](https://github.com/nschloe/meshio)
-- *MPI4py:* [https://github.com/mpi4py/mpi4py](https://github.com/mpi4py/mpi4py)
-- *pybind11:* [https://github.com/pybind/pybind11](https://github.com/pybind/pybind11)
-- *SciPy:* [https://www.scipy.org/](https://www.scipy.org/)
+The dependencies of the project are listed in the files ```install_dependencies.sh``` and ```Dockerfile```.
