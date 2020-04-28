@@ -80,8 +80,7 @@ docker build . -t pymrstrain
 
 and then do:
 ```bash
-sudo apt-get install x11-xserver-utils &&
-xhost +
+sudo apt-get install x11-xserver-utils && xhost +
 ```
 Finally, to run the image with plotting support just run:
 ```bash
