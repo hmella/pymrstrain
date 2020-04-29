@@ -1,5 +1,5 @@
 import numpy as np
-from PyMRStrain.Helpers import iseven, isodd
+from PyMRStrain.Helpers import iseven, isodd, round_to_even
 from PyMRStrain.MPIUtilities import MPI_print
 
 
@@ -21,26 +21,25 @@ def check_kspace_bw(image, x):
   kf = image.kspace_factor
   vs = image.voxel_size()
   FOV = np.copy(image.FOV)
-  oversampling = image.oversampling_factor
-
-
-  # Field of view in the measurement and phase
-  # direction fullfilling the acquisition matrix
-  # size
-  FOV_m  = 1.0/((1.0/vs[0:2])/(oversampling*image.resolution[0:2]))
-  pxsz_m = FOV_m/(oversampling*image.resolution[0:2])
-  vs[0:2], FOV[0:2] = pxsz_m, FOV_m
+  ofac = image.oversampling_factor
 
   # Lower bound for the new encoding frequencies
   kl = 2*np.pi/vs
 
-  # Modified pixel size
+  # Virtual voxel size, estimated to satisfy the frequency requirements
+  # in the kspace to avoid artifacts (i.e. folding) in the image domain
   pxsz = np.array([2*np.pi/(kf*freq) if (freq != 0 and kf*freq > kl[i])
                    else vs[i] for (i,freq) in enumerate(ke)])
 
+  # Field of view in the measurement and phase directions including the
+  # oversampling factor
+  FOV[:2]  = ofac*FOV[:2]
+
   # Virtual resolution for the generation process
-  virtual_resolution = np.floor(np.divide(FOV,pxsz)).astype(np.int64)
-  incr_bw = np.any([image.resolution[i] < virtual_resolution[i] for i in range(ke.size)])
+  virtual_resolution = np.divide(FOV, pxsz).astype(np.int64)
+  if ofac != 1:
+      virtual_resolution[:2] = round_to_even(virtual_resolution[:2])
+  incr_bw = np.any([image.resolution[i] < virtual_resolution[i] for i in range(ke.size)])  
 
   # If the resolution needs modification then check if the new
   # one has even or odd components to make the cropping process
@@ -48,10 +47,14 @@ def check_kspace_bw(image, x):
   if incr_bw:
       # Check if resolutions are even or odd
       for i in range(virtual_resolution.size):
-          if iseven(image.resolution[i]) and isodd(virtual_resolution[i]):
-              virtual_resolution[i] += 1
-          elif isodd(image.resolution[i]) and iseven(virtual_resolution[i]):
-              virtual_resolution[i] += 1 
+          if ke[i] != 0:
+              tail = (virtual_resolution[i]-ofac*image.resolution[i])/2
+              if iseven(image.resolution[i]) and iseven(tail):
+                  print(1)
+                  virtual_resolution[i] += 1
+              if isodd(image.resolution[i]) and isodd(tail):
+                  print(2)
+                  virtual_resolution[i] += 1
 
       # Create a new image object with the new FOV and resolution
       new_image = image.__class__(FOV=FOV,

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from PyMRStrain.Filters import Hamming_filter, Riesz_filter, Tukey_filter
-from PyMRStrain.Helpers import build_idx, order
+from PyMRStrain.Helpers import build_idx, isodd, order
 from PyMRStrain.IO import rescale_image, scale_image
 from PyMRStrain.Math import itok, ktoi
 
@@ -72,19 +72,22 @@ class kspace:
         pshape[dir[0]] /= self.oversampling_factor
 
         # Store kspaces
-        k_tmp_0 = np.reshape(k_new[::self.oversampling_factor], pshape, order=order[dir[0]])
+        start = 0
+        if isodd(acq_matrix[0]/self.oversampling_factor) and self.oversampling_factor != 1:
+            start = 1
+        k_tmp_0 = np.reshape(k_new[start::self.oversampling_factor], pshape, order=order[dir[0]])
         k_tmp_1 = np.reshape(k_acq, acq_matrix[dir], order=order[dir[enc_dir]])
         self.k[...,slice,enc_dir,timestep] = k_tmp_0
         self.k_acq[...,slice,enc_dir,timestep] = k_tmp_1
 
         # Store mask
-        k_tmp_msk = np.reshape(k_mask[::self.oversampling_factor], pshape, order=order[dir[0]])
+        k_tmp_msk = np.reshape(k_mask[start::self.oversampling_factor], pshape, order=order[dir[0]])
         self.k_msk[...,slice,enc_dir,timestep] = k_tmp_msk
 
-    def scale(self):
-        self.k = scale_image(self.k,mag=False,real=True,compl=True)
-        self.k_msk = scale_image(self.k_msk,mag=False,real=True,compl=False)
-        self.k_acq = scale_image(self.k_acq,mag=False,real=True,compl=True)
+    def scale(self,dtype=np.uint64):
+        self.k = scale_image(self.k,mag=False,real=True,compl=True,dtype=dtype)
+        self.k_msk = scale_image(self.k_msk,mag=False,real=True,compl=False,dtype=dtype)
+        self.k_acq = scale_image(self.k_acq,mag=False,real=True,compl=True,dtype=dtype)
 
     def rescale(self):
         tmp = rescale_image(self.k)

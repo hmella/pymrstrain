@@ -5,7 +5,8 @@ import numpy as np
 from Connectivity import getConnectivity3, update_p2s
 from ImageBuilding import (CSPAMM_magnetizations, DENSE_magnetizations,
                            EXACT_magnetizations, get_images)
-from PyMRStrain.Helpers import cropping_ranges, m_dirs, order
+from PyMRStrain.Helpers import (cropping_ranges, m_dirs, order,
+                                restore_resolution)
 from PyMRStrain.KSpace import kspace
 from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.MPIUtilities import MPI_print, MPI_rank, MPI_size, gather_image
@@ -582,8 +583,10 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
         tmp1 = m1_image[...,slice,enc_dir]
 
         # Uncorrected kspaces
-        k0 = itok(tmp0)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
-        k1 = itok(tmp1)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
+        # k0 = itok(tmp0)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
+        # k1 = itok(tmp1)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
+        k0 = restore_resolution(itok(tmp0), r, c, dr, dc, enc_dir, image.resolution, ovrs_fac)
+        k1 = restore_resolution(itok(tmp1), r, c, dr, dc, enc_dir, image.resolution, ovrs_fac)
 
         # kspace resizing and epi artifacts generation
         delta_ph = image.FOV[m_dirs[enc_dir][1]]/image.phase_profiles
