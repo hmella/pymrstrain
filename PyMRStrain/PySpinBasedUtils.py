@@ -34,10 +34,8 @@ def check_kspace_bw(image, x):
       BW = dk*(ofac*image.resolution[:2]+1)
       FOV[:2] = ofac*image.resolution[:2]*(1/BW)
       pxsz[:2] = 1/(kf*BW)
-
-  # # # Ratio between the new and original pixel sizes
-  ratio = round_to_even(vs[:2]/pxsz[:2])
-  pxsz[:2] = vs[:2]/ratio
+  else:
+      pxsz[:2] *= 1/kf
 
   # Virtual resolution for the generation process
   virtual_resolution = np.divide(FOV, pxsz).astype(np.int64)

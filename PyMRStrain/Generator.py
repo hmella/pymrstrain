@@ -203,9 +203,9 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
         tmp2 = m2_image[...,slice,enc_dir]
 
         # Uncorrected kspaces
-        k0 = itok(tmp0)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
-        k1 = itok(tmp1)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
-        k2 = itok(tmp2)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
+        k0 = restore_resolution(itok(tmp0), r, c, dr, dc, enc_dir, image.resolution, ovrs_fac)
+        k1 = restore_resolution(itok(tmp1), r, c, dr, dc, enc_dir, image.resolution, ovrs_fac)
+        k2 = restore_resolution(itok(tmp2), r, c, dr, dc, enc_dir, image.resolution, ovrs_fac)
 
         # kspace resizing and epi artifacts generation
         delta_ph = image.FOV[m_dirs[enc_dir][1]]/image.phase_profiles
@@ -410,9 +410,9 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
         tmp2 = m2_image[...,slice,enc_dir]
 
         # Uncorrected kspaces
-        k0 = itok(tmp0)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
-        k1 = itok(tmp1)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
-        k2 = itok(tmp2)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
+        k0 = restore_resolution(itok(tmp0), r, c, dr, dc, enc_dir, image.resolution, ovrs_fac)
+        k1 = restore_resolution(itok(tmp1), r, c, dr, dc, enc_dir, image.resolution, ovrs_fac)
+        k2 = restore_resolution(itok(tmp2), r, c, dr, dc, enc_dir, image.resolution, ovrs_fac)
 
         # kspace resizing and epi artifacts generation
         delta_ph = image.FOV[m_dirs[enc_dir][1]]/image.phase_profiles
