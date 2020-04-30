@@ -583,10 +583,16 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
         tmp1 = m1_image[...,slice,enc_dir]
 
         # Uncorrected kspaces
-        # k0 = itok(tmp0)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
-        # k1 = itok(tmp1)[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
         k0 = restore_resolution(itok(tmp0), r, c, dr, dc, enc_dir, image.resolution, ovrs_fac)
         k1 = restore_resolution(itok(tmp1), r, c, dr, dc, enc_dir, image.resolution, ovrs_fac)
+
+        # import matplotlib.pyplot as plt
+        # from PyMRStrain.Math import ktoi
+        # fig,ax = plt.subplots(1,2)
+        # ax[0].imshow(np.angle(ktoi(itok(tmp0)[1::ovrs_fac,:])))
+        # ax[1].imshow(np.angle(ktoi(k0)))
+        # plt.show(block=False)
+        # plt.pause(5)
 
         # kspace resizing and epi artifacts generation
         delta_ph = image.FOV[m_dirs[enc_dir][1]]/image.phase_profiles

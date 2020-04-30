@@ -36,44 +36,25 @@ def cropping_ranges(im_resolution, gen_resolution, ovrs_fac):
     # Number of measurements in the extended kspace
     n = gr - ovrs_fac*ir
 
-    # Shift in the kspace due to the oversampling
-    shift = [0, 0]#np.mod(n/2, 2).astype(int)
-    print('    Shift: ',shift)
-
     # Ranges
-    r = [int(n[0]/2) + shift[0], int(n[0]/2 + shift[0] + ovrs_fac*ir[0])]
-    c = [int(n[1]/2) + shift[1], int(n[1]/2 + shift[1] + ovrs_fac*ir[1])]
+    r = [int(n[0]/2), int(n[0]/2 + ovrs_fac*ir[0])]
+    c = [int(n[1]/2), int(n[1]/2 + ovrs_fac*ir[1])]
     dr = [1, ovrs_fac]
     dc = [ovrs_fac, 1]
 
     return r, c, dr, dc
 
-#
+# Restore the virtual resolution to the acquired one. When the image resolution
+# has odd values, the kspace resampling is shifted in one pixel
 def restore_resolution(k,r,c,dr,dc,enc_dir,image_resolution,ovrs_fac):
-    if isodd(image_resolution[0]):
-        print('IS ODD!!')
-        shift = ovrs_fac - 1
+    if isodd(image_resolution[enc_dir]):
+        shift = ovrs_fac-1
         if enc_dir == 0:
-            k_out = k[r[0]:r[1]:dr[enc_dir],c[0]+shift:c[1]:dc[enc_dir]]
-            print('    Rows, step: [{:d},{:d}], {:d}'.format(r[0],r[1],dr[enc_dir]))
-            print('    Cols, step: [{:d},{:d}], {:d}'.format(c[0]+shift,c[1],dc[enc_dir]))
+            k_out = k[r[0]:r[1]:dr[enc_dir], c[0]+shift:c[1]:dc[enc_dir]]
         else:
-            k_out = k[r[0]+shift:r[1]:dr[enc_dir],c[0]:c[1]:dc[enc_dir]]
-            print('    Rows, step: [{:d},{:d}], {:d}'.format(r[0]+shift,r[1],dr[enc_dir]))
-            print('    Cols, step: [{:d},{:d}], {:d}'.format(c[0],c[1],dc[enc_dir]))
+            k_out = k[r[0]+shift:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
     else:
-        k_out = k[r[0]:r[1]:dr[enc_dir],c[0]:c[1]:dc[enc_dir]]
-        print('    Rows, step: [{:d},{:d}], {:d}'.format(r[0],r[1],dr[enc_dir]))
-        print('    Cols, step: [{:d},{:d}], {:d}'.format(c[0],c[1],dc[enc_dir]))
-
-    # import matplotlib.pyplot as plt
-    # from PyMRStrain.Math import ktoi
-    # from PyMRStrain.MPIUtilities import MPI_rank
-    # if MPI_rank == 0:
-    #     plt.imshow(np.angle(ktoi(k_out)))
-    #     plt.show(block=False)
-    #     plt.pause(5)
-
+        k_out = k[r[0]:r[1]:dr[enc_dir], c[0]:c[1]:dc[enc_dir]]
     return k_out
 
 def iseven(arg):
@@ -83,4 +64,5 @@ def isodd(arg):
     return np.mod(arg, 2) != 0
 
 def round_to_even(arg):
-    return np.round(arg/2)*2
+    eps = 1e-10
+    return np.round(eps + arg/2)*2

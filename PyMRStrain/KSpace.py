@@ -71,17 +71,20 @@ class kspace:
         # Remove oversampled values
         pshape[dir[0]] /= self.oversampling_factor
 
+        # Kspace shift
+        if isodd(pshape[dir[0]]):
+            shift = self.oversampling_factor - 1
+        else:
+            shift = 0
+
         # Store kspaces
-        start = 0
-        if isodd(acq_matrix[0]/self.oversampling_factor) and self.oversampling_factor != 1:
-            start = 1
-        k_tmp_0 = np.reshape(k_new[start::self.oversampling_factor], pshape, order=order[dir[0]])
+        k_tmp_0 = np.reshape(k_new[shift::self.oversampling_factor], pshape, order=order[dir[0]])
         k_tmp_1 = np.reshape(k_acq, acq_matrix[dir], order=order[dir[enc_dir]])
         self.k[...,slice,enc_dir,timestep] = k_tmp_0
         self.k_acq[...,slice,enc_dir,timestep] = k_tmp_1
 
         # Store mask
-        k_tmp_msk = np.reshape(k_mask[start::self.oversampling_factor], pshape, order=order[dir[0]])
+        k_tmp_msk = np.reshape(k_mask[shift::self.oversampling_factor], pshape, order=order[dir[0]])
         self.k_msk[...,slice,enc_dir,timestep] = k_tmp_msk
 
     def scale(self,dtype=np.uint64):

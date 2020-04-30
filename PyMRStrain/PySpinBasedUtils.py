@@ -19,42 +19,34 @@ def check_kspace_bw(image, x):
   # and oversampling_factor
   ke = image.encoding_frequency
   kf = image.kspace_factor
-  vs = image.voxel_size()
+  pxsz = image.voxel_size()
   FOV = np.copy(image.FOV)
   ofac = image.oversampling_factor
 
   # Lower bound for the new encoding frequencies
-  kl = 2*np.pi/vs
-
-  # Virtual voxel size, estimated to satisfy the frequency requirements
-  # in the kspace to avoid artifacts (i.e. folding) in the image domain
-  pxsz = np.array([2*np.pi/(kf*freq) if (freq != 0 and kf*freq > kl[i])
-                   else vs[i] for (i,freq) in enumerate(ke)])
+  kl = 2*np.pi/pxsz
 
   # Field of view in the measurement and phase directions including the
   # oversampling factor
   FOV[:2]  = ofac*FOV[:2]
+  if ofac != 1:
+      dk = 1.0/FOV[:2]
+      BW = dk*(ofac*image.resolution[:2]+1)
+      FOV[:2] = ofac*image.resolution[:2]*(1/BW)
+      pxsz[:2] = 1/(kf*BW)
+
+  # # # Ratio between the new and original pixel sizes
+  ratio = round_to_even(vs[:2]/pxsz[:2])
+  pxsz[:2] = vs[:2]/ratio
 
   # Virtual resolution for the generation process
   virtual_resolution = np.divide(FOV, pxsz).astype(np.int64)
-  if ofac != 1:
-      virtual_resolution[:2] = round_to_even(virtual_resolution[:2])
   incr_bw = np.any([image.resolution[i] < virtual_resolution[i] for i in range(ke.size)])  
 
   # If the resolution needs modification then check if the new
   # one has even or odd components to make the cropping process
   # easier
   if incr_bw:
-      # Check if resolutions are even or odd
-      for i in range(virtual_resolution.size):
-          if ke[i] != 0:
-              tail = (virtual_resolution[i]-ofac*image.resolution[i])/2
-              if iseven(image.resolution[i]) and iseven(tail):
-                  print(1)
-                  virtual_resolution[i] += 1
-              if isodd(image.resolution[i]) and isodd(tail):
-                  print(2)
-                  virtual_resolution[i] += 1
 
       # Create a new image object with the new FOV and resolution
       new_image = image.__class__(FOV=FOV,
@@ -71,7 +63,6 @@ def check_kspace_bw(image, x):
        "grid":       new_image.grid,
        "resolution":  new_image.resolution,
        "FOV": new_image.FOV}
-  del new_image
 
   # Debug printings
   MPI_print(' Acq. matrix: ({:d},{:d})'.format(image.acq_matrix[0],
