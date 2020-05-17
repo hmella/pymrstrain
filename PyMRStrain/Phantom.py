@@ -42,6 +42,7 @@ class PhantomBase:
 
     # Filtering
     Tp = gaussian_filter(Tp, sigma=2)
+    # print('Using non-filtered time modulation for debugging')
     Tp = Tp/Tp.max()
 
     # Temporal resampling
@@ -126,7 +127,7 @@ class Phantom(PhantomBase):
     # Get in-plane displacements
     if self.patient:
       # Abnormality
-      Phi = p.xi*(1 - (self.scos*np.cos(p.psi) + self.ssin*np.sin(p.psi)))
+      Phi = p.xi*0.5*(1 - (self.scos*np.cos(p.psi) + self.ssin*np.sin(p.psi)))
 
       # Create displacement and velocity for patients
       self.u_real[:,0] = Phi*(R_ES*(self.scos*np.cos(phi_n*scale) \
