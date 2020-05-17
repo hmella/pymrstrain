@@ -19,19 +19,14 @@ def get_segmentation_mask(u_image, tol=1.0e-15):
 
 
 # Add complex noise
-def add_cpx_noise(I, mask=[], sigma=[], SNR=20, ref=0, recover_noise=False):
+def add_cpx_noise(I, mask=[], std=[], rstd=[], SNR=20, ref=0, recover_noise=False):
 
   # Standard deviation
-  if not sigma:
-    pos = mask[...,ref].astype(np.bool_)
-    I0_ref = I[...,0,ref]
-    I1_ref = I[...,1,ref]
-    mu = 0.5*(np.abs(I0_ref) + np.abs(I1_ref))
-    mean  = np.mean(mu[pos])
-    sigma = np.sqrt(2)*mean/SNR
+  if not rstd:
+    sigma = std
   else:
     peak = max([np.abs(I[...,0,0]).max(), np.abs(I[...,1,0]).max()])
-    sigma = sigma*peak
+    sigma = rstd*peak
 
   # Noise generation and addition
   noise = np.random.normal(0, sigma, I.shape) + 1j*np.random.normal(0, sigma, I.shape)
