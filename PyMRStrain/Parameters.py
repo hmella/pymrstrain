@@ -23,12 +23,12 @@ class Parameters:
             h = 0.1
             tau  = np.random.uniform(0.0075, 0.0125)
             center = np.array([0.0,0.0,0.0])
-            # R_en = np.random.uniform(0.01, 0.03)
-            R_en = np.random.uniform(0.02, 0.03)
+            R_en = np.random.uniform(0.01, 0.03)
+            # R_en = np.random.uniform(0.02, 0.03)
             R_ep = R_en+tau
             R_inner = R_en-tau
             while R_inner <= 0:
-                R_inner += 0.05*R_inner
+                R_inner += 0.05*tau
             R_outer = R_ep+tau
 
             # Temporal modulation
@@ -40,8 +40,10 @@ class Parameters:
             sigma  = np.random.uniform(0.25, 2.0)               #
             S_en   = np.random.uniform(0.6, 0.8)                # end-systolic endo. scaling
             S_ar   = np.random.uniform(0.9, 1.1)                # end-systolic area scaling
-            phi_en = np.random.uniform(-30.0*np.pi/180.0, 0)    # end-systolic epi. twist
-            phi_ep = np.random.uniform(phi_en, 0)
+            # phi_en = np.random.uniform(-30.0*np.pi/180.0, 0)    # end-systolic epi. twist
+            # phi_ep = np.random.uniform(phi_en, 0)
+            phi_en = np.random.uniform(-10.0*np.pi/180.0, 10.0*np.pi/180.0)    # end-systolic epi. twist
+            phi_ep = 0.0
 
             # Pacient parameters
             psi = np.random.uniform(0.0, 2.0*np.pi)
