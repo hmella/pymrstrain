@@ -42,15 +42,19 @@ ImageTuple get_images(const std::vector<Eigen::MatrixXcd> &I,
             // Build weigths
             Eigen::VectorXd w = Eigen::VectorXd::Zero(p2s[i].size());
             for (j=0; j<p2s[i].size(); j++){
+                // w(j) = std::pow(std::pow(x(p2s[i][j],0) - xi[0](i), 2)
+                //      + std::pow(x(p2s[i][j],1) - xi[1](i), 2)
+                //      + std::pow(x(p2s[i][j],2) - xi[2](i), 2), 0.5);
                 w(j) = std::pow(std::pow(x(p2s[i][j],0) - xi[0](i), 2)
-                     + std::pow(x(p2s[i][j],1) - xi[1](i), 2)
-                     + std::pow(x(p2s[i][j],2) - xi[2](i), 2), 0.5);
+                              + std::pow(x(p2s[i][j],1) - xi[1](i), 2), 0.5);
             }
             w.array() = 1.0 - w.array()/d;
             // for (j=0; j<p2s[i].size(); j++){
+            //     // w(j) = std::pow(x(p2s[i][j],0) - xi[0](i), 2)
+            //     //      + std::pow(x(p2s[i][j],1) - xi[1](i), 2)
+            //     //      + std::pow(x(p2s[i][j],2) - xi[2](i), 2);
             //     w(j) = std::pow(x(p2s[i][j],0) - xi[0](i), 2)
-            //          + std::pow(x(p2s[i][j],1) - xi[1](i), 2)
-            //          + std::pow(x(p2s[i][j],2) - xi[2](i), 2);
+            //          + std::pow(x(p2s[i][j],1) - xi[1](i), 2);
             // }
             // w.array() = (-w.array()/std::pow(d, 2)).exp();
 
@@ -115,7 +119,8 @@ Magnetization_Images DENSE_magnetizations(const double &alpha,
                                     const Eigen::VectorXd &exp_T1,
                                     const Eigen::VectorXd &ke,
                                     const Eigen::MatrixXd &X,
-                                    const Eigen::MatrixXd &u){
+                                    const Eigen::MatrixXd &u,
+                                    const Eigen::MatrixXd &phi){
 
     // Output images
     Eigen::MatrixXcd Mxy0 = Eigen::MatrixXcd::Zero(X.rows(),X.cols());
@@ -131,9 +136,9 @@ Magnetization_Images DENSE_magnetizations(const double &alpha,
 
     // Build magnetizations
     for (int i=0; i<ke.size(); i++){
-        tmp1.array()(Eigen::all,i) += 0.5*M0.array()*exp_T1.array()*(-cu*ke(i)*u(Eigen::all,i)).array().exp();
-        tmp1.array()(Eigen::all,i) += 0.5*M0.array()*exp_T1.array()*(-cu*ke(i)*(2*X(Eigen::all,i) + u(Eigen::all,i)).array()).exp();
-        tmp2.array()(Eigen::all,i) += M0.array()*(1-exp_T1.array())*(-cu*ke(i)*(X(Eigen::all,i) + u(Eigen::all,i)).array()).exp();
+        tmp1.array()(Eigen::all,i) += 0.5*M0.array()*exp_T1.array()*(-cu*(ke(i)*u(Eigen::all,i) + phi)).array().exp();
+        tmp1.array()(Eigen::all,i) += 0.5*M0.array()*exp_T1.array()*(-cu*(ke(i)*(2*X(Eigen::all,i) + u(Eigen::all,i)) + phi).array()).exp();
+        tmp2.array()(Eigen::all,i) += M0.array()*(1-exp_T1.array())*(-cu*(ke(i)*(X(Eigen::all,i) + u(Eigen::all,i)) + phi).array()).exp();
     }
     Mxy0 += (tmp1 + tmp2)*prod*std::sin(alpha);
     Mxy1 += (-tmp1 + tmp2)*prod*std::sin(alpha);

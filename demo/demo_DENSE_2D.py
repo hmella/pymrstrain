@@ -29,9 +29,9 @@ if __name__=="__main__":
             M0=np.array([0,0,1]),
             flip_angle=15*np.pi/180,
             off_resonance=phi,
-            kspace_factor=30,
+            kspace_factor=2,
             slice_thickness=0.008,
-            oversampling_factor=1,
+            oversampling_factor=2,
             phase_profiles=33)
 
   # Spins
@@ -55,8 +55,8 @@ if __name__=="__main__":
 
   # Add noise to images
   sigma = 0.01
-  NSA_1.k = add_cpx_noise(NSA_1.k, mask=NSA_1.k_msk, sigma=sigma)
-  NSA_2.k = add_cpx_noise(NSA_2.k, mask=NSA_2.k_msk, sigma=sigma)
+  # NSA_1.k = add_cpx_noise(NSA_1.k, mask=NSA_1.k_msk, sigma=sigma)
+  # NSA_2.k = add_cpx_noise(NSA_2.k, mask=NSA_2.k_msk, sigma=sigma)
 
   # kspace to image
   In1 = NSA_1.to_img()
@@ -68,6 +68,7 @@ if __name__=="__main__":
 
   # Plot
   if MPI_rank==0:
+      multi_slice_viewer(np.abs(NSA_1.k[:,:,0,0,:]))
       multi_slice_viewer(mask[:,:,0,0,:])
       multi_slice_viewer(mask[:,:,0,0,:]*np.abs(I[:,:,0,0,:]))
       multi_slice_viewer(mask[:,:,0,0,:]*np.angle(I[:,:,0,0,:]))

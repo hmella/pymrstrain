@@ -6,13 +6,13 @@ from PyMRStrain import *
 if __name__=="__main__":
 
   # Parameters
-  # p = Parameters(time_steps=18)
-  # p.phi_en = -20*np.pi/180
-  # p.phi_ep = -10*np.pi/180
-  # # p.R_inner = p.R_en
-  # # p.R_outer = p.R_ep
-  # # p.xi = 0.5
-  # save_pyobject(p, 'p.pkl')
+  p = Parameters(time_steps=8)
+  p.phi_en = -20*np.pi/180
+  p.phi_ep = -10*np.pi/180
+  p.R_inner = 1e-6
+  p.R_outer = 2*p.R_ep
+  # p.xi = 0.5
+  save_pyobject(p, 'p.pkl')
   p=load_pyobject('p.pkl')
 
   # Field inhomogeneity
@@ -27,11 +27,11 @@ if __name__=="__main__":
             center=np.array([0.0,0.0,0.0]),
             resolution=np.array([70, 70, 1]),
             encoding_frequency=np.array([ke,ke,0]),
-            T1=np.array([1e-10,1e-10,0.85]),
-            M0=np.array([0,0,1]),
+            T1=np.array([0.5,0.5,0.85]),
+            M0=np.array([1,1,1]),
             flip_angle=15*np.pi/180,
             off_resonance=phi,
-            kspace_factor=15,
+            kspace_factor=2,
             slice_thickness=0.008,
             oversampling_factor=1,
             phase_profiles=44)
@@ -57,8 +57,8 @@ if __name__=="__main__":
 
   # Add noise to images
   sigma = 0.025
-  NSA_1.k = add_cpx_noise(NSA_1.k, mask=NSA_1.k_msk, sigma=sigma)
-  NSA_2.k = add_cpx_noise(NSA_2.k, mask=NSA_2.k_msk, sigma=sigma)
+  # NSA_1.k = add_cpx_noise(NSA_1.k, mask=NSA_1.k_msk, sigma=sigma)
+  # NSA_2.k = add_cpx_noise(NSA_2.k, mask=NSA_2.k_msk, sigma=sigma)
 
   # kspace to image
   In1 = NSA_1.to_img()

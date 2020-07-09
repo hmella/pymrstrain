@@ -15,6 +15,7 @@ class ImageBase(object):
                off_resonance=[],
                kspace_factor=6.5,
                slice_thickness = [],
+               slice_offset=0,
                oversampling_factor=2,
                phase_profiles=64,
                filter='Tukey',
@@ -35,6 +36,7 @@ class ImageBase(object):
         self.slice_thickness = slice_thickness
     else:
         self.slice_thickness = self.FOV[-1]
+    self.slice_offset = slice_offset
     self.oversampling_factor = oversampling_factor
     self.phase_profiles = phase_profiles
     self.acq_matrix = np.array([oversampling_factor*resolution[0], phase_profiles])

@@ -32,9 +32,9 @@ if __name__=="__main__":
             flip_angle=15*np.pi/180,
             encoding_angle=90*np.pi/180,
             off_resonance=phi,
-            kspace_factor=15,
+            kspace_factor=2,
             slice_thickness=0.008,
-            oversampling_factor=2,
+            oversampling_factor=1,
             phase_profiles=66)
 
   # Spins
@@ -58,8 +58,8 @@ if __name__=="__main__":
 
   # Add noise to images
   sigma = 0.025*1e-20
-  NSA_1.k = add_cpx_noise(NSA_1.k, mask=NSA_1.k_msk, sigma=sigma)
-  NSA_2.k = add_cpx_noise(NSA_2.k, mask=NSA_2.k_msk, sigma=sigma)
+  # NSA_1.k = add_cpx_noise(NSA_1.k, mask=NSA_1.k_msk, sigma=sigma)
+  # NSA_2.k = add_cpx_noise(NSA_2.k, mask=NSA_2.k_msk, sigma=sigma)
 
   # kspace to image
   In1 = NSA_1.to_img()

@@ -118,8 +118,8 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
   r, c, dr, dc = cropping_ranges(image.resolution, resolution, ovrs_fac)
 
   # Spins inside the ventricle
-  exc_slice  = (x[:,2] < image.center[2] + 0.5*image.slice_thickness)
-  exc_slice *= (x[:,2] > image.center[2] - 0.5*image.slice_thickness)
+  exc_slice  = (x[:,2] < image.center[2] + image.slice_offset + 0.5*image.slice_thickness)
+  exc_slice *= (x[:,2] > image.center[2] + image.slice_offset - 0.5*image.slice_thickness)
 
   # Time stepping
   prod = 1
@@ -321,8 +321,8 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
   r, c, dr, dc = cropping_ranges(image.resolution, resolution, ovrs_fac)
 
   # Spins inside the ventricle
-  exc_slice  = (x[:,2] < image.center[2] + 0.5*image.slice_thickness)
-  exc_slice *= (x[:,2] > image.center[2] - 0.5*image.slice_thickness)
+  exc_slice  = (x[:,2] < image.center[2] + image.slice_offset + 0.5*image.slice_thickness)
+  exc_slice *= (x[:,2] > image.center[2] + image.slice_offset - 0.5*image.slice_thickness)
 
   # Time stepping
   prod = 1
@@ -357,12 +357,15 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
     # Updated spins positions
     x_upd = x + reshaped_u
 
+    # Field inhomogeneity
+    phi_in = image.off_resonance(x_upd[:,0],x_upd[:,1]) 
+
     # Copy previous displcement field
     upre = np.copy(reshaped_u)
 
     # Get magnetization on each spin
     mags = DENSE_magnetizations(alpha[time_step], prod, M0r, np.exp(-t/T1r),
-                                ke[0:dk], x[:,0:dk], reshaped_u[:,0:dk])
+                                ke[0:dk], x[:,0:dk], reshaped_u[:,0:dk], phi_in)
     for i in range(len(mags)):
         mags[i][(~exc_slice),:] = 0
     mags[-1][~phantom.spins.regions[:,2]] = 0
@@ -377,12 +380,8 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
     #     theta = np.arctan(x[:,1]/x[:,0])
     #     rot.vector()[:] = wrap(theta.reshape((-1,1)), np.pi/8)
     #     EXC.vector()[exc_slice] = 1
-    #     if image.slice_following:
-    #       S2P.vector()[excited_spins] = s2p.reshape((-1,1))
-    #       write_vtk([u,S2P,EXC,rot], path='output/SF_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
-    #     else:
-    #       S2P.vector()[excited_spins] = s2p.reshape((-1,1))
-    #       write_vtk([u,S2P,EXC,rot], path='output/Normal_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
+    #     S2P.vector()[excited_spins] = s2p.reshape((-1,1))
+    #     write_vtk([u,S2P,EXC,rot], path='output/SF_{:04d}.vtu'.format(time_step), name=['displacement','s2p_connectivity','slice','rot'])
 
     # Fill images
     # Obs: the option -order='F'- is included because the grid was flattened
@@ -455,7 +454,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
   # Output image
   size = np.append(image.resolution, [dk, n_t])
-  mask    = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
+  mask = np.zeros(np.append(image.resolution, n_t), dtype=np.float32)
 
   # Output kspaces
   k_nsa_1 = kspace(size, image, epi)
@@ -506,8 +505,8 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
   r, c, dr, dc = cropping_ranges(image.resolution, resolution, ovrs_fac)
 
   # Spins inside the ventricle
-  exc_slice  = (x[:,2] < image.center[2] + 0.5*image.slice_thickness)
-  exc_slice *= (x[:,2] > image.center[2] - 0.5*image.slice_thickness)
+  exc_slice  = (x[:,2] < image.center[2] + image.slice_offset + 0.5*image.slice_thickness)
+  exc_slice *= (x[:,2] > image.center[2] + image.slice_offset - 0.5*image.slice_thickness)
 
   # Time stepping
   for time_step in range(n_t):
@@ -570,7 +569,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
 
     # Gather results
     m0_image[...] = gather_image(I[0].reshape(m0_image.shape,order='F'))
-    m1_image[...] = gather_image(I[1].reshape(m1_image.shape, order='F'))
+    m1_image[...] = gather_image(I[1].reshape(m1_image.shape,order='F'))
 
     # Iterates over slices
     for slice in range(resolution[2]):

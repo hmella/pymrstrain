@@ -53,13 +53,14 @@ class PhantomBase:
 
 # Phantom Class
 class Phantom(PhantomBase):
-  def __init__(self, spins, p, patient=False, z_motion=True, zero_twist=0.35, write_vtk=False):
+  def __init__(self, spins, p, patient=False, z_motion=True, 
+              phi_en_apex=10*np.pi/180, write_vtk=False):
     super().__init__(spins)
     self.p = p
     self.patient = patient
     self.write_vtk = write_vtk
     self.z_motion = z_motion
-    self.zero_twist = zero_twist
+    self.phi_en_apex = phi_en_apex
 
   def get_data(self, i):
 
@@ -115,7 +116,12 @@ class Phantom(PhantomBase):
         # the long-axis is 1.0, and distances are measured from base
         # to appex, zero_twist is the distance from base where this
         # transition happens.
-        scale = (self.zero_twist-z)/self.zero_twist
+        # # scale = self.phi_en_apex/p.phi_en
+        # # self.zero_twist = -1.0/scale/(1.0-1.0/scale)
+        zero_twist = 1/(1 - self.phi_en_apex/p.phi_en)
+
+        # Angular scaling factor defining the rotations in the Z-direction
+        scale = (zero_twist-z)/zero_twist
 
         # Define through-plane displacement
         self.u_real[:,2] = (z - 1)*0.02
@@ -127,6 +133,7 @@ class Phantom(PhantomBase):
     # Get in-plane displacements
     if self.patient:
       # Abnormality
+      # Phi = p.xi*0.5*(1 - (self.scos*np.cos(p.psi) + self.ssin*np.sin(p.psi)))
       Phi = p.xi*0.5*(1 - (self.scos*np.cos(p.psi) + self.ssin*np.sin(p.psi)))
 
       # Create displacement and velocity for patients
@@ -173,7 +180,7 @@ class Phantom(PhantomBase):
 
     # Export generated displacement field
     if self.write_vtk:
-        write_vtk(self.u, path="output/u_{:04d}.vtk".format(i), name='u')
+        write_vtk([self.u], path="output/u_{:04d}.vtk".format(i), name=['u'])
 
     return self.u
 
