@@ -12,9 +12,18 @@ class PhantomBase:
     self.t    = 0.0
     self.spins = spins
     self.x      = self.spins.samples
-    self.r      = np.linalg.norm(self.x[:,0:2], axis=1)
-    self.scos   = self.x[:,0]/self.r
-    self.ssin   = self.x[:,1]/self.r
+    if spins.orientation == 0:
+        self.r      = np.linalg.norm(self.x[:,[1, 2]], axis=1)
+        self.scos   = self.x[:,1]/self.r
+        self.ssin   = self.x[:,2]/self.r
+    elif spins.orientation == 1:
+        self.r      = np.linalg.norm(self.x[:,[0, 2]], axis=1)
+        self.scos   = self.x[:,0]/self.r
+        self.ssin   = self.x[:,2]/self.r
+    elif spins.orientation == 2:
+        self.r      = np.linalg.norm(self.x[:,0:2], axis=1)
+        self.scos   = self.x[:,0]/self.r
+        self.ssin   = self.x[:,1]/self.r
 
     # Volunteers
     self.u  = Function(self.spins)
@@ -104,7 +113,7 @@ class Phantom(PhantomBase):
     # and angle scaling factor
     if self.z_motion:
         # Normalize coordinates
-        z = np.copy(self.x[:,2])
+        z = np.copy(self.x[:,self.spins.orientation])
         z_max = z.max()
         z_min = z.min()
         z = -(z - z_max)/(z_max - z_min) # z=0 at base, z=1 at appex
@@ -124,7 +133,7 @@ class Phantom(PhantomBase):
         scale = (zero_twist-z)/zero_twist
 
         # Define through-plane displacement
-        self.u_real[:,2] = (z - 1)*0.02
+        self.u_real[:,self.spins.orientation] = (z - 1)*0.02
 
     else:
         scale = 1.0
@@ -137,17 +146,39 @@ class Phantom(PhantomBase):
       Phi = p.xi*0.5*(1 - (self.scos*np.cos(p.psi) + self.ssin*np.sin(p.psi)))
 
       # Create displacement and velocity for patients
-      self.u_real[:,0] = Phi*(R_ES*(self.scos*np.cos(phi_n*scale) \
-                            - self.ssin*np.sin(phi_n*scale)) - R_ED*self.scos)
-      self.u_real[:,1] = Phi*(R_ES*(self.ssin*np.cos(phi_n*scale) \
-                            + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin)
+      if self.spins.orientation == 0:
+          self.u_real[:,1] = Phi*(R_ES*(self.scos*np.cos(phi_n*scale) \
+                                - self.ssin*np.sin(phi_n*scale)) - R_ED*self.scos)
+          self.u_real[:,2] = Phi*(R_ES*(self.ssin*np.cos(phi_n*scale) \
+                                + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin)
+      elif self.spins.orientation == 1:
+          self.u_real[:,0] = Phi*(R_ES*(self.scos*np.cos(phi_n*scale) \
+                                - self.ssin*np.sin(phi_n*scale)) - R_ED*self.scos)
+          self.u_real[:,2] = Phi*(R_ES*(self.ssin*np.cos(phi_n*scale) \
+                                + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin)
+      elif self.spins.orientation == 2:
+          self.u_real[:,0] = Phi*(R_ES*(self.scos*np.cos(phi_n*scale) \
+                                - self.ssin*np.sin(phi_n*scale)) - R_ED*self.scos)
+          self.u_real[:,1] = Phi*(R_ES*(self.ssin*np.cos(phi_n*scale) \
+                                + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin)
 
     else:
       # Create displacement and velocity for volunteers
-      self.u_real[:,0] = R_ES*(self.scos*np.cos(phi_n*scale) \
-                            - self.ssin*np.sin(phi_n*scale)) - R_ED*self.scos
-      self.u_real[:,1] = R_ES*(self.ssin*np.cos(phi_n*scale) \
-                            + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin
+      if self.spins.orientation == 0:
+          self.u_real[:,1] = (R_ES*(self.scos*np.cos(phi_n*scale) \
+                                - self.ssin*np.sin(phi_n*scale)) - R_ED*self.scos)
+          self.u_real[:,2] = (R_ES*(self.ssin*np.cos(phi_n*scale) \
+                                + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin)
+      elif self.spins.orientation == 1:
+          self.u_real[:,0] = (R_ES*(self.scos*np.cos(phi_n*scale) \
+                                - self.ssin*np.sin(phi_n*scale)) - R_ED*self.scos)
+          self.u_real[:,2] = (R_ES*(self.ssin*np.cos(phi_n*scale) \
+                                + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin)
+      elif self.spins.orientation == 2:
+          self.u_real[:,0] = (R_ES*(self.scos*np.cos(phi_n*scale) \
+                                - self.ssin*np.sin(phi_n*scale)) - R_ED*self.scos)
+          self.u_real[:,1] = (R_ES*(self.ssin*np.cos(phi_n*scale) \
+                                + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin)
 
     # # # # Inclusion
     # # # f = Function(self.V)
@@ -165,6 +196,81 @@ class Phantom(PhantomBase):
     self.u.vector()[:] = g[i]*self.u_real
     # # # self.u.vector()[:] = g[i]*(np.multiply(self.u_real,f.vector()))
     # # # write_scalar_vtk(self.u, path='output/u.vtk', name='u')
+
+    # Velocity at different time-steps
+    dgdt = - self.TemporalModulation(t + 2*dt, p.tA, p.tB, p.tC) \
+         + 8*self.TemporalModulation(t + dt, p.tA, p.tB, p.tC) \
+         - 8*self.TemporalModulation(t - dt, p.tA, p.tB, p.tC) \
+         + self.TemporalModulation(t - 2*dt, p.tA, p.tB, p.tC)
+    dgdt /= 12*dt
+    self.v.vector()[:] = dgdt[i]*self.u_real
+
+  # Displacement
+  def displacement(self, i):
+    self.get_data(i)
+
+    # Export generated displacement field
+    if self.write_vtk:
+        write_vtk([self.u], path="output/u_{:04d}.vtk".format(i), name=['u'])
+
+    return self.u
+
+  # Velocity
+  def velocity(self, i):
+    self.get_data(i)
+    return self.u, self.v
+
+
+# PCSPAMM phantom
+class PCSPAMM_Phantom(PhantomBase):
+  def __init__(self, spins, p, z_motion=True, write_vtk=False):
+    super().__init__(spins)
+    self.p = p
+    self.write_vtk = write_vtk
+    self.z_motion = z_motion
+
+  def Fluid_TemporalModulation(self, t, tA, tB, tC):
+    return t
+
+  def get_data(self, i):
+
+    # Shorthand notation for the parameters
+    p = self.p
+
+    # Time steps
+    # t = np.linspace(p.t_end/p['time_steps'],p.t_end,p['time_steps'])
+    t = np.linspace(0.0, p.t_end, p.time_steps+1)
+
+    # Ventricle region
+    fluid = self.spins.regions[:,0]
+
+    # Modulation function
+    dt = 1e-08
+
+    # Displacements at different time-steps
+    g  = self.Fluid_TemporalModulation(t, p.tA, p.tB, p.tC)
+    # self.u.vector()[:] = g[i]*self.u_real
+    # # # self.u.vector()[:] = g[i]*(np.multiply(self.u_real,f.vector()))
+    # # # write_scalar_vtk(self.u, path='output/u.vtk', name='u')
+
+    # Add helicity pattern
+    factor = 0.1*(1-np.exp(-(self.p.R_en-self.r[fluid])/self.p.R_en))
+    if self.spins.orientation == 0:
+        self.u_real[fluid,1] = ((self.scos[fluid]*np.cos(factor) \
+                              - self.ssin[fluid]*np.sin(factor)) - self.scos[fluid])
+        self.u_real[fluid,2] = ((self.ssin[fluid]*np.cos(factor) \
+                              + self.scos[fluid]*np.sin(factor)) - self.ssin[fluid])
+    elif self.spins.orientation == 1:
+        self.u_real[fluid,0] = ((self.scos[fluid]*np.cos(factor) \
+                              - self.ssin[fluid]*np.sin(factor)) - self.scos[fluid])
+        self.u_real[fluid,2] = ((self.ssin[fluid]*np.cos(factor) \
+                              + self.scos[fluid]*np.sin(factor)) - self.ssin[fluid])
+    elif self.spins.orientation == 2:
+        self.u_real[fluid,0] = ((self.scos[fluid]*np.cos(factor) \
+                              - self.ssin[fluid]*np.sin(factor)) - self.scos[fluid])
+        self.u_real[fluid,1] = ((self.ssin[fluid]*np.cos(factor) \
+                              + self.scos[fluid]*np.sin(factor)) - self.ssin[fluid])
+    self.u.vector()[:] = g[i]*self.u_real
 
     # Velocity at different time-steps
     dgdt = - self.TemporalModulation(t + 2*dt, p.tA, p.tB, p.tC) \

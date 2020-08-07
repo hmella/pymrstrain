@@ -4,7 +4,7 @@ from PyMRStrain.MPIUtilities import MPI_rank, MPI_size
 
 
 class Spins:
-    def __init__(self, Nb_samples=1000, parameters=[]):
+    def __init__(self, Nb_samples=1000, parameters=[], orientation=2):
         self.Nb_samples = np.ceil(Nb_samples/MPI_size).astype(int)
         self.R_en = parameters.R_en
         self.R_ep = parameters.R_ep
@@ -12,6 +12,7 @@ class Spins:
         self.R_outer = parameters.R_outer
         self.h = parameters.h
         self.center = parameters.center
+        self.orientation = orientation
         self.samples, self.regions = self.generate_samples()
         self.mesh = self.build_mesh()
 
@@ -26,9 +27,18 @@ class Spins:
         z = np.random.uniform(-0.5*self.h, 0.5*self.h, size=[N,])
 
         # Cartesian coordinates
-        x = r*np.cos(theta) + self.center[0]
-        y = r*np.sin(theta) + self.center[1]
-        z = z + self.center[2]
+        if self.orientation == 0:
+            x = z + self.center[2]
+            y = r*np.sin(theta) + self.center[1]
+            z = r*np.cos(theta) + self.center[0]
+        elif self.orientation == 1:
+            x = r*np.cos(theta) + self.center[0]
+            y = z + self.center[2]
+            z = r*np.sin(theta) + self.center[1]
+        elif self.orientation == 2:
+            x = r*np.cos(theta) + self.center[0]
+            y = r*np.sin(theta) + self.center[1]
+            z = z + self.center[2]
 
         # Separate regions
         inner = r < self.R_en
