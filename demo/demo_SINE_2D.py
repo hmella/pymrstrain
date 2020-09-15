@@ -18,8 +18,8 @@ if __name__=="__main__":
   p=load_pyobject('p.pkl')
 
   # Encoding frequency
-  wavelength = [0.0039,0.0078,0.0156]
-  ke = 2*np.pi/wavelength[1]
+  wavelength = [0.0039,0.0039+0.0015,0.0039+2*0.0015]
+  ke = 2*np.pi/wavelength[2]
   ke = np.array([ke,ke,0])
 
   # T1 decay
@@ -41,7 +41,7 @@ if __name__=="__main__":
             filter_lift=0.3)
 
   # Spins
-  spins = Spins(Nb_samples=2000000, parameters=p)
+  spins = Spins(Nb_samples=200000, parameters=p)
 
   # Create phantom object
   phantom = Phantom(spins, p, patient=False, z_motion=False, write_vtk=False)
