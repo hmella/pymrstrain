@@ -59,7 +59,7 @@ class PhantomBase:
 # Phantom Class
 class Phantom(PhantomBase):
   def __init__(self, spins, p, patient=False, z_motion=True, zero_twist=0.35,
-              write_vtk=False, add_inclusion=False):
+              write_vtk=False, add_inclusion=False, inc_factor=0.8):
     super().__init__(spins)
     self.p = p
     self.patient = patient
@@ -67,6 +67,7 @@ class Phantom(PhantomBase):
     self.z_motion = z_motion
     self.zero_twist = zero_twist
     self.add_inclusion = add_inclusion
+    self.inc_factor = inc_factor
 
   def get_data(self, i):
 
@@ -154,7 +155,7 @@ class Phantom(PhantomBase):
         xhat = self.x[:,0]-(p.R_en+0.5*p.tau)
         yhat = self.x[:,1]
         Rhat = np.sqrt(np.power(xhat,2) + np.power(yhat,2))
-        sigma = 0.8*p.tau
+        sigma = self.inc_factor*p.tau
         f = np.zeros(self.u_real.shape)
         f[:,0] = (1-0.55*np.exp(-np.power(Rhat/sigma,2)))
         f[:,1] = (1-0.55*np.exp(-np.power(Rhat/sigma,2)))
