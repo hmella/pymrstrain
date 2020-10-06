@@ -59,7 +59,7 @@ class PhantomBase:
 # Phantom Class
 class Phantom(PhantomBase):
   def __init__(self, spins, p, patient=False, z_motion=True, zero_twist=0.35,
-              write_vtk=False, add_inclusion=False, inc_factor=0.8):
+              write_vtk=False, add_inclusion=False, inc_factor=0.8, inc_scale=0.55):
     super().__init__(spins)
     self.p = p
     self.patient = patient
@@ -68,6 +68,7 @@ class Phantom(PhantomBase):
     self.zero_twist = zero_twist
     self.add_inclusion = add_inclusion
     self.inc_factor = inc_factor
+    self.inc_scale = inc_scale
 
   def get_data(self, i):
 
@@ -157,8 +158,8 @@ class Phantom(PhantomBase):
         Rhat = np.sqrt(np.power(xhat,2) + np.power(yhat,2))
         sigma = self.inc_factor*p.tau
         f = np.zeros(self.u_real.shape)
-        f[:,0] = (1-0.55*np.exp(-np.power(Rhat/sigma,2)))
-        f[:,1] = (1-0.55*np.exp(-np.power(Rhat/sigma,2)))
+        f[:,0] = (1-self.inc_scale*np.exp(-np.power(Rhat/sigma,2)))
+        f[:,1] = (1-self.inc_scale*np.exp(-np.power(Rhat/sigma,2)))
         self.u.vector()[:] *= f
 
     # Velocity at different time-steps

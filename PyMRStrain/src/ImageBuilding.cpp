@@ -180,6 +180,7 @@ Sine_Images SINE_magnetizations(const float &t,
 
     // Build magnetizations
     for (int i=0; i<ke.size(); i++){
+        // Mxy.array()(Eigen::all,i) += - std::exp(-t/T1)*((ke(i)*X(Eigen::all,i)).array().cos());
         Mxy.array()(Eigen::all,i) += (1 - std::exp(-t/T1)) - std::exp(-t/T1)*((ke(i)*X(Eigen::all,i)).array().cos());
         Msk.array()(Eigen::all,i) += 1.0;
     }
