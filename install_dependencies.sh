@@ -2,7 +2,7 @@
 
 # Install pymrstrain dependencies
 sudo apt-get -y install build-essential python3-dev python3-pip python3-tk \
-                 python3-setuptools libopenmpi-dev mpich gmsh cmake nano
+                 python3-setuptools libopenmpi-dev mpich cmake
 sudo pip3 install pybind11
 sudo pip3 install mpi4py
 sudo pip3 install meshio
