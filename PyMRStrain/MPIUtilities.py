@@ -60,7 +60,7 @@ def ScatterSpins(coordinates):
 
     # Number of spins
     arr_size = int(nr_spins/MPI_size)
-    if arr_size % geo_dim is not 0:
+    if arr_size % geo_dim != 0:
       arr_size = arr_size - 1
     sections = [int(arr_size*i) for i in range(1,MPI_size)]
 

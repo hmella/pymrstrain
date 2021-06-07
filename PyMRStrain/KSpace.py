@@ -42,12 +42,12 @@ class kspace:
             k_acq = self.artifact.kspace(k_acq, delta_ph, dir, T2star=0.02)
 
         # Filter to reduce Gibbs ringing artifacts
-        if self.filter is 'Tukey':
+        if self.filter == 'Tukey':
             Hm = Tukey_filter(acq_matrix[dir[0]],width=self.filter_width,
                               lift=self.filter_lift)
             Hp = Tukey_filter(acq_matrix[dir[1]],width=self.filter_width,
                               lift=self.filter_lift)
-        if self.filter is 'Riesz':
+        if self.filter == 'Riesz':
             Hm = Riesz_filter(acq_matrix[dir[0]],width=self.filter_width,
                               lift=self.filter_lift)
             Hp = Riesz_filter(acq_matrix[dir[1]],width=self.filter_width,
