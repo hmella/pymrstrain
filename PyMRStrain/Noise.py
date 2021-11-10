@@ -24,8 +24,8 @@ def add_cpx_noise(I, mask=[], std=[], rstd=[], SNR=20, ref=0, recover_noise=Fals
   # Standard deviation
   if not rstd:
     sigma = std
-  else:
-    peak = max([np.abs(I[...,0,0]).max(), np.abs(I[...,1,0]).max()])
+  else:  	   
+    peak = max([np.abs(I[...,i,0]).max() for i in range(I.shape[3])])
     sigma = rstd*peak
 
   # Noise generation and addition

@@ -8,6 +8,11 @@ typedef std::tuple<ImageVector, Eigen::VectorXd> ImageTuple;
 typedef std::tuple<Eigen::MatrixXcd,
                    Eigen::MatrixXcd,
                    Eigen::MatrixXd> Magnetization_Images;
+
+typedef std::tuple<Eigen::MatrixXcd,
+                   Eigen::MatrixXcd,
+                   Eigen::MatrixXd,
+                   Eigen::MatrixXcd> Magnetization_Images_T1;                   
 typedef std::tuple<Eigen::MatrixXcd,
                    Eigen::MatrixXd> Exact_Images;
 
@@ -112,6 +117,53 @@ Magnetization_Images CSPAMM_magnetizations(const double &alpha,
 }
 
 
+// Evaluate the ORI-O-CSPAMM magnetizations on all the spins
+Magnetization_Images_T1 ORI_O_CSPAMM_magnetizations(const double &alpha,
+                                    const double &beta,
+                                    const double &prod,
+                                    const Eigen::VectorXd &M0,
+                                    const Eigen::VectorXd &exp_T1,
+                                    const Eigen::VectorXd &T1,
+                                    const Eigen::VectorXd &ke,
+                                    const Eigen::MatrixXd &X){
+
+    // Output images
+    Eigen::MatrixXcd Mxy0 = Eigen::MatrixXcd::Zero(X.rows(),1);
+    Eigen::MatrixXcd Mxy1 = Eigen::MatrixXcd::Zero(X.rows(),1);
+    Eigen::MatrixXd Mask = Eigen::MatrixXd::Zero(X.rows(),1);
+    Eigen::MatrixXcd T1r = Eigen::MatrixXcd::Zero(X.rows(),1);
+
+    // Temp variables
+    Eigen::MatrixXcd Xs = Eigen::MatrixXcd::Zero(X.rows(),1);
+    Eigen::MatrixXcd Ys = Eigen::MatrixXcd::Zero(X.rows(),1);
+    Xs.array()(Eigen::all,0) += std::cos(3.1416/4)*X(Eigen::all,0).array() + std::sin(3.1416/4)*X(Eigen::all,1).array();
+    Ys.array()(Eigen::all,0) += -std::sin(3.1416/4)*X(Eigen::all,0).array() + std::cos(3.1416/4)*X(Eigen::all,1).array();
+    // Xs.array()(Eigen::all,0) += X(Eigen::all,0).array();
+    // Ys.array()(Eigen::all,0) += X(Eigen::all,1).array();    
+    Eigen::MatrixXcd tmp1 = Eigen::MatrixXcd::Zero(X.rows(),1);
+    Eigen::MatrixXcd tmp2 = Eigen::MatrixXcd::Zero(X.rows(),1);
+    Eigen::MatrixXcd tmp3 = Eigen::MatrixXcd::Zero(X.rows(),1);    
+
+    // Complex unit
+    std::complex<double> cu(0, 1);
+    double sin2b = std::pow(std::sin(beta),2);
+    double cos2b = std::pow(std::cos(beta),2);
+
+    // Build magnetizations
+    tmp1.array()(Eigen::all,0) += M0.array()*sin2b*exp_T1.array()*((ke(0)*Xs(Eigen::all,0)).array().cos()*(ke(1)*Ys(Eigen::all,0)).array().sin());
+    tmp2.array()(Eigen::all,0) += M0.array()*(1.0-exp_T1.array()) + M0.array()*cos2b*exp_T1.array();
+    tmp3.array()(Eigen::all,0) += (cu*T1).array().exp();
+
+    Mxy0 += (tmp1 + tmp2)*prod*std::sin(alpha);
+    Mxy1 += (-tmp1 + tmp2)*prod*std::sin(alpha);
+    T1r  += tmp3;
+    Mask.array() += 1.0;
+
+    return std::make_tuple(Mxy0, Mxy1, Mask, T1r);
+
+}
+
+
 // Evaluate the DENSE magnetizations on all the spins
 Magnetization_Images DENSE_magnetizations(const double &alpha,
                                     const double &prod,
@@ -178,6 +230,7 @@ PYBIND11_MODULE(ImageBuilding, m) {
     m.def("get_images", &get_images, py::return_value_policy::reference,
       "Calculates the pixel intensity based on the pixel-to-spins connectivity");
     m.def("CSPAMM_magnetizations", &CSPAMM_magnetizations, py::return_value_policy::reference);
+    m.def("ORI_O_CSPAMM_magnetizations", &ORI_O_CSPAMM_magnetizations, py::return_value_policy::reference);    
     m.def("DENSE_magnetizations", &DENSE_magnetizations, py::return_value_policy::reference);
     m.def("EXACT_magnetizations", &EXACT_magnetizations, py::return_value_policy::reference);
 }

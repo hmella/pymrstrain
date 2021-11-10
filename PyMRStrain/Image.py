@@ -1,6 +1,7 @@
 import numpy as np
+
 from PyMRStrain.Generator import (get_cdense_image, get_cspamm_image,
-                                  get_exact_image)
+                                  get_exact_image, get_oriocspamm_image)
 
 
 # Base Image object
@@ -134,6 +135,20 @@ class CSPAMMImage(ImageBase):
 
   def generate(self, epi, phantom, parameters, debug=False):
       return get_cspamm_image(self, epi, phantom, parameters, debug)
+
+
+# ORI-O-CSPAMM Image
+class ORI_O_CSPAMMImage(ImageBase):
+  def __init__(self, encoding_frequency=None,
+               encoding_angle=15*np.pi/180,
+               taglines=None,**kwargs):
+    self.encoding_frequency = encoding_frequency
+    self.encoding_angle = encoding_angle
+    self.taglines = taglines
+    super(ORI_O_CSPAMMImage, self).__init__(**kwargs)
+
+  def generate(self, epi, phantom, parameters, debug=False):
+      return get_oriocspamm_image(self, epi, phantom, parameters, debug)
 
 
 # SINE Image
