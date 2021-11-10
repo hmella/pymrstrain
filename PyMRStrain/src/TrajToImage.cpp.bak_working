@@ -1,0 +1,73 @@
+#include <pybind11/pybind11.h>
+#include <pybind11/eigen.h>
+#include <unsupported/Eigen/MatrixFunctions>
+#include <pybind11/stl.h>
+
+namespace py = pybind11;
+typedef Eigen::MatrixXcd MatrixXcd;
+typedef Eigen::MatrixXd MatrixXd;
+typedef Eigen::VectorXcd VectorXcd;
+typedef Eigen::VectorXd VectorXd;
+
+// Definition of PI
+const double PI = std::atan(1.0)*4.0;
+
+std::complex<double> fast_exp(double x){
+  std::complex<double> out(std::cos(x), std::sin(x));
+  return out;
+}
+
+// Calculate image kspace
+Eigen::MatrixXcd TrajToImage(const std::vector<MatrixXd> &traj,
+                      const Eigen::Ref<const MatrixXd> &time,
+                      const Eigen::Ref<const VectorXcd> &M0,
+                      const Eigen::Ref<const MatrixXd> &r,
+                      const double T2){
+
+    // Number of kspace lines/spokes/interleaves
+    const size_t nb_lines = traj[0].cols();
+    
+    // Number of measurements in the readout direction
+    const size_t nb_meas = traj[0].rows();
+
+    // Number of spins
+    const size_t nb_spins = r.rows();
+
+    // Image kspace
+    MatrixXcd Mxy = MatrixXcd::Zero(nb_meas,nb_lines);
+
+    // Complex unit times 2*PI
+    std::complex<double> cu(0, 2*PI);
+
+    // Vector for intermediate step calculation
+    // const size_t nb_spins_sqrt = std::ceil(std::sqrt(nb_spins));
+    // MatrixXcd tmp = MatrixXcd::Zero(nb_spins_sqrt, nb_spins_sqrt);
+    // MatrixXcd tmp = MatrixXcd::Zero(nb_spins,1);
+    VectorXcd tmp = VectorXcd::Zero(nb_spins,1);
+
+    // T2 decay
+    double T2_decay = 0.0;
+
+    // Iterate over kspace measurements/kspace points
+    for (size_t j = 0; j < nb_lines; j++){
+      for (size_t i = 0; i < nb_meas; i++){
+        T2_decay = std::exp(-time(i,j)/T2);
+        tmp.noalias() += cu*(r(Eigen::all,0)*traj[0](i,j) + r(Eigen::all,1)*traj[1](i,j));
+        // for (size_t s = 0; s < nb_spins; s++)
+        // {
+        //   tmp2(s) += fast_exp(tmp1(s));
+        // }
+        Mxy(i,j) += T2_decay*M0.dot(tmp.array().exp().matrix()); // The exp operation is expensive
+        // Mxy(i,j) += T2_decay*M0.dot(tmp.exp());
+        tmp.setZero();
+      }
+    }
+
+    return Mxy;
+}
+
+
+PYBIND11_MODULE(TrajToImage, m) {
+    m.doc() = "Utilities for spins-based image generation"; // optional module docstring
+    m.def("TrajToImage", &TrajToImage);
+}
