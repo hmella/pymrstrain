@@ -13,7 +13,6 @@ if __name__=="__main__":
   # save_pyobject(p, 'p.pkl')
   # p=load_pyobject('p.pkl')
 
-
   # Field inhomogeneity
   phi = lambda X, Y: 0*(X+Y)/0.1*0.2
 
@@ -22,9 +21,9 @@ if __name__=="__main__":
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
 
   # Create complimentary image
-  I = CSPAMMImage(FOV=np.array([0.2, 0.2, 0.008]),
+  I = CSPAMMImage(FOV=np.array([0.3, 0.3, 0.008]),
             center=np.array([0.0,0.0,0.0]),
-            resolution=np.array([100, 100, 1]),
+            resolution=np.array([164, 164, 1]),
             encoding_frequency=np.array([ke,ke,0]),
             T1=np.array([1e-10,1e-10,0.85]),
             M0=np.array([0,0,1]),
@@ -35,6 +34,9 @@ if __name__=="__main__":
             slice_thickness=0.008,
             oversampling_factor=1,
             phase_profiles=66)
+
+  # Spins
+  spins = Spins(Nb_samples=75000, parameters=p)
 
   # Create phantom object
   phantom = Phantom(spins, p, patient=False, z_motion=False, write_vtk=False)
@@ -48,7 +50,7 @@ if __name__=="__main__":
 
   # Generate images
   start = time.time()
-  NSA_1, NSA_2, mask = I.generate(epi, phantom, p, debug=True)
+  NSA_1, NSA_2, mask = I.generate(None, phantom, p, debug=True)
   end = time.time()
   print(end-start)
 

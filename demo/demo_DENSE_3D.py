@@ -9,9 +9,6 @@ if __name__=="__main__":
   p = Parameters(time_steps=8)
   p.phi_en = -20*np.pi/180
   p.phi_ep = -10*np.pi/180
-  p.R_inner = 1e-6
-  p.R_outer = 2*p.R_ep
-  # p.xi = 0.5
   save_pyobject(p, 'p.pkl')
   p=load_pyobject('p.pkl')
 
@@ -27,8 +24,8 @@ if __name__=="__main__":
             center=np.array([0.0,0.0,0.0]),
             resolution=np.array([70, 70, 1]),
             encoding_frequency=np.array([ke,ke,0]),
-            T1=np.array([0.5,0.5,0.85]),
-            M0=np.array([1,1,1]),
+            T1=np.array([1e-10,1e-10,0.85]),
+            M0=np.array([0,0,1]),
             flip_angle=15*np.pi/180,
             off_resonance=phi,
             kspace_factor=2,

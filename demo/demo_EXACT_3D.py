@@ -6,13 +6,13 @@ import time
 if __name__=="__main__":
 
   # Parameters
-  # p = Parameters(time_steps=18)
-  # p.phi_en = -20*np.pi/180
-  # p.phi_ep = -10*np.pi/180
-  # # p.R_inner = p.R_en
-  # # p.R_outer = p.R_ep
-  # # p.xi = 0.5
-  # save_pyobject(p, 'p.pkl')
+  p = Parameters(time_steps=18)
+  p.phi_en = -20*np.pi/180
+  p.phi_ep = -10*np.pi/180
+  # p.R_inner = p.R_en
+  # p.R_outer = p.R_ep
+  # p.xi = 0.5
+  save_pyobject(p, 'p.pkl')
   p=load_pyobject('p.pkl')
 
   # Create complimentary image

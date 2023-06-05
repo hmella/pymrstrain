@@ -12,95 +12,91 @@ def iFFT(x):
 if __name__=="__main__":
 
   # Parameters
-  p = Parameters_2D(mesh_resolution = 0.00035)
-  p["time_steps"] = 18
-  p["dt"] = 1.0/p["time_steps"]
+  p = Parameters(time_steps=18)
+  p.h = 0.008
+  p.phi_en = -15*np.pi/180
+  p.phi_ep = 0*np.pi/180
+  # save_pyobject(p, 'p.pkl')
+  # p=load_pyobject('p.pkl')
+
+  # Field inhomogeneity
+  phi = lambda X, Y: 0*(X+Y)/0.1*0.2
+
+  # Encoding frequency
+  ke = 0.07               # encoding frequency [cycles/mm]
+  ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
 
   # Variable flip angles
-  last = 10*np.pi/180
-  TR = 1.0/p["time_steps"]
-  FA = np.zeros([p["time_steps"]],dtype=np.float)
-  ramp = np.zeros(FA.shape)
-  T1 = 0.85
-  C  = np.exp(-TR/T1)
-  FA[-1] = last
-  gamma = 5*np.pi/180
-  for i in range (p["time_steps"]-2,-1,-1):
-    ramp[i]  = gamma*(p["time_steps"]- i-1)/(p["time_steps"]-1)
-    FA[i]    = np.arctan(np.sin(last)*C) + ramp[i]
-    last = FA[i] - ramp[i]
+  TR      = 1.0/p.time_steps            # repetition time
+  T1      = 0.85                        # reference T1 value
+  decay   = np.exp(-TR/T1)              # decay term
+  FA      = np.zeros([p.time_steps,])   # array of flip angles
+  last_FA = 10*np.pi/180                # flip angle of the last frame
+  FA[-1]  = last_FA                     # set flip angle of the last frame
+  ramp    = np.zeros([p.time_steps,])   # array of ramp values
+  gamma   = 5*np.pi/180
+  for i in range (p.time_steps-2,-1,-1):
+    ramp[i] = gamma*(p.time_steps - i - 1)/(p.time_steps - 1)
+    FA[i]   = np.arctan(np.sin(last_FA)*decay) + ramp[i]
+    last_FA = FA[i] - ramp[i]
 
+  # Show variable flip angles
+  plt.figure(1)
   plt.plot(180*(FA-ramp)/np.pi)
   plt.plot(180*ramp/np.pi)
   plt.plot(180*FA/np.pi)
   plt.legend(['Fischer','rampdown','Sampath'])
   plt.show()
 
-  # Create complimentary images
-  FOV = 0.1
-  N   = 70
-  ke  = 785
-  alpha = 15*np.pi/180
-  beta  = 90*np.pi/180
-  I0 = CSPAMMImage(FOV=np.array([FOV, FOV]),
-            resolution=np.array([N, N]), 
-            encoding_frequency=np.array([ke, ke]),
+  # Create complimentary image
+  I = CSPAMMImage(FOV=np.array([0.3, 0.3, 0.008]),
+            center=np.array([0.0,0.0,0.0]),
+            resolution=np.array([164, 164, 1]),
+            encoding_frequency=np.array([ke,ke,0]),
+            T1=np.array([1e-10,1e-10,0.85]),
+            M0=np.array([0,0,1]),
             flip_angle=FA,
-            encoding_angle=beta,
-            T1=0.85)
+            encoding_angle=90*np.pi/180,
+            off_resonance=phi,
+            kspace_factor=2,
+            slice_thickness=0.008,
+            oversampling_factor=1,
+            phase_profiles=66)
 
-  # Element
-  FE = VectorElement("triangle")
-
-  # Mesh and fem space
-  mesh = fem_ventricle_geometry(p['R_en'], p['tau'], p['mesh_resolution'], filename='mesh/mesh.msh')
-  V = FunctionSpace(mesh, FE)
+  # Spins
+  spins = Spins(Nb_samples=75000, parameters=p)
 
   # Create phantom object
-  phantom = DefaultPhantom(p, time_steps=p["time_steps"],function_space=V, patient=False)
+  phantom = Phantom(spins, p, patient=False, z_motion=False, write_vtk=False)
 
-  # Generator
-  g0 = Generator(p, I0, phantom=phantom, debug=True)
+  # EPI acquisiton object
+  epi = EPI(receiver_bw=128*KILO,
+            echo_train_length=11,
+            off_resonance=200,
+            acq_matrix=I.acq_matrix,
+            spatial_shift='top-down')
 
-  # Generation
-  t0, t1, mask = g0.get_image()
+  # Generate images
+  start = time.time()
+  NSA_1, NSA_2, mask = I.generate(None, phantom, p, debug=True)
+  end = time.time()
+  print(end-start)
 
-  # Add noise
-  tn0 = add_noise_to_SPAMM_(t0, mask, sigma=0.05)
-  tn1 = add_noise_to_SPAMM_(t1, mask, sigma=0.05)
+  # Add noise to images
+  sigma = 0.025
+  # NSA_1.k = add_cpx_noise(NSA_1.k, mask=NSA_1.k_msk, sigma=sigma)
+  # NSA_2.k = add_cpx_noise(NSA_2.k, mask=NSA_2.k_msk, sigma=sigma)
 
-  # Generate C-SPAMM images
-  t = np.zeros(t0.shape, dtype=complex)
-  if rank==0:
-    for i in range(t.shape[-1]):
-      t[...,0,i] = tn0[...,0,i] - tn1[...,0,i]
-      t[...,1,i] = tn0[...,1,i] - tn1[...,1,i]
+  # kspace to image
+  In1 = NSA_1.to_img()
+  In2 = NSA_2.to_img() 
+  mask = mask.to_img()
 
-    # Scale image
-    o = scale_image(t,mag=True,pha=False,real=False,compl=False)
-    # t = o["magnitude"]["Image"]
+  # CSPAMM image
+  I = In1 - In2
 
-    # Plot k-space
-    fig, ax = plt.subplots(1,3)
-    step = -1
-    im0 = ax[0].imshow(np.abs(FFT(t0[...,0,step])))
-    im1 = ax[1].imshow(np.abs(FFT(t1[...,0,step])))
-    im2 = ax[2].imshow(np.abs(FFT(t[...,0,step])))
-    ax[0].axes.get_xaxis().set_visible(False)
-    ax[0].axes.get_yaxis().set_visible(False)
-    ax[1].axes.get_xaxis().set_visible(False)
-    ax[1].axes.get_yaxis().set_visible(False)
-    ax[2].axes.get_xaxis().set_visible(False)
-    ax[2].axes.get_yaxis().set_visible(False)
-    ax[0].invert_yaxis()
-    ax[1].invert_yaxis()
-    ax[2].invert_yaxis()
-    plt.tight_layout()
-    plt.show()
-
-    # Plot generated images
-    fig, ax = plt.subplots(1, 2)
-    tracker = IndexTracker(ax, np.real(t[:,:,0,:]), np.real(t[:,:,1,:]))
-    fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
-    fig.suptitle('Tagging volunteer {:d}'.format(rank))
-    plt.show()
+  # Plot
+  if MPI_rank==0:
+      multi_slice_viewer(np.abs(NSA_1.k[:,:,0,0,:]-NSA_2.k[:,:,0,0,:] + 
+                         (NSA_1.k[:,:,0,1,:]-NSA_2.k[:,:,0,1,:])))
+      multi_slice_viewer(np.abs(I[:,:,0,1,:]))
