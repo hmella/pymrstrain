@@ -37,6 +37,8 @@ class Cartesian(Trajectory):
     def kspace_points(self):
       ''' Get kspace points '''
       # Time needed to acquire one line
+      # It depends on the kspcae bandwidth, the gyromagnetic constant, and
+      # the maximun gradient amplitude
       dt_line = (self.kspace_bw[0]*2*np.pi)/(1e+6*self.gamma*1e-3*self.max_Gro_amp)
       dt = np.linspace(0.0, dt_line, self.ro_samples)
 
@@ -132,7 +134,7 @@ class Radial(Trajectory):
       axs[1].set_ylabel('k_y (1/m)')
       cbar = fig.colorbar(im, ax=axs[1])
       cbar.ax.tick_params(labelsize=8) 
-      # cbar.ax.set_title('Time [ms]',fontsize=8)
+      cbar.ax.set_title('Time [ms]',fontsize=8)
       plt.show()
 
 
