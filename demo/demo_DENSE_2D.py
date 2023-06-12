@@ -10,8 +10,8 @@ if __name__=="__main__":
   p.h = 0.008
   p.phi_en = -15*np.pi/180
   p.phi_ep = 0*np.pi/180
-  # save_pyobject(p, 'p.pkl')
-  # p=load_pyobject('p.pkl')
+  save_pyobject(p, 'p.pkl')
+  p=load_pyobject('p.pkl')
 
   # Field inhomogeneity
   phi = lambda X, Y: 0*(X+Y)/0.1*0.2
@@ -21,18 +21,18 @@ if __name__=="__main__":
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
 
   # Create complimentary image
-  I = DENSEImage(FOV=np.array([0.1, 0.1, 0.008]),
+  I = DENSEImage(FOV=np.array([0.2, 0.2, 0.008]),
             center=np.array([0.0,0.0,0.0]),
-            resolution=np.array([33, 33, 1]),
+            resolution=np.array([66, 66, 1]),
             encoding_frequency=np.array([ke,ke,0]),
-            T1=np.array([1e-10,1e-10,0.85]),
-            M0=np.array([0,0,1]),
+            T1=np.array([0.85,1.5]),
+            M0=np.array([1.0,3.0]),
             flip_angle=15*np.pi/180,
             off_resonance=phi,
             kspace_factor=2,
             slice_thickness=0.008,
             oversampling_factor=2,
-            phase_profiles=33)
+            phase_profiles=66)
 
   # Spins
   spins = Spins(Nb_samples=250000, parameters=p)
@@ -55,8 +55,8 @@ if __name__=="__main__":
 
   # Add noise to images
   sigma = 0.01
-  # NSA_1.k = add_cpx_noise(NSA_1.k, mask=NSA_1.k_msk, sigma=sigma)
-  # NSA_2.k = add_cpx_noise(NSA_2.k, mask=NSA_2.k_msk, sigma=sigma)
+  NSA_1.k = add_cpx_noise(NSA_1.k, mask=NSA_1.k_msk, relative_std=sigma)
+  NSA_2.k = add_cpx_noise(NSA_2.k, mask=NSA_2.k_msk, relative_std=sigma)
 
   # kspace to image
   In1 = NSA_1.to_img()
@@ -69,6 +69,5 @@ if __name__=="__main__":
   # Plot
   if MPI_rank==0:
       multi_slice_viewer(np.abs(NSA_1.k[:,:,0,0,:]))
-      multi_slice_viewer(mask[:,:,0,0,:])
-      multi_slice_viewer(mask[:,:,0,0,:]*np.abs(I[:,:,0,0,:]))
-      multi_slice_viewer(mask[:,:,0,0,:]*np.angle(I[:,:,0,0,:]))
+      multi_slice_viewer(np.abs(I[:,:,0,0,:]))
+      multi_slice_viewer(np.angle(I[:,:,0,0,:]))

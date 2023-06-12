@@ -54,13 +54,17 @@ class PhantomBase:
 # Phantom Class
 class Phantom(PhantomBase):
   def __init__(self, spins, p, patient=False, z_motion=True, 
-              phi_en_apex=10*np.pi/180, write_vtk=False):
+              phi_en_apex=10*np.pi/180, write_vtk=False,
+              rigid_body_motion=False,
+              rigid_body_delta=0.01):
     super().__init__(spins)
     self.p = p
     self.patient = patient
     self.write_vtk = write_vtk
     self.z_motion = z_motion
     self.phi_en_apex = phi_en_apex
+    self.rigid_body_motion = rigid_body_motion
+    self.rigid_body_delta = rigid_body_delta
 
   def get_data(self, i):
 
@@ -72,13 +76,13 @@ class Phantom(PhantomBase):
     t = np.linspace(0.0, p.t_end, p.time_steps+1)
 
     # Ventricle region
-    ventricle = self.spins.regions[:,-1]
+    ventricle = self.spins.regions[:,0]
 
     # Create base displacement
-    mu = (p.R_ep - self.r)/(p.R_ep - p.R_en)
-    mu[ventricle] = mu[ventricle] - mu[ventricle].min()
-    mu[ventricle] = mu[ventricle]/mu[ventricle].max()
-    mu[ventricle] = np.power(mu[ventricle], p.sigma)
+    mu = (p.R_ep - self.r[ventricle])/(p.R_ep - p.R_en)
+    mu = mu - mu.min()
+    mu = mu/mu.max()
+    mu = np.power(mu, p.sigma)
 
     ##########################
     # plt.scatter(self.x[:,0],self.x[:,1],c=mu,cmap="jet",edgecolors=None,marker='.')
@@ -97,14 +101,14 @@ class Phantom(PhantomBase):
     d_n   = (1 - mu)*d_ep + mu*d_en
 
     # End-diastolic and end-systolic radius
-    R_ED = self.r
-    R_ES = self.r - d_n
+    R_ED = self.r[ventricle]
+    R_ES = self.r[ventricle] - d_n
 
     # If the phantom is 3D add longitudinal displacement
     # and angle scaling factor
     if self.z_motion:
         # Normalize coordinates
-        z = np.copy(self.x[:,2])
+        z = np.copy(self.x[ventricle,2])
         z_max = z.max()
         z_min = z.min()
         z = -(z - z_max)/(z_max - z_min) # z=0 at base, z=1 at appex
@@ -124,54 +128,60 @@ class Phantom(PhantomBase):
         scale = (zero_twist-z)/zero_twist
 
         # Define through-plane displacement
-        self.u_real[:,2] = (z - 1)*0.02
+        self.u_real[ventricle,2] = (z - 1)*0.02
 
     else:
         scale = 1.0
 
 
     # Get in-plane displacements
+    scos = self.scos[ventricle]
+    ssin = self.ssin[ventricle]
     if self.patient:
       # Abnormality
       # Phi = p.xi*0.5*(1 - (self.scos*np.cos(p.psi) + self.ssin*np.sin(p.psi)))
-      Phi = p.xi*0.5*(1 - (self.scos*np.cos(p.psi) + self.ssin*np.sin(p.psi)))
+      Phi = p.xi*0.5*(1 - (scos*np.cos(p.psi) + ssin*np.sin(p.psi)))
 
       # Create displacement and velocity for patients
-      self.u_real[:,0] = Phi*(R_ES*(self.scos*np.cos(phi_n*scale) \
-                            - self.ssin*np.sin(phi_n*scale)) - R_ED*self.scos)
-      self.u_real[:,1] = Phi*(R_ES*(self.ssin*np.cos(phi_n*scale) \
-                            + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin)
+      self.u_real[ventricle,0] = Phi*(R_ES*(scos*np.cos(phi_n*scale) \
+                            - ssin*np.sin(phi_n*scale)) - R_ED*scos)
+      self.u_real[ventricle,1] = Phi*(R_ES*(ssin*np.cos(phi_n*scale) \
+                            + scos*np.sin(phi_n*scale)) - R_ED*ssin)
 
     else:
       # Create displacement and velocity for volunteers
-      self.u_real[:,0] = R_ES*(self.scos*np.cos(phi_n*scale) \
-                            - self.ssin*np.sin(phi_n*scale)) - R_ED*self.scos
-      self.u_real[:,1] = R_ES*(self.ssin*np.cos(phi_n*scale) \
-                            + self.scos*np.sin(phi_n*scale)) - R_ED*self.ssin
+      self.u_real[ventricle,0] = R_ES*(scos*np.cos(phi_n*scale) \
+                            - ssin*np.sin(phi_n*scale)) - R_ED*scos
+      self.u_real[ventricle,1] = R_ES*(ssin*np.cos(phi_n*scale) \
+                            + scos*np.sin(phi_n*scale)) - R_ED*ssin
 
-    # # # # Inclusion
-    # # # f = Function(self.V)
-    # # # R = np.sqrt(np.power(self.x[:,0]-0.4*(p.R_en+p.R_ep),2) + np.power(self.x[:,1],2))
-    # # # s = (p.R_ep-p.R_en)
-    # # # f.vector()[dofmap_x] = (1-0.55*np.exp(-np.power(R/s,2)))
-    # # # f.vector()[dofmap_y] = (1-0.55*np.exp(-np.power(R/s,2)))
-    # # # write_scalar_vtk(f, path='output/f.vtk', name='f')
+    # # Inclusion
+    # f = Function(self.V)
+    # R = np.sqrt(np.power(self.x[:,0]-0.4*(p.R_en+p.R_ep),2) + np.power(self.x[:,1],2))
+    # s = (p.R_ep-p.R_en)
+    # f.vector()[dofmap_x] = (1-0.55*np.exp(-np.power(R/s,2)))
+    # f.vector()[dofmap_y] = (1-0.55*np.exp(-np.power(R/s,2)))
+    # write_scalar_vtk(f, path='output/f.vtk', name='f')
 
-    # Modulation function
+    # Modulation functions
     dt = 1e-08
-
-    # Displacements at different time-steps
     g  = self.TemporalModulation(t, p.tA, p.tB, p.tC)
-    self.u.vector()[:] = g[i]*self.u_real
-    # # # self.u.vector()[:] = g[i]*(np.multiply(self.u_real,f.vector()))
-    # # # write_scalar_vtk(self.u, path='output/u.vtk', name='u')
-
-    # Velocity at different time-steps
     dgdt = - self.TemporalModulation(t + 2*dt, p.tA, p.tB, p.tC) \
          + 8*self.TemporalModulation(t + dt, p.tA, p.tB, p.tC) \
          - 8*self.TemporalModulation(t - dt, p.tA, p.tB, p.tC) \
          + self.TemporalModulation(t - 2*dt, p.tA, p.tB, p.tC)
     dgdt /= 12*dt
+
+    # Add rigid body motion
+    if self.rigid_body_motion:
+      self.u_real[ventricle,0] += i*self.rigid_body_delta/g[i]
+
+    # Displacements at different time-steps
+    self.u.vector()[:] = g[i]*self.u_real
+    # # # self.u.vector()[:] = g[i]*(np.multiply(self.u_real,f.vector()))
+    # # # write_scalar_vtk(self.u, path='output/u.vtk', name='u')
+
+    # Velocity at different time-steps
     self.v.vector()[:] = dgdt[i]*self.u_real
 
   # Displacement

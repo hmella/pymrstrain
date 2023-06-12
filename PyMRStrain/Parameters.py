@@ -24,12 +24,12 @@ class Parameters:
             tau  = np.random.uniform(0.0075, 0.0125)
             center = np.array([0.0,0.0,0.0])
             R_en = np.random.uniform(0.01, 0.03)
-            # R_en = np.random.uniform(0.02, 0.03)
             R_ep = R_en+tau
-            R_inner = R_en-tau
-            while R_inner <= 0:
-                R_inner += 0.05*tau
-            R_outer = R_ep+tau
+
+            # Static tissue
+            static = True
+            R_inner = R_ep + tau
+            R_outer = R_inner + 0.05
 
             # Temporal modulation
             tA = np.random.uniform(0.05, 0.15)
@@ -58,6 +58,7 @@ class Parameters:
                       'center': center,
                       'R_en': R_en,
                       'R_ep': R_ep,
+                      'static': static,
                       'R_inner': R_inner,
                       'R_outer': R_outer,
                       'tA': tA,

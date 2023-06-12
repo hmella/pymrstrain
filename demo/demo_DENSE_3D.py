@@ -20,21 +20,21 @@ if __name__=="__main__":
   ke = 1000*2*np.pi*ke    # encoding frequency [rad/m]
 
   # Create complimentary image
-  I = DENSEImage(FOV=np.array([0.2, 0.2, 0.04]),
+  I = DENSEImage(FOV=np.array([0.3, 0.3, 0.04]),
             center=np.array([0.0,0.0,0.0]),
-            resolution=np.array([70, 70, 1]),
+            resolution=np.array([100, 100, 1]),
             encoding_frequency=np.array([ke,ke,0]),
-            T1=np.array([1e-10,1e-10,0.85]),
-            M0=np.array([0,0,1]),
+            T1=np.array([0.85,1.0]),
+            M0=np.array([1.0,1.0]),
             flip_angle=15*np.pi/180,
             off_resonance=phi,
             kspace_factor=2,
             slice_thickness=0.008,
             oversampling_factor=1,
-            phase_profiles=44)
+            phase_profiles=88)
 
   # Spins
-  spins = Spins(Nb_samples=100000, parameters=p)
+  spins = Spins(Nb_samples=250000, parameters=p)
 
   # Create phantom object
   phantom = Phantom(spins, p, patient=False, write_vtk=False)

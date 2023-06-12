@@ -36,20 +36,18 @@ def get_oriocspamm_image(image, epi, phantom, parameters, debug=False):
   # Regional M0
   M0r = np.zeros([phantom.spins.Nb_samples,1])
   if isinstance(M0,np.ndarray) or isinstance(M0,list):
-      M0r[phantom.spins.regions[:,0]] = M0[0]  # inner
-      M0r[phantom.spins.regions[:,1]] = M0[1]  # outer
-      M0r[phantom.spins.regions[:,2]] = M0[2]  # ventricle
+      M0r[phantom.spins.regions[:,0]] = M0[0]  # ventricle
+      M0r[phantom.spins.regions[:,1]] = M0[1]  # static
   else:
-      M0r[phantom.spins.regions[:,2]] = M0  # ventricle
+      M0r[phantom.spins.regions[:,0]] = M0  # ventricle
 
   # T1 parameters across regions
   T1r = np.zeros([phantom.spins.Nb_samples,1])
   if isinstance(T1,np.ndarray) or isinstance(T1,list):
-      T1r[phantom.spins.regions[:,0]] = T1[0]  # inner
-      T1r[phantom.spins.regions[:,1]] = T1[1]  # outer
-      T1r[phantom.spins.regions[:,2]] = T1[2]  # ventricle
+      T1r[phantom.spins.regions[:,0]] = T1[0]  # ventricle
+      T1r[phantom.spins.regions[:,1]] = T1[1]  # static
   else:
-      T1r[phantom.spins.regions[:,2]] = T1  # ventricle
+      T1r[phantom.spins.regions[:,0]] = T1  # ventricle
 
   # Determine if the image and phantom geometry are 2D or 3D
   di = image.type_dim()                      # image geometric dimension
@@ -122,7 +120,7 @@ def get_oriocspamm_image(image, epi, phantom, parameters, debug=False):
   ovrs_fac = image.oversampling_factor
   r, c, dr, dc = cropping_ranges(image.resolution, resolution, ovrs_fac)
 
-  # Spins inside the ventricle
+  # Spins inside the image slice
   exc_slice  = (x[:,2] < image.center[2] + image.slice_offset + 0.5*image.slice_thickness)
   exc_slice *= (x[:,2] > image.center[2] + image.slice_offset - 0.5*image.slice_thickness)
 
@@ -251,20 +249,18 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
   # Regional M0
   M0r = np.zeros([phantom.spins.Nb_samples,1])
   if isinstance(M0,np.ndarray) or isinstance(M0,list):
-      M0r[phantom.spins.regions[:,0]] = M0[0]  # inner
-      M0r[phantom.spins.regions[:,1]] = M0[1]  # outer
-      M0r[phantom.spins.regions[:,2]] = M0[2]  # ventricle
+      M0r[phantom.spins.regions[:,0]] = M0[0]  # ventricle
+      M0r[phantom.spins.regions[:,1]] = M0[1]  # static
   else:
-      M0r[phantom.spins.regions[:,2]] = M0  # ventricle
+      M0r[phantom.spins.regions[:,0]] = M0  # ventricle
 
   # T1 parameters across regions
   T1r = np.zeros([phantom.spins.Nb_samples,1])
   if isinstance(T1,np.ndarray) or isinstance(T1,list):
-      T1r[phantom.spins.regions[:,0]] = T1[0]  # inner
-      T1r[phantom.spins.regions[:,1]] = T1[1]  # outer
-      T1r[phantom.spins.regions[:,2]] = T1[2]  # ventricle
+      T1r[phantom.spins.regions[:,0]] = T1[0]  # ventricle
+      T1r[phantom.spins.regions[:,1]] = T1[1]  # static
   else:
-      T1r[phantom.spins.regions[:,2]] = T1  # ventricle
+      T1r[phantom.spins.regions[:,0]] = T1  # ventricle
 
   # Determine if the image and phantom geometry are 2D or 3D
   di = image.type_dim()                      # image geometric dimension
@@ -379,7 +375,7 @@ def get_cspamm_image(image, epi, phantom, parameters, debug=False):
                                  np.exp(-t/T1r), ke[0:dk], x[:,0:dk])
     for i in range(len(mags)):
         mags[i][(~exc_slice),:] = 0
-    mags[-1][~phantom.spins.regions[:,2]] = 0
+    mags[-1][~phantom.spins.regions[:,0]] = 0
 
     # # Debug
     # if MPI_rank==0:
@@ -454,20 +450,18 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
   # Regional M0
   M0r = np.zeros([phantom.spins.Nb_samples,1])
   if isinstance(M0,np.ndarray) or isinstance(M0,list):
-      M0r[phantom.spins.regions[:,0]] = M0[0]  # inner
-      M0r[phantom.spins.regions[:,1]] = M0[1]  # outer
-      M0r[phantom.spins.regions[:,2]] = M0[2]  # ventricle
+      M0r[phantom.spins.regions[:,0]] = M0[0]  # ventricle
+      M0r[phantom.spins.regions[:,1]] = M0[1]  # static
   else:
-      M0r[phantom.spins.regions[:,2]] = M0  # ventricle
+      M0r[phantom.spins.regions[:,0]] = M0  # ventricle
 
   # Regional T1
   T1r = np.zeros([phantom.spins.Nb_samples,1])
   if isinstance(T1,np.ndarray) or isinstance(T1,list):
-      T1r[phantom.spins.regions[:,0]] = T1[0]  # inner
-      T1r[phantom.spins.regions[:,1]] = T1[1]  # outer
-      T1r[phantom.spins.regions[:,2]] = T1[2]  # ventricle
+      T1r[phantom.spins.regions[:,0]] = T1[0]  # ventricle
+      T1r[phantom.spins.regions[:,1]] = T1[1]  # static
   else:
-      T1r[phantom.spins.regions[:,2]] = T1  # ventricle
+      T1r[phantom.spins.regions[:,0]] = T1  # ventricle
 
   # Determine if the image and phantom geometry are 2D or 3D
   di = image.type_dim()                      # image geometric dimension
@@ -585,7 +579,7 @@ def get_cdense_image(image, epi, phantom, parameters, debug=False):
                                 ke[0:dk], x[:,0:dk], reshaped_u[:,0:dk], phi_in)
     for i in range(len(mags)):
         mags[i][(~exc_slice),:] = 0
-    mags[-1][~phantom.spins.regions[:,2]] = 0
+    mags[-1][~phantom.spins.regions[:,0]] = 0
 
     # # Debug
     # if MPI_rank==0:
@@ -658,11 +652,10 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
   # Regional M0
   M0r = np.zeros([phantom.spins.Nb_samples,1])
   if isinstance(M0,np.ndarray) or isinstance(M0,list):
-      M0r[phantom.spins.regions[:,0]] = M0[0]  # inner
-      M0r[phantom.spins.regions[:,1]] = M0[1]  # outer
-      M0r[phantom.spins.regions[:,2]] = M0[2]  # ventricle
+      M0r[phantom.spins.regions[:,0]] = M0[0]  # ventricle
+      M0r[phantom.spins.regions[:,1]] = M0[1]  # static
   else:
-      M0r[phantom.spins.regions[:,2]] = M0  # ventricle
+      M0r[phantom.spins.regions[:,0]] = M0  # ventricle
 
   # Determine if the image and phantom geometry are 2D or 3D
   di = image.type_dim()                      # image geometric dimension
@@ -760,7 +753,7 @@ def get_exact_image(image, epi, phantom, parameters, debug=False):
     mags = EXACT_magnetizations(M0r, ke[0:dk], reshaped_u[:,0:dk])
     for i in range(len(mags)):
         mags[i][(~exc_slice),:] = 0
-    mags[-1][~phantom.spins.regions[:,2]] = 0
+    mags[-1][~phantom.spins.regions[:,0]] = 0
 
     # # Debug
     # if MPI_rank==0:
