@@ -15,36 +15,38 @@ std::complex<double> fast_exp(double x){
 }
 
 // Calculate relaxation matrices
-Matrix3d ZRotation(const double theta){
-  Matrix3d R;
-  R(0,0) = std::cos(theta);
-  R(0,1) = std::sin(theta);
-  R(1,0) = -std::sin(theta);
-  R(1,1) = std::cos(theta);
-  R(2,2) = 1.0;
+Matrix2d Rot(const double theta){
+  Matrix2d R;
+  const double s = std::sin(theta);
+  const double c = std::cos(theta);
+  R(0,0) = c;
+  R(0,1) = s;
+  R(1,0) = -s;
+  R(1,1) = c;
+  // R(2,2) = 1.0;
   return R;
 }
 
 // Calculate image kspace
-MatrixXcd TrajToImage(const std::vector<MatrixXd> &traj,
-                      const Ref<const MatrixXd> &time,
-                      const Ref<const MatrixXd> &M0,
-                      const Ref<const MatrixXd> &r,
+MatrixXcd TrajToImage(const std::vector<MatrixXd> &k,
+                      const MatrixXd &t,
+                      const MatrixXd &M0,
+                      const MatrixXd &r,
                       const double T2){
 
     // Number of kspace lines/spokes/interleaves
-    const size_t nb_lines = traj[0].cols();
+    const size_t nb_lines = k[0].cols();
     
     // Number of measurements in the readout direction
-    const size_t nb_meas = traj[0].rows();
+    const size_t nb_meas = k[0].rows();
 
     // Number of spins
     const size_t nb_spins = r.rows();
 
     // Get the equivalent gradient needed to go from the center of the kspace
     // to each location
-    MatrixXd kx = traj[0]*(2.0*PI);
-    MatrixXd ky = traj[1]*(2.0*PI);
+    MatrixXd kx = k[0]*(2.0*PI);
+    MatrixXd ky = k[1]*(2.0*PI);
 
     // Image kspace
     MatrixXcd Mxy = MatrixXcd::Zero(nb_meas,nb_lines);
@@ -52,31 +54,24 @@ MatrixXcd TrajToImage(const std::vector<MatrixXd> &traj,
     // Complex unit times 2*PI
     std::complex<double> cu(0, 1);
 
-    // T2 decay
-    double T2_decay = 0.0;
-
     // Rotation tensor
-    // std::vector<Matrix3d> R;
-    Matrix3d R;
-    Vector3d tmp;
+    Matrix2d R;
+    Vector2d tmp;
 
     // Iterate over kspace measurements/kspace points
     for (size_t j = 0; j < nb_lines; j++){
       for (size_t i = 0; i < nb_meas; i++){
 
-        // Signal decay
-        T2_decay = std::exp(-time(i,j)/T2);
-
         // Relaxation tensor1
-        // R = ZRotation(r(all,0)*kx(i,j) + r(all,1)*ky(i,j));
-        for (size_t k = 0; k < nb_spins; k++){
-          R.noalias() = ZRotation(r(k,0)*kx(i,j) + r(k,1)*ky(i,j));
-          tmp.noalias() = R.lazyProduct(M0(all,k));
+        // R = Rot(r(all,0)*kx(i,j) + r(all,1)*ky(i,j));
+        for (size_t s = 0; s < nb_spins; s++){
+          R.noalias() = Rot(r(s,0)*kx(i,j) + r(s,1)*ky(i,j));
+          tmp.noalias() = R*M0.col(s);
           Mxy(i,j) += tmp(0) + cu*tmp(1);
         }
 
         // Adds the T2 decay
-        Mxy(i,j) *= T2_decay;
+        Mxy(i,j) *= std::exp(-t(i,j)/T2);
 
       }
     }
