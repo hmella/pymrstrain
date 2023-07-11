@@ -55,15 +55,13 @@ class PhantomBase:
 class Phantom(PhantomBase):
   def __init__(self, spins, p, patient=False, z_motion=True, 
               phi_en_apex=10*np.pi/180, write_vtk=False,
-              rigid_body_motion=False,
-              rigid_body_delta=0.01):
+              rigid_body_delta=None):
     super().__init__(spins)
     self.p = p
     self.patient = patient
     self.write_vtk = write_vtk
     self.z_motion = z_motion
     self.phi_en_apex = phi_en_apex
-    self.rigid_body_motion = rigid_body_motion
     self.rigid_body_delta = rigid_body_delta
 
   def get_data(self, i):
@@ -173,7 +171,7 @@ class Phantom(PhantomBase):
     dgdt /= 12*dt
 
     # Add rigid body motion
-    if self.rigid_body_motion:
+    if self.rigid_body_delta is not None:
       self.u_real[ventricle,0] += i*self.rigid_body_delta/g[i]
 
     # Displacements at different time-steps
