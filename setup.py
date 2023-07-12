@@ -69,8 +69,8 @@ ext_modules = [
         language='c++'
     ),
     Extension(
-        'FEM',
-        ['PyMRStrain/src/FEM.cpp'],
+        'Fem',
+        ['PyMRStrain/src/Fem.cpp'],
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
