@@ -54,7 +54,6 @@ ext_modules = [
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
-            get_pybind_include(user=True),
             '/usr/include/eigen3/'
         ],
         language='c++'
@@ -65,13 +64,21 @@ ext_modules = [
         include_dirs=[
             # Path to pybind11 headers
             get_pybind_include(),
-            get_pybind_include(user=True),
+            '/usr/include/eigen3/'
+        ],
+        language='c++'
+    ),
+    Extension(
+        'FEM',
+        ['PyMRStrain/src/FEM.cpp'],
+        include_dirs=[
+            # Path to pybind11 headers
+            get_pybind_include(),
             '/usr/include/eigen3/'
         ],
         language='c++'
     ),
 ]
-
 
 # As of Python 3.6, CCompiler has a `has_flag` method.
 # cf http://bugs.python.org/issue26689
@@ -121,6 +128,14 @@ class BuildExt(build_ext):
             opts.append(cpp_flag(self.compiler))
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
+            if has_flag(self.compiler, '-O3'):
+                opts.append('-O3')
+            if has_flag(self.compiler, '-funroll-loops'):
+                opts.append('-funroll-loops')
+            if has_flag(self.compiler, '-march=native'):
+                opts.append('-march=native')
+            if has_flag(self.compiler, '-mfpmath=sse'):
+                opts.append('-mfpmath=sse')
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
         for ext in self.extensions:
