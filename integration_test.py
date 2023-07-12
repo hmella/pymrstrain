@@ -5,7 +5,7 @@ import meshio
 if __name__ == '__main__':
 
   # Import mesh
-  mesh = meshio.read('tube.msh')
+  mesh = meshio.read('mesh/tube.msh')
   elems = mesh.cells_dict['tetra']
   nodes = mesh.points 
   print(elems)
