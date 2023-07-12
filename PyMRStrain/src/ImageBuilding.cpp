@@ -83,8 +83,8 @@ Magnetization_Images CSPAMM_magnetizations(const float &M,
 
     // Output images
     Eigen::MatrixXcf Mxy0 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
-    Eigen::MatrixXcf Mxy1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());;
-    Eigen::MatrixXcf Mxyin = Eigen::MatrixXcf::Zero(X.rows(),X.cols());;
+    Eigen::MatrixXcf Mxy1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
+    Eigen::MatrixXcf Mxyin = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
 
     // Temp variables
     Eigen::MatrixXcf tmp1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
@@ -122,8 +122,8 @@ Magnetization_Images DENSE_magnetizations(const float &M,
 
     // Output images
     Eigen::MatrixXcf Mxy0 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
-    Eigen::MatrixXcf Mxy1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());;
-    Eigen::MatrixXcf Mxyin = Eigen::MatrixXcf::Zero(X.rows(),X.cols());;
+    Eigen::MatrixXcf Mxy1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
+    Eigen::MatrixXcf Mxyin = Eigen::MatrixXcf::Zero(X.rows(),X.cols());
 
     // Temp variables
     Eigen::MatrixXcf tmp1 = Eigen::MatrixXcf::Zero(X.rows(),X.cols());

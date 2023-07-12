@@ -7,8 +7,9 @@ from scipy.ndimage.filters import gaussian_filter
 
 # Base class for phantoms
 class PhantomBase:
-  def __init__(self, spins):
+  def __init__(self, spins, p):
     # Parameters must be defined by subclass
+    self.p    = p
     self.t    = 0.0
     self.spins = spins
     self.x      = self.spins.samples
@@ -51,7 +52,7 @@ class PhantomBase:
     Tp = np.zeros(t.shape,dtype=t.dtype)
 
     for i in range(t.size):
-      Tp[i] = t[i]/1.0
+      Tp[i] = t[i]/self.p.t_end
 
     return Tp
 
@@ -59,9 +60,8 @@ class PhantomBase:
 # Phantom Class
 class Phantom(PhantomBase):
   def __init__(self, spins, p, patient=False, z_motion=True, zero_twist=0.35,
-              write_vtk=False, add_inclusion=False, inc_factor=0.8, inc_scale=0.55):
-    super().__init__(spins)
-    self.p = p
+              write_vtk=False, add_inclusion=False, inc_factor=0.8, inc_scale=0.55, rigid_body_motion=None):
+    super().__init__(spins, p)
     self.patient = patient
     self.write_vtk = write_vtk
     self.z_motion = z_motion
@@ -69,6 +69,7 @@ class Phantom(PhantomBase):
     self.add_inclusion = add_inclusion
     self.inc_factor = inc_factor
     self.inc_scale = inc_scale
+    self.rigid_body_motion = rigid_body_motion
 
   def get_data(self, i):
 
@@ -147,8 +148,23 @@ class Phantom(PhantomBase):
     # Modulation function
     dt = 1e-08
 
-    # Displacements at different time-steps
+    # Temporal modulation
     g  = self.TemporalModulation(t, p.tA, p.tB, p.tC)
+
+    # Add rigid body motion
+    if self.rigid_body_motion != None:
+      if self.z_motion == True:
+        delta = np.sqrt(3)*self.rigid_body_motion
+        self.u_real[:,0] += t[i]/p.t_end*delta
+        self.u_real[:,1] += t[i]/p.t_end*delta
+        self.u_real[:,2] += t[i]/p.t_end*delta
+      else:
+        print(t[i]/p.t_end)
+        delta = np.sqrt(2)*self.rigid_body_motion
+        self.u_real[:,0] += t[i]/p.t_end*delta
+        self.u_real[:,1] += t[i]/p.t_end*delta
+
+    # Displacement field
     self.u.vector()[:] = g[i]*self.u_real
 
     # Inclusion
@@ -168,7 +184,7 @@ class Phantom(PhantomBase):
          - 8*self.TemporalModulation(t - dt, p.tA, p.tB, p.tC) \
          + self.TemporalModulation(t - 2*dt, p.tA, p.tB, p.tC)
     dgdt /= 12*dt
-    self.v.vector()[:] = dgdt[i]*self.u_real
+    self.v.vector()[:] = dgdt[i]*self.u_real      
 
   # Displacement
   def displacement(self, i):
