@@ -78,6 +78,16 @@ ext_modules = [
         ],
         language='c++'
     ),
+    Extension(
+        'FlowToImage',
+        ['PyMRStrain/src/FlowToImage.cpp'],
+        include_dirs=[
+            # Path to pybind11 headers
+            get_pybind_include(),
+            '/usr/include/eigen3/'
+        ],
+        language='c++'
+    ),
 ]
 
 # As of Python 3.6, CCompiler has a `has_flag` method.
