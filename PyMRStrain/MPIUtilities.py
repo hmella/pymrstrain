@@ -7,6 +7,34 @@ MPI_comm = MPI.COMM_WORLD
 MPI_size = MPI_comm.Get_size()
 MPI_rank = MPI_comm.Get_rank()
 
+# Scatter array
+def scatterKspace(kspace, times):
+  if MPI_rank==0:
+
+    # Number of phase lines
+    ph_samples = kspace[0].shape[1]
+
+    # Phase line indices
+    idx = np.linspace(0, ph_samples-1, ph_samples, dtype=np.int64)
+
+    # Number of spins
+    arr_size = int(round(ph_samples/MPI_size))
+    sections = [int(arr_size*i) for i in range(1,MPI_size)]
+
+    # Split arrays
+    local_idx = [[a] for a in np.split(idx, sections, axis=0)]
+
+  else:
+    #Create variables on other cores
+    local_idx = None
+
+  # Scatter local arrays to other cores
+  local_idx   = MPI_comm.scatter(local_idx, root=0)[0]
+  local_kspace = (kspace[0][:,local_idx], kspace[1][:,local_idx])
+  local_times  = times[:,local_idx]
+
+  return local_kspace, local_times, local_idx
+
 
 # Sum images obtained in each processor into a single
 # array

@@ -1,11 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from PyMRStrain.MPIUtilities import scatterKspace
 
 # Generic tracjectory
 class Trajectory:
   def __init__(self, FOV=np.array([0.3, 0.3]), res=np.array([100, 100]),
-              oversampling=2, max_Gro_amp=35, lines_per_shot=8, gamma=42.58):
+              oversampling=2, max_Gro_amp=35, lines_per_shot=7, gamma=42.58):
       self.FOV = FOV
       self.res = res
       self.oversampling = oversampling
@@ -64,6 +65,10 @@ class Cartesian(Trajectory):
         else:
           t[:,ph] = t[-1,ph-1] + dt
 
+      # Send the information to each process if running in parallel
+      kspace, t, local_idx = scatterKspace(kspace, t)
+      self.local_idx = local_idx
+
       return (kspace, t)
 
     def plot_trajectory(self):
@@ -119,6 +124,10 @@ class Radial(Trajectory):
           t[:,sp] = dt
         else:
           t[:,sp] = t[-1,sp-1] + dt
+
+      # Send the information to each process if running in parallel
+      kspace, t, local_idx = scatterKspace(kspace, t)
+      self.local_idx = local_idx
 
       return (kspace, t)
 
@@ -192,6 +201,10 @@ class Spiral(Trajectory):
           t[:,sp] = dt
         else:
           t[:,sp] = t[-1,sp-1] + dt
+
+      # Send the information to each process if running in parallel
+      kspace, t, local_idx = scatterKspace(kspace, t)
+      self.local_idx = local_idx
 
       return (kspace, t)
 

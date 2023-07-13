@@ -27,7 +27,7 @@ Eigen::MatrixXcd FlowMags(const Eigen::MatrixXd &v,
 
     // Generate magnetizations
     for (int k=0; k<3; k++){
-      Mxy(Eigen::all,k) = (i*(PI/VENC)*v.col(k)).array().exp();
+      Mxy(Eigen::all,k) = ((i*(PI/VENC)*v.col(k)).array().exp());
     }
 
   return Mxy;
@@ -37,7 +37,8 @@ Eigen::MatrixXcd FlowMags(const Eigen::MatrixXd &v,
 // Fourier exponential
 Eigen::MatrixXcd FourierExp(const Eigen::MatrixXd &r,
   const double &kx,
-  const double &ky){
+  const double &ky,
+  const double &kz){
 
     // Complex unit
     const std::complex<double> i(0, 1);
@@ -46,22 +47,22 @@ Eigen::MatrixXcd FourierExp(const Eigen::MatrixXd &r,
     Eigen::MatrixXcd Exp = Eigen::MatrixXcd::Constant(r.rows(),1,0.0);
 
     // Generate magnetizations
-    Exp(Eigen::all,0) = (i*(r.col(0)*kx + r.col(1)*ky)).array().exp();
+    Exp(Eigen::all,0) = (i*(r.col(0)*kx + r.col(1)*ky + r.col(2)*kz)).array().exp();
 
   return Exp;
 }
 
 
 // Calculate image kspace
-Eigen::MatrixXcd FlowImage(
+Eigen::MatrixXcd FlowImage3D(
   Eigen::SparseMatrix<double> &M, // Mass matrix
   const std::vector<Eigen::MatrixXd> &k, // kspace trajectory
   const Eigen::MatrixXd &t,       // kspace timings
   const Eigen::MatrixXd &v,       // object velocity
   const Eigen::MatrixXd &r,       // object position
-  const double &T2,                // T2 time of the blood
-  const double &VENC,
-  const Eigen::MatrixXd &lmbda){             // Velocity encoding
+  const double &T2,               // T2 time of the blood
+  const double &VENC,             // Velocity encoding
+  const double &kz){             
 
     // Number of kspace lines/spokes/interleaves
     const size_t nb_lines = k[0].cols();
@@ -76,6 +77,7 @@ Eigen::MatrixXcd FlowImage(
     // to each location
     const Eigen::MatrixXd kx = k[0]*(2.0*PI);
     const Eigen::MatrixXd ky = k[1]*(2.0*PI);
+    const double kzz = kz*(2.0*PI);
 
     // Build magnetizations and F
     Eigen::MatrixXcd Mag = FlowMags(v, VENC);
@@ -86,24 +88,16 @@ Eigen::MatrixXcd FlowImage(
     // Image kspace
     Eigen::MatrixXcd Mxy = Eigen::MatrixXcd::Zero(nb_meas,nb_lines);
 
-    // Complex unit
-    const std::complex<double> cu(0, 1);
-
     // Iterate over kspace measurements/kspace points
     for (size_t j = 0; j < nb_lines; j++){
       for (size_t i = 0; i < nb_meas; i++){
 
         // Fourier exponential
-        Eigen::MatrixXcd fe = FourierExp(r, kx(i,j), ky(i,j));
+        Eigen::MatrixXcd fe = FourierExp(r, kx(i,j), ky(i,j), kzz);
 
         // Integral calculation
-        Mxy(i,j) = (ones*(M*Mag.col(2).cwiseProduct(lmbda).cwiseProduct(fe)))[0];
-        // Mxy(i,j) = (ones*(M*( std::get<0>(Mag).col(2).cwiseProduct(lmbda).cwiseProduct(std::get<0>(fe)) 
-        //          -           std::get<1>(Mag).col(2).cwiseProduct(lmbda).cwiseProduct(std::get<1>(fe))
-        //          )) 
-        //          + cu*ones*(M*( std::get<0>(Mag).col(2).cwiseProduct(lmbda).cwiseProduct(std::get<1>(fe))
-        //          +              std::get<1>(Mag).col(2).cwiseProduct(lmbda).cwiseProduct(std::get<0>(fe))
-        //         )))[0];
+        // Mxy(i,j) = (ones*(M*Mag.col(2).cwiseProduct(lmbda).cwiseProduct(fe)))[0];
+        Mxy(i,j) = (ones*(M*Mag.col(2).cwiseProduct(fe)))[0];
 
         // Adds the T2 decay
         Mxy(i,j) *= std::exp(-t(i,j)/T2);
@@ -118,5 +112,5 @@ Eigen::MatrixXcd FlowImage(
 
 PYBIND11_MODULE(FlowToImage, m) {
     m.doc() = "Utilities for 4d flow image generation";
-    m.def("FlowImage", &FlowImage);
+    m.def("FlowImage3D", &FlowImage3D);
 }
