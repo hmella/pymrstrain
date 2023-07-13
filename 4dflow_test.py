@@ -37,11 +37,11 @@ if __name__ == '__main__':
 
   # Convert everything to meters
   nodes /= 100
-  velocity /= 100
+  # velocity /= 100
 
   # Kspace trajectory
   FOV = np.array([0.15, 0.15], dtype=np.float64)
-  res = np.array([64, 64], dtype=np.int64)
+  res = np.array([60, 60], dtype=np.int64)
   traj = Cartesian(FOV=FOV, res=res, oversampling=2, lines_per_shot=9)
 
   # Get mass matrix
@@ -49,11 +49,11 @@ if __name__ == '__main__':
 
   # Characteristic function
   lmbda = np.ones([nodes.shape[0], 1])
-  lmbda[nodes[:,2] > 0.005] = 0
-  lmbda[nodes[:,2] < -0.005] = 0
+  lmbda[nodes[:,2] > 0.0025] = 0
+  lmbda[nodes[:,2] < -0.0025] = 0
 
   # Generate 4D flow image
-  K = FlowImage(M, traj.points, 1000.0*traj.times, velocity, nodes, 50.0, 0.01, lmbda)
+  K = FlowImage(M, traj.points, 1000.0*traj.times, velocity, nodes, 50.0, 1.0, lmbda)
   K[:,1::2] = K[::-1,1::2]
   I = ktoi(K[::2,::-1])
 
