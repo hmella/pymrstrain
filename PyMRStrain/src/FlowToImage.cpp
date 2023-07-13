@@ -16,39 +16,40 @@ typedef std::tuple<Eigen::MatrixXcd,
 
 
 // 4D flow magnetizations (FourierExp can be added here)
-magnetizations FlowMags(const Eigen::MatrixXd &v,
+Eigen::MatrixXcd FlowMags(const Eigen::MatrixXd &v,
   const double &VENC){
 
+    // Complex unit
+    const std::complex<double> i(0, 1);
+
     // Real and imaginary magnetizations
-    Eigen::MatrixXcd Re = Eigen::MatrixXcd::Constant(v.rows(),v.cols(),0.0);
-    Eigen::MatrixXcd Im = Eigen::MatrixXcd::Constant(v.rows(),v.cols(),0.0);
+    Eigen::MatrixXcd Mxy = Eigen::MatrixXcd::Constant(v.rows(),v.cols(),0.0);
 
     // Generate magnetizations
-    for (int i=0; i<3; i++){
-      Re(Eigen::all,i) = ((PI/VENC)*v.col(i)).array().cos();
-      Im(Eigen::all,i) = ((PI/VENC)*v.col(i)).array().sin();
+    for (int k=0; k<3; k++){
+      Mxy(Eigen::all,k) = (i*(PI/VENC)*v.col(k)).array().exp();
     }
 
-  return std::make_tuple(Re, Im);
+  return Mxy;
 }
 
 
 // Fourier exponential
-magnetizations FourierExp(const Eigen::MatrixXd &r,
+Eigen::MatrixXcd FourierExp(const Eigen::MatrixXd &r,
   const double &kx,
   const double &ky){
 
+    // Complex unit
+    const std::complex<double> i(0, 1);
+
     // Real and imaginary magnetizations
-    Eigen::MatrixXcd Re = Eigen::MatrixXcd::Constant(r.rows(),1,0.0);
-    Eigen::MatrixXcd Im = Eigen::MatrixXcd::Constant(r.rows(),1,0.0);
+    Eigen::MatrixXcd Exp = Eigen::MatrixXcd::Constant(r.rows(),1,0.0);
 
     // Generate magnetizations
-    Re(Eigen::all,0) = (r.col(0)*kx + r.col(1)*ky).array().cos();
-    Im(Eigen::all,0) = (r.col(0)*kx + r.col(1)*ky).array().sin();
+    Exp(Eigen::all,0) = (i*(r.col(0)*kx + r.col(1)*ky)).array().exp();
 
-  return std::make_tuple(Re, Im);
+  return Exp;
 }
-
 
 
 // Calculate image kspace
@@ -77,7 +78,7 @@ Eigen::MatrixXcd FlowImage(
     const Eigen::MatrixXd ky = k[1]*(2.0*PI);
 
     // Build magnetizations and F
-    magnetizations Mag = FlowMags(v, VENC);
+    Eigen::MatrixXcd Mag = FlowMags(v, VENC);
 
     // Dummy ones for temporal integration
     Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(1,nb_spins,1.0);
@@ -93,15 +94,16 @@ Eigen::MatrixXcd FlowImage(
       for (size_t i = 0; i < nb_meas; i++){
 
         // Fourier exponential
-        magnetizations fe = FourierExp(r, kx(i,j), ky(i,j));
+        Eigen::MatrixXcd fe = FourierExp(r, kx(i,j), ky(i,j));
 
         // Integral calculation
-        Mxy(i,j) = (ones*(M*( std::get<0>(Mag).col(2).cwiseProduct(lmbda).cwiseProduct(std::get<0>(fe)) 
-                 -           std::get<1>(Mag).col(2).cwiseProduct(lmbda).cwiseProduct(std::get<1>(fe))
-                 )) 
-                 + cu*ones*(M*( std::get<0>(Mag).col(2).cwiseProduct(lmbda).cwiseProduct(std::get<1>(fe))
-                 +              std::get<1>(Mag).col(2).cwiseProduct(lmbda).cwiseProduct(std::get<0>(fe))
-                )))[0];
+        Mxy(i,j) = (ones*(M*Mag.col(2).cwiseProduct(lmbda).cwiseProduct(fe)))[0];
+        // Mxy(i,j) = (ones*(M*( std::get<0>(Mag).col(2).cwiseProduct(lmbda).cwiseProduct(std::get<0>(fe)) 
+        //          -           std::get<1>(Mag).col(2).cwiseProduct(lmbda).cwiseProduct(std::get<1>(fe))
+        //          )) 
+        //          + cu*ones*(M*( std::get<0>(Mag).col(2).cwiseProduct(lmbda).cwiseProduct(std::get<1>(fe))
+        //          +              std::get<1>(Mag).col(2).cwiseProduct(lmbda).cwiseProduct(std::get<0>(fe))
+        //         )))[0];
 
         // Adds the T2 decay
         Mxy(i,j) *= std::exp(-t(i,j)/T2);
