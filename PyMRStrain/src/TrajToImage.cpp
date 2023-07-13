@@ -45,14 +45,14 @@ MatrixXcd TrajToImage(const std::vector<MatrixXd> &k,
 
     // Get the equivalent gradient needed to go from the center of the kspace
     // to each location
-    MatrixXd kx = k[0]*(2.0*PI);
-    MatrixXd ky = k[1]*(2.0*PI);
+    const MatrixXd kx = k[0]*(2.0*PI);
+    const MatrixXd ky = k[1]*(2.0*PI);
 
     // Image kspace
     MatrixXcd Mxy = MatrixXcd::Zero(nb_meas,nb_lines);
 
     // Complex unit times 2*PI
-    std::complex<double> cu(0, 1);
+    const std::complex<double> cu(0, 1);
 
     // Rotation tensor
     Matrix2d R;
