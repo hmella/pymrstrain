@@ -67,7 +67,7 @@ class Spins:
 
 # Function
 class Function:
-    def __init__(self, spins, dim=3, type=np.float):
+    def __init__(self, spins, dim=3, type=float):
         self.spins = spins
         self.dim = dim
         self.x = spins.samples

@@ -89,8 +89,8 @@ Eigen::MatrixXcd FlowImage3D(
     Eigen::MatrixXcd Mxy = Eigen::MatrixXcd::Zero(nb_meas,nb_lines);
 
     // Iterate over kspace measurements/kspace points
-    for (size_t j = 0; j < nb_lines; j++){
-      for (size_t i = 0; i < nb_meas; i++){
+      for (size_t j = 0; j < nb_lines; j++){
+        for (size_t i = 0; i < nb_meas; i++){
 
         // Fourier exponential
         Eigen::MatrixXcd fe = FourierExp(r, kx(i,j), ky(i,j), kzz);
