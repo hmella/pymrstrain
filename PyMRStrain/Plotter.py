@@ -9,14 +9,16 @@ def remove_keymap_conflicts(new_keys_set):
             for key in remove_list:
                 keys.remove(key)
 
-def multi_slice_viewer(volume):
+def multi_slice_viewer(volume,caxis=None):
     remove_keymap_conflicts({'j', 'k'})
     volume = np.transpose(volume, (1,0,2))
     fig, ax = plt.subplots()
     ax.volume = volume
     ax.index = 0
-    ax.imshow(volume[...,ax.index], cmap=plt.get_cmap('Greys_r'),
-              vmin=volume.min(), vmax=volume.max())
+    if caxis==None:
+      ax.imshow(volume[...,ax.index], cmap=plt.get_cmap('Greys_r'), vmin=volume.min(), vmax=volume.max())
+    else:
+      ax.imshow(volume[...,ax.index], cmap=plt.get_cmap('Greys_r'), vmin=caxis[0], vmax=caxis[1])
     ax.invert_yaxis()
     fig.canvas.mpl_connect('key_press_event', process_key)
     plt.show()
