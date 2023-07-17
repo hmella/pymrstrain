@@ -10,10 +10,10 @@ if __name__ == '__main__':
   K = np.load('kspace_test.npy')
 
   # Generate image
-  I = ktoi(K[::2,::-1,:],[0,1,2])
+  I = ktoi(K[::2,::-1,:,:],[0,1,2])
 
   # Show figure
-  multi_slice_viewer(np.abs(K[::2,:,:]))
-  multi_slice_viewer(np.abs(I[:,:,:]))
-  multi_slice_viewer(np.angle(I[:,:,:]))
+  multi_slice_viewer(np.abs(K[::2,:,:,7]))
+  multi_slice_viewer(np.abs(I[:,:,:,7]))
+  multi_slice_viewer(np.angle(I[:,:,:,7]),caxis=[-np.pi,np.pi])
   plt.show()

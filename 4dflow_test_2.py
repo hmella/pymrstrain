@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import meshio
 import numpy as np
 from Fem import massAssemble
-from FlowToImage import FlowImage3D
+from FlowToImage import FlowImage3Dv2
 
 from PyMRStrain.KSpaceTraj import Cartesian
 from PyMRStrain.Math import itok, ktoi
@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
     # Kspace parameters for sampling in kz
     FOV_z    = 0.3
-    res_z    = 10
+    res_z    = 2
     delta_kz = 1.0/FOV_z 
     BW_kz    = 1.0/(FOV_z/res_z)
     kz       = np.arange(-0.5*BW_kz, 0.5*BW_kz, delta_kz)
@@ -73,13 +73,8 @@ if __name__ == '__main__':
       velocity /= 100
 
       # Generate 4D flow image
-      for i in range(len(kz)):
-
-        # Debugging
-        print(MPI_rank, "Frame {:d}, kz location {:d}".format(fr,i))
-
-        # Generate kspace
-        K[:,traj.local_idx,i,fr] = FlowImage3D(M, traj.points, 1000*traj.times, velocity, nodes, T2, VENC, kz[i])
+      print(MPI_rank, "Generating frame {:d}".format(fr))
+      K[traj.local_idx,:,:,fr] = np.transpose(np.array(FlowImage3Dv2(M, traj.points, kz, 1000*traj.times, velocity, nodes, T2, VENC)), axes=(1,2,0))
 
       # Synchronize MPI processes
       MPI_comm.Barrier()

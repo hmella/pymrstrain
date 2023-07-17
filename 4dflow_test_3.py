@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import meshio
 import numpy as np
 from Fem import massAssemble
-from FlowToImage import FlowImage3D
+from FlowToImage import FlowImage3Dv3
 
 from PyMRStrain.KSpaceTraj import Cartesian
 from PyMRStrain.Math import itok, ktoi
@@ -37,21 +37,21 @@ if __name__ == '__main__':
 
     # Kspace trajectory
     FOV = np.array([0.15, 0.15], dtype=np.float64)
-    res = np.array([64, 64], dtype=np.int64)
+    res = np.array([120, 120], dtype=np.int64)
     traj = Cartesian(FOV=FOV, res=res, oversampling=2, lines_per_shot=9)
     # if MPI_rank==0:
     #   traj.plot_trajectory()
 
     # Kspace parameters for sampling in kz
     FOV_z    = 0.3
-    res_z    = 10
+    res_z    = 120
     delta_kz = 1.0/FOV_z 
     BW_kz    = 1.0/(FOV_z/res_z)
     kz       = np.arange(-0.5*BW_kz, 0.5*BW_kz, delta_kz)
 
     # T2 relaxation and VENC
     T2   = 250   # ms
-    VENC = 1.0   #1.5 # m/s
+    VENC = 1.5   #1.5 # m/s
 
     # Assemble mass matrix for integrals (just once)
     M = massAssemble(elems,nodes)
@@ -60,7 +60,7 @@ if __name__ == '__main__':
     K = np.zeros([traj.ro_samples, traj.ph_samples, len(kz), reader.num_steps], dtype=complex)
 
     # Generate images
-    for fr in [7]: #range(reader.num_steps):
+    for fr in range(reader.num_steps):
 
       # Read velocity data in each time step
       d, point_data, cell_data = reader.read_data(fr)
@@ -73,13 +73,8 @@ if __name__ == '__main__':
       velocity /= 100
 
       # Generate 4D flow image
-      for i in range(len(kz)):
-
-        # Debugging
-        print(MPI_rank, "Frame {:d}, kz location {:d}".format(fr,i))
-
-        # Generate kspace
-        K[:,traj.local_idx,i,fr] = FlowImage3D(M, traj.points, 1000*traj.times, velocity, nodes, T2, VENC, kz[i])
+      print(MPI_rank, "Generating frame {:d}".format(fr))
+      K[traj.local_idx,:,:,fr] = FlowImage3Dv3(M, traj.points, kz, 1000*traj.times, velocity, nodes, T2, VENC)
 
       # Synchronize MPI processes
       MPI_comm.Barrier()
@@ -99,5 +94,5 @@ if __name__ == '__main__':
     if MPI_rank==0:
       multi_slice_viewer(np.abs(K[::2,:,:,7]))
       multi_slice_viewer(np.abs(I[:,:,:,7]))
-      multi_slice_viewer(np.angle(I[:,:,:,7]))
+      multi_slice_viewer(np.angle(I[:,:,:,7]), caxis=[-np.pi, np.pi])
       plt.show()
