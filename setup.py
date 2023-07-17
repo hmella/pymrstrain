@@ -159,9 +159,9 @@ setup(name='PyMRStrain',
       description='Strain Phantom Library',
       long_description=read('README.md'),
       ext_modules=ext_modules,
-      install_requires=['pybind11>=2.2'],
+      install_requires=['pybind11>=2.11'],
       cmdclass={'build_ext': BuildExt},
       zip_safe=False,
       author='Hernan Mella',
-      author_email='hmella@uc.cl'
+      author_email='hernan.mella@pucv.cl'
       )
