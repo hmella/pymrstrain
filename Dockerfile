@@ -1,21 +1,24 @@
 # Download base image ubuntu 18.04
-FROM ubuntu:18.04
-MAINTAINER Hernan Mella <hmella@uc.cl>
+FROM ubuntu:22.04 as base
+ARG DEBIAN_FRONTEND=noninteractive
+MAINTAINER Hernan Mella <hernan.mella@pucv.cl>
+
+USER root
 
 # Create new user
 RUN useradd --create-home --shel /bin/bash pymrstrain
 
 # Update Ubuntu Software repository
-RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
-RUN apt-get update && \
-    apt-get install -y apt-utils && \
-    apt-get upgrade -y -o Dpkg::Options::="--force-confold"
+# RUN apt -qq update && \
+#     apt -y --with-new-pkgs \
+#         -o Dpkg::Options::="--force-confold" upgrade
+RUN apt-get update && apt-get install -y apt-transport-https && apt-get install -y sudo && apt-get -y upgrade
 
 # Install PyMRStrain dependencies
 RUN apt-get install -y python3-tk python3-setuptools cmake git && \
     apt-get install -y libopenmpi-dev mpich screen nano && \
     apt-get install -y build-essential python3-dev python3-pip && \
-    pip3 install pybind11 mpi4py meshio scipy matplotlib
+    pip3 install pybind11 mpi4py h5py meshio scipy matplotlib
 
 RUN cd /tmp/ && git clone https://github.com/eigenteam/eigen-git-mirror.git && \
     cd eigen-git-mirror && mkdir build && cd build/ && \
