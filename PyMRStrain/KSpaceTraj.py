@@ -6,26 +6,82 @@ from PyMRStrain.MPIUtilities import scatterKspace
 # Generic tracjectory
 class Trajectory:
   def __init__(self, FOV=np.array([0.3, 0.3]), res=np.array([100, 100]),
-              oversampling=2, max_Gro_amp=35, lines_per_shot=7, gamma=42.58):
+              oversampling=2, max_Gro_amp=30, Gro_slew_rate=195,lines_per_shot=7, gamma=42.58, VENC=None):
       self.FOV = FOV
       self.res = res
       self.oversampling = oversampling
-      self.max_Gro_amp = max_Gro_amp # [mT/m]
-      self.gamma = gamma             # [MHz/T]
+      self.max_Gro_amp = max_Gro_amp         # [mT/m]
+      self.max_Gro_amp_ = 1.0e-3*max_Gro_amp # [T/m]
+      self.Gro_slew_rate = Gro_slew_rate     # [mT/(m*ms)]
+      self.gamma = gamma                     # [MHz/T]
+      self.gamma_ = 2.0*np.pi*1.0e+6*gamma   # [rad Hz/T]
       self.lines_per_shot = lines_per_shot
       self.pxsz = FOV/res
       self.kspace_bw = 1.0/self.pxsz
-      self.kspace_spa = self.kspace_bw/res
+      self.kspace_spa = 1.0/(oversampling*self.FOV)
       self.ro_samples = oversampling*res[0]
+      self.VENC = VENC  # [m/s]
 
   def check_ph_enc_lines(self, ph_samples):
     ''' Verify if the number of lines in the phase encoding direction
     satisfies the multishot factor '''
     lps = self.lines_per_shot
     if ph_samples % lps != 0:
-      ph_samples = int(lps*np.floor(ph_samples/lps))
-    
+      ph_samples = int(lps*np.floor(ph_samples/lps)) 
+
     return ph_samples
+
+  def velenc_time(self):
+    ''' Calculate the time needed to apply the velocity encoding gradients
+    based on the values of max_Gro_amp and Gro_slew_rate'''
+
+    # Bipolar lobes areas without rectangle part
+    dur_to_max = self.max_Gro_amp_/self.Gro_slew_rate
+    alpha = np.pi/(self.gamma_*self.VENC*self.max_Gro_amp_)
+    t1 = (0.5*alpha*dur_to_max)**(1/3)
+
+    # Check if rectangle parts of the gradient are needed
+    if t1 <= dur_to_max:
+      # Calculate duration of the first velocity encoding gradient lobe
+      dur2 = 2.0*t1
+      enc_time = 2.0*dur2
+
+      # Plot
+      t = np.array([0, t1, 2*t1, 3*t1, 4*t1])
+      G_max = t1/dur_to_max*self.max_Gro_amp
+      G = np.array([0, G_max, 0, -G_max, 0])
+      plt.figure(1)
+      plt.plot(1000.0*t,G)
+      plt.show()
+
+    else:
+      # Estimate the duration of the rectangular part of the gradient
+      a = 1.0 
+      b = 3.0*dur_to_max
+      c = 2.0*dur_to_max**2 - alpha
+      t2 = np.array([(-b + (b**2 - 4*a*c)**0.5)/(2*a),
+                     (-b - (b**2 - 4*a*c)**0.5)/(2*a)])
+
+      # Remove negative solutions
+      t2[t2 < 0] = 1e+10
+      t2 = t2.min()
+
+      # Gradients duration
+      dur2 = 2.0*dur_to_max + t2
+      enc_time = 2*dur2
+
+      # Plot
+      t = np.array([0, dur_to_max, dur_to_max+t2, 2*dur_to_max+t2, 3*dur_to_max+t2, 3*dur_to_max+2*t2, 4*dur_to_max+2*t2])
+      G_max = self.max_Gro_amp
+      G = np.array([0, G_max, G_max, 0, -G_max, -G_max, 0])
+      plt.figure(1)
+      plt.plot(1000.0*t,G)
+      plt.show()
+
+    # Store velocity encoding time
+    self.vel_enc_time = enc_time
+
+    return enc_time
 
 
 # Cartesian trajectory
@@ -35,13 +91,25 @@ class Cartesian(Trajectory):
       self.ph_samples = self.check_ph_enc_lines(self.res[1])
       (self.points, self.times) = self.kspace_points()
 
+    def readout_time(self):
+      return 1
+
     def kspace_points(self):
       ''' Get kspace points '''
       # Time needed to acquire one line
       # It depends on the kspcae bandwidth, the gyromagnetic constant, and
       # the maximun gradient amplitude
-      dt_line = (self.kspace_bw[0]*2*np.pi)/(1e+6*self.gamma*1e-3*self.max_Gro_amp)
+      dt_line = (self.kspace_bw[0]*2*np.pi)/(self.gamma_*self.max_Gro_amp_)
       dt = np.linspace(0.0, dt_line, self.ro_samples)
+
+      # Readout gradient timings
+      slope = self.max_Gro_amp_/self.Gro_slew_rate
+      lenc  = (0.5*self.kspace_bw[0]*2*np.pi - self.gamma_*slope*self.max_Gro_amp_)/(self.gamma_*self.max_Gro_amp_)
+
+      # Update timings to include bipolar gradients and pre-positioning gradient before the readout
+      venc_time = 0.0
+      if self.VENC != None:
+        venc_time = self.velenc_time()
 
       # kspace locations
       kx = np.linspace(-0.5*self.kspace_bw[0], 0.5*self.kspace_bw[0], self.ro_samples)
@@ -60,10 +128,14 @@ class Cartesian(Trajectory):
           kspace[0][::-1,ph] = kx
           kspace[1][::-1,ph] = ky - self.kspace_bw[1]*(ph/(self.ph_samples-1))
 
+        # Update timings
         if ph % self.lines_per_shot == 0:
-          t[:,ph] = dt
+          t[:,ph] = venc_time + slope + lenc + slope + slope + dt
         else:
-          t[:,ph] = t[-1,ph-1] + dt
+          t[:,ph] = t[-1,ph-1] + slope + slope + dt
+
+      # Calculate echo time
+      self.echo_time = 0.5*(t[:].max() - 3*slope - lenc - venc_time) + 3*slope + lenc + venc_time
 
       # Send the information to each process if running in parallel
       kspace, t, local_idx = scatterKspace(kspace, t)
@@ -96,7 +168,7 @@ class Radial(Trajectory):
     def kspace_points(self):
       ''' Get kspace points '''
       # Time needed to acquire one line
-      dt_line = (self.kspace_bw[0]*2*np.pi)/(1e+6*self.gamma*1e-3*self.max_Gro_amp)
+      dt_line = (self.kspace_bw[0]*2*np.pi)/(self.gamma_*self.max_Gro_amp_)
       dt = np.linspace(0.0, dt_line, self.ro_samples)
 
       # kspace locations
