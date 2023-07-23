@@ -1,6 +1,7 @@
 demo/3D/files/msh_file
 *phantom/
 *output/
+*debug/
 build/
 dist/
 tmp/
@@ -9,4 +10,5 @@ PyMRStrain.egg-info/
 *.png
 *.npy
 *.pkl
+*.msh
 PyMRStrain/__pycache__
