@@ -80,7 +80,7 @@ if __name__ == '__main__':
     K = np.zeros([traj.ro_samples, traj.ph_samples, len(kz), 3, reader.num_steps], dtype=complex)
 
     # Generate images
-    for fr in [7]:#range(reader.num_steps):
+    for fr in range(reader.num_steps):
 
       # Read velocity data in each time step
       d, point_data, cell_data = reader.read_data(fr)
