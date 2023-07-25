@@ -50,9 +50,9 @@ class Trajectory:
       t = np.array([0, t1, 2*t1, 3*t1, 4*t1])
       G_max = t1/dur_to_max*self.max_Gro_amp
       G = np.array([0, G_max, 0, -G_max, 0])
-      plt.figure(1)
-      plt.plot(1000.0*t,G)
-      plt.show()
+      # plt.figure(1)
+      # plt.plot(1000.0*t,G)
+      # plt.show()
 
     else:
       # Estimate the duration of the rectangular part of the gradient
@@ -74,9 +74,9 @@ class Trajectory:
       t = np.array([0, dur_to_max, dur_to_max+t2, 2*dur_to_max+t2, 3*dur_to_max+t2, 3*dur_to_max+2*t2, 4*dur_to_max+2*t2])
       G_max = self.max_Gro_amp
       G = np.array([0, G_max, G_max, 0, -G_max, -G_max, 0])
-      plt.figure(1)
-      plt.plot(1000.0*t,G)
-      plt.show()
+      # plt.figure(1)
+      # plt.plot(1000.0*t,G)
+      # plt.show()
 
     # Store velocity encoding time
     self.vel_enc_time = enc_time
