@@ -17,7 +17,7 @@ typedef std::tuple<Eigen::MatrixXcd,
   Eigen::MatrixXcd> magnetizations;
 
 // Definition of third rank complex tensor datatype
-typedef Eigen::Tensor<std::complex<double>, 3> ComplexTensor;
+typedef Eigen::Tensor<std::complex<double>, 4> ComplexTensor;
 
 
 // 4D flow magnetizations (FourierExp can be added here)
@@ -34,9 +34,10 @@ Eigen::MatrixXcd FlowMags(const Eigen::MatrixXd &v,
     Eigen::MatrixXcd Mxy = Eigen::MatrixXcd::Constant(v.rows(),v.cols(),0.0);
 
     // Generate magnetizations
-    for (int k=0; k<3; k++){
-      Mxy(Eigen::all,k) = M0*((i*(PI/VENC)*v.col(k)).array().exp());
-    }
+    Mxy(Eigen::all,Eigen::all) = M0*((i*(PI/VENC)*v).array().exp());
+    // for (int k=0; k<3; k++){
+    //   Mxy(Eigen::all,k) = M0*((i*(PI/VENC)*v.col(k)).array().exp());
+    // }
 
   return Mxy;
 }
@@ -52,12 +53,16 @@ Eigen::MatrixXcd FourierExp(const Eigen::MatrixXd &r,
     const std::complex<double> i(0, 1);
 
     // Real and imaginary magnetizations
-    Eigen::MatrixXcd Exp = Eigen::MatrixXcd::Constant(r.rows(),1,0.0);
+    Eigen::MatrixXcd tmp = Eigen::MatrixXcd::Constant(r.rows(),1,0.0);
+    Eigen::MatrixXcd Exp = Eigen::MatrixXcd::Constant(r.rows(),3,0.0);
 
     // Generate magnetizations
     // Obs: the 2*pi term is not in the exponential because is included
     // in (kx,ky,kz), which were multiplied in the function FlowImage
-    Exp(Eigen::all,0) = (-i*(r.col(0)*kx + r.col(1)*ky + r.col(2)*kz)).array().exp();
+    tmp(Eigen::all,0) = (-i*(r.col(0)*kx + r.col(1)*ky + r.col(2)*kz)).array().exp();
+    for (size_t j = 0; j < Exp.cols(); j++){
+      Exp(Eigen::all,j) = tmp;
+    }
 
   return Exp;
 }
@@ -234,13 +239,16 @@ ComplexTensor FlowImage3Dv3(
 
     // Build magnetizations and Fourier exponential
     Eigen::MatrixXcd Mag = FlowMags(v, VENC);
-    Eigen::MatrixXcd fe = Eigen::MatrixXcd::Zero(nb_spins, 1);
+    Eigen::MatrixXcd fe = Eigen::MatrixXcd::Zero(nb_spins, Mag.cols());
 
     // Dummy ones for temporal integration
     Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(1,nb_spins,1.0);
-  
+
+    // Vector to store the k-space value for each velocity encoding
+    Eigen::MatrixXcd k_vec = Eigen::MatrixXcd::Constant(1, 3, 0.0);
+
     // Image kspace
-    ComplexTensor Mxy(nb_meas, nb_lines, nb_kz);
+    ComplexTensor Mxy(nb_meas, nb_lines, nb_kz, 3);
 
     // Iterate over kspace measurements/kspace points
     for (size_t k = 0; k < nb_kz; k++){
@@ -257,12 +265,12 @@ ComplexTensor FlowImage3Dv3(
           // Fourier exponential
           fe.noalias() = FourierExp(r, kx(i,j), ky(i,j), kzz(k));
 
-          // Integral calculation
-          Mxy(i,j,k) = (ones*(M*Mag.col(2).cwiseProduct(fe)))[0];
-
-          // Adds the T2 decay
-          Mxy(i,j,k) *= std::exp(-t(i,j)/T2);
-
+          // Calculate k-space values, add T2* decay, and assign value to output array
+          k_vec.noalias() = ones*(M*Mag.cwiseProduct(fe));
+          k_vec *= std::exp(-t(i,j)/T2);
+          for (size_t l = 0; l < 3; l++){
+            Mxy(i,j,k,l) = k_vec(l); 
+          }
         }
       }
     }

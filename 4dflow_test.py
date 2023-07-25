@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     # Kspace parameters for sampling in kz
     FOV_z    = 0.2
-    res_z    = 80
+    res_z    = 100
     delta_kz = 1.0/FOV_z 
     BW_kz    = 1.0/(FOV_z/res_z)
     kz       = np.arange(-0.5*BW_kz, 0.5*BW_kz, delta_kz)
@@ -67,8 +67,8 @@ if __name__ == '__main__':
 
     # Kspace trajectory
     FOV = np.array([0.13, 0.1], dtype=np.float64)
-    res = np.array([52, 40], dtype=np.int64)
-    traj = Cartesian(FOV=FOV, res=res, oversampling=2, lines_per_shot=1, VENC=VENC)
+    res = np.array([65, 50], dtype=np.int64)
+    traj = Cartesian(FOV=FOV, res=res, oversampling=2, lines_per_shot=5, VENC=VENC)
     print("Echo time = {:.1f} ms".format(1000.0*traj.echo_time))
     # if MPI_rank==0:
     #   traj.plot_trajectory()
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     M = massAssemble(elems,nodes)
 
     # kspace
-    K = np.zeros([traj.ro_samples, traj.ph_samples, len(kz), reader.num_steps], dtype=complex)
+    K = np.zeros([traj.ro_samples, traj.ph_samples, len(kz), 3, reader.num_steps], dtype=complex)
 
     # Generate images
     for fr in [7]:#range(reader.num_steps):
@@ -96,7 +96,7 @@ if __name__ == '__main__':
       print(MPI_rank, "Generating frame {:d}".format(fr))
       # K[:,traj.local_idx,i,fr] = FlowImage3D(M, traj.points, 1000*traj.times, velocity, nodes, T2, VENC, kz[i])
       # K[traj.local_idx,:,:,fr] = np.transpose(np.array(FlowImage3Dv2(M, traj.points, kz, traj.times, traj.vel_enc_time, velocity, nodes, T2, VENC)), axes=(1,2,0))
-      K[traj.local_idx,:,:,fr] = FlowImage3Dv3(M, traj.points, kz, traj.times, velocity, nodes, T2, VENC)
+      K[traj.local_idx,:,:,:,fr] = FlowImage3Dv3(M, traj.points, kz, traj.times, velocity, nodes, T2, VENC)
 
       # Synchronize MPI processes
       MPI_comm.Barrier()
@@ -104,25 +104,24 @@ if __name__ == '__main__':
       # Copy kspace and export it for debugging
       K_copy = np.copy(K)
       K_copy = gather_image(K_copy)
-      K_copy[:,1::2,:,:] = K_copy[::-1,1::2,:,:]
+      K_copy[:,1::2,...] = K_copy[::-1,1::2,...]
       if MPI_rank==0:
         np.save('kspace_test',K_copy)
 
+    # # Gather results
+    # K = gather_image(K)
 
-    # Gather results
-    K = gather_image(K)
+    # # Fix dimensions
+    # K[:,1::2,...] = K[::-1,1::2,...]
+    # I = ktoi(K[::2,::-1,...],[0,1,2])
 
-    # Fix dimensions
-    K[:,1::2,:,:] = K[::-1,1::2,:,:]
-    I = ktoi(K[::2,::-1,:,:],[0,1,2])
+    # # Export generated data
+    # if MPI_rank==0:
+    #   np.save('kspace_test',K)
 
-    # Export generated data
-    if MPI_rank==0:
-      np.save('kspace_test',K)
-
-    # Show figure
-    if MPI_rank==0:
-      multi_slice_viewer(np.abs(K[::2,:,:,7]))
-      multi_slice_viewer(np.abs(I[:,:,:,7]))
-      multi_slice_viewer(np.angle(I[:,:,:,7]), caxis=[-np.pi, np.pi])
-      plt.show()
+    # # Show figure
+    # if MPI_rank==0:
+    #   multi_slice_viewer(np.abs(K[::2,:,:,:,7]))
+    #   multi_slice_viewer(np.abs(I[:,:,:,:,7]))
+    #   multi_slice_viewer(np.angle(I[:,:,:,:,7]), caxis=[-np.pi, np.pi])
+    #   plt.show()
