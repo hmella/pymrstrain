@@ -66,8 +66,8 @@ if __name__ == '__main__':
     VENC = 1.5            # 1.5 # m/s
 
     # Kspace trajectory
-    FOV = np.array([0.13, 0.1], dtype=np.float64)
-    res = np.array([65, 50], dtype=np.int64)
+    FOV = np.array([0.1325, 0.1], dtype=np.float64)
+    res = np.array([66, 50], dtype=np.int64)
     traj = Cartesian(FOV=FOV, res=res, oversampling=2, lines_per_shot=5, VENC=VENC)
     print("Echo time = {:.1f} ms".format(1000.0*traj.echo_time))
     # if MPI_rank==0:
