@@ -30,7 +30,7 @@ class get_pybind_include(object):
 
     def __init__(self, user=False):
         self.user = user
-
+  
     def __str__(self):
         import pybind11
         return pybind11.get_include(self.user)
@@ -46,7 +46,8 @@ ext_modules = [
             get_pybind_include(user=True),
             '/usr/include/eigen3/'
         ],
-        language='c++'
+        language='c++',
+        undef_macros=['O2','O2']
     ),
     Extension(
         'Connectivity',
@@ -56,7 +57,8 @@ ext_modules = [
             get_pybind_include(),
             '/usr/include/eigen3/'
         ],
-        language='c++'
+        language='c++',
+        undef_macros=['O2','O2']
     ),
     Extension(
         'TrajToImage',
@@ -66,7 +68,8 @@ ext_modules = [
             get_pybind_include(),
             '/usr/include/eigen3/'
         ],
-        language='c++'
+        language='c++',
+        undef_macros=['O2','O2']
     ),
     Extension(
         'Fem',
@@ -76,7 +79,8 @@ ext_modules = [
             get_pybind_include(),
             '/usr/include/eigen3/'
         ],
-        language='c++'
+        language='c++',
+        undef_macros=['O2','O2']
     ),
     Extension(
         'FlowToImage',
@@ -86,7 +90,8 @@ ext_modules = [
             get_pybind_include(),
             '/usr/include/eigen3/'
         ],
-        language='c++'
+        language='c++',
+        undef_macros=['O2','O2']
     ),
 ]
 
@@ -140,18 +145,19 @@ class BuildExt(build_ext):
                 opts.append('-fvisibility=hidden')
             if has_flag(self.compiler, '-O3'):
                 opts.append('-O3')
-            if has_flag(self.compiler, '-funroll-loops'):
-                opts.append('-funroll-loops')
+            if has_flag(self.compiler, '-Ofast'):
+                opts.append('-Ofast')
+            # if has_flag(self.compiler, '-funroll-loops'):
+            #     opts.append('-funroll-loops')
             if has_flag(self.compiler, '-march=native'):
                 opts.append('-march=native')
-            if has_flag(self.compiler, '-mfpmath=sse'):
-                opts.append('-mfpmath=sse')
+            # if has_flag(self.compiler, '-mfpmath=sse'):
+            #     opts.append('-mfpmath=sse')
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
         for ext in self.extensions:
             ext.extra_compile_args = opts
         build_ext.build_extensions(self)
-
 
 setup(name='PyMRStrain',
       version='0.1',
