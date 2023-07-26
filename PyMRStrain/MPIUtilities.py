@@ -18,12 +18,8 @@ def scatterKspace(kspace, times):
     # Phase line indices
     idx = np.linspace(0, ro_samples-1, ro_samples, dtype=np.int64)
 
-    # Number of spins
-    arr_size = int(round(ro_samples/MPI_size))
-    sections = [int(arr_size*i) for i in range(1,MPI_size)]
-
     # Split arrays
-    local_idx = [[a] for a in np.split(idx, sections, axis=0)]
+    local_idx = [[a.astype(int)] for a in np.array_split(idx, MPI_size)]
 
   else:
     #Create variables on other cores
@@ -33,6 +29,9 @@ def scatterKspace(kspace, times):
   local_idx   = MPI_comm.scatter(local_idx, root=0)[0]
   local_kspace = (kspace[0][local_idx,:], kspace[1][local_idx,:])
   local_times  = times[local_idx,:]
+
+  print("Number of readout points in process {:d}: {:d}".format(MPI_rank, len(local_idx
+  )))
 
   return local_kspace, local_times, local_idx
 
