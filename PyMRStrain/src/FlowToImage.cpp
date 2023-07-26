@@ -31,20 +31,15 @@ Eigen::MatrixXcd FlowMags(const Eigen::MatrixXd &v,
     const double M0 = 1000.0*v.rows();
 
     // Real and imaginary magnetizations
-    Eigen::MatrixXcd Mxy = Eigen::MatrixXcd::Constant(v.rows(),v.cols(),0.0);
-
-    // Generate magnetizations
-    Mxy(Eigen::all,Eigen::all) = M0*((i*(PI/VENC)*v).array().exp());
-    // for (int k=0; k<3; k++){
-    //   Mxy(Eigen::all,k) = M0*((i*(PI/VENC)*v.col(k)).array().exp());
-    // }
+    Eigen::MatrixXcd Mxy = M0*((i*(PI/VENC)*v).array().exp());
 
   return Mxy;
 }
 
 
 // Fourier exponential
-Eigen::MatrixXcd FourierExp(const Eigen::MatrixXd &r,
+void FourierExp(Eigen::MatrixXcd& Exp,
+  const Eigen::MatrixXd &r,
   const double &kx,
   const double &ky,
   const double &kz){
@@ -54,155 +49,152 @@ Eigen::MatrixXcd FourierExp(const Eigen::MatrixXd &r,
 
     // Real and imaginary magnetizations
     Eigen::MatrixXcd tmp = Eigen::MatrixXcd::Constant(r.rows(),1,0.0);
-    Eigen::MatrixXcd Exp = Eigen::MatrixXcd::Constant(r.rows(),3,0.0);
 
     // Generate magnetizations
     // Obs: the 2*pi term is not in the exponential because is included
     // in (kx,ky,kz), which were multiplied in the function FlowImage
     tmp(Eigen::all,0) = (-i*(r.col(0)*kx + r.col(1)*ky + r.col(2)*kz)).array().exp();
-    for (size_t j = 0; j < Exp.cols(); j++){
+    for (uint j = 0; j < Exp.cols(); j++){
       Exp(Eigen::all,j) = tmp;
     }
-
-  return Exp;
 }
 
 
-// Calculate image kspace
-Eigen::MatrixXcd FlowImage3D(
-  const Eigen::SparseMatrix<double> &M, // Mass matrix
-  const std::vector<Eigen::MatrixXd> &k, // kspace trajectory
-  const Eigen::MatrixXd &t,       // kspace timings
-  const Eigen::MatrixXd &v,       // object velocity
-  const Eigen::MatrixXd &r0,      // object position
-  const double &T2,               // T2 time of the blood
-  const double &VENC,             // Velocity encoding
-  const double &kz){             
+// // Calculate image kspace
+// Eigen::MatrixXcd FlowImage3D(
+//   const Eigen::SparseMatrix<double> &M, // Mass matrix
+//   const std::vector<Eigen::MatrixXd> &k, // kspace trajectory
+//   const Eigen::MatrixXd &t,       // kspace timings
+//   const Eigen::MatrixXd &v,       // object velocity
+//   const Eigen::MatrixXd &r0,      // object position
+//   const double &T2,               // T2 time of the blood
+//   const double &VENC,             // Velocity encoding
+//   const double &kz){             
 
-    // Number of kspace lines/spokes/interleaves
-    const size_t nb_lines = k[0].cols();
+//     // Number of kspace lines/spokes/interleaves
+//     const size_t nb_lines = k[0].cols();
     
-    // Number of measurements in the readout direction
-    const size_t nb_meas = k[0].rows();
+//     // Number of measurements in the readout direction
+//     const size_t nb_meas = k[0].rows();
 
-    // Number of spins
-    const size_t nb_spins = r0.rows();
+//     // Number of spins
+//     const size_t nb_spins = r0.rows();
 
-    // Get the equivalent gradient needed to go from the center of the kspace
-    // to each location
-    const Eigen::MatrixXd kx = k[0]*(2.0*PI);
-    const Eigen::MatrixXd ky = k[1]*(2.0*PI);
-    const double kzz = kz*(2.0*PI);
+//     // Get the equivalent gradient needed to go from the center of the kspace
+//     // to each location
+//     const Eigen::MatrixXd kx = k[0]*(2.0*PI);
+//     const Eigen::MatrixXd ky = k[1]*(2.0*PI);
+//     const double kzz = kz*(2.0*PI);
 
-    // Copy blood position to estimate the current position using the approximation r(t0+dt) = r0 + v0*dt
-    Eigen::MatrixXd r = r0;
+//     // Copy blood position to estimate the current position using the approximation r(t0+dt) = r0 + v0*dt
+//     Eigen::MatrixXd r = r0;
 
-    // Build magnetizations and Fourier exponential
-    Eigen::MatrixXcd Mag = FlowMags(v, VENC);
-    Eigen::MatrixXcd fe = Eigen::MatrixXcd::Zero(nb_spins, 1);
+//     // Build magnetizations and Fourier exponential
+//     Eigen::MatrixXcd Mag = FlowMags(v, VENC);
+//     Eigen::MatrixXcd fe = Eigen::MatrixXcd::Zero(nb_spins, 1);
 
-    // Dummy ones for temporal integration
-    Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(1,nb_spins,1.0);
+//     // Dummy ones for temporal integration
+//     Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(1,nb_spins,1.0);
   
-    // Image kspace
-    Eigen::MatrixXcd Mxy = Eigen::MatrixXcd::Zero(nb_meas,nb_lines);
+//     // Image kspace
+//     Eigen::MatrixXcd Mxy = Eigen::MatrixXcd::Zero(nb_meas,nb_lines);
 
-    // Iterate over kspace measurements/kspace points
-    for (size_t j = 0; j < nb_lines; j++){
-      for (size_t i = 0; i < nb_meas; i++){
+//     // Iterate over kspace measurements/kspace points
+//     for (size_t j = 0; j < nb_lines; j++){
+//       for (size_t i = 0; i < nb_meas; i++){
 
-        // Update blood position at time t(i,j)
-        r.noalias() = r0 + v*t(i,j);
+//         // Update blood position at time t(i,j)
+//         r.noalias() = r0 + v*t(i,j);
 
-        // Fourier exponential
-        fe.noalias() = FourierExp(r, kx(i,j), ky(i,j), kzz);
+//         // Fourier exponential
+//         fe.noalias() = FourierExp(r, kx(i,j), ky(i,j), kzz);
 
-        // Integral calculation
-        Mxy(i,j) = (ones*(M*Mag.col(2).cwiseProduct(fe)))[0];
+//         // Integral calculation
+//         Mxy(i,j) = (ones*(M*Mag.col(2).cwiseProduct(fe)))[0];
 
-        // Adds the T2 decay
-        Mxy(i,j) *= std::exp(-t(i,j)/T2);
+//         // Adds the T2 decay
+//         Mxy(i,j) *= std::exp(-t(i,j)/T2);
 
-      }
-    }
+//       }
+//     }
 
-    return Mxy;
-}
+//     return Mxy;
+// }
 
 
-// Calculate image kspace
-std::vector<Eigen::MatrixXcd> FlowImage3Dv2(
-  const Eigen::SparseMatrix<double> &M, // Mass matrix
-  const std::vector<Eigen::MatrixXd> &k, // kspace trajectory
-  const Eigen::VectorXd &kz,
-  const Eigen::MatrixXd &t,       // kspace timings
-  const double &vel_enc_time,     // duration time of the bipolar gradients
-  const Eigen::MatrixXd &v,       // object velocity
-  const Eigen::MatrixXd &r0,      // object position
-  const double &T2,               // T2 time of the blood
-  const double &VENC){            // Velocity encoding             
+// // Calculate image kspace
+// std::vector<Eigen::MatrixXcd> FlowImage3Dv2(
+//   const Eigen::SparseMatrix<double> &M, // Mass matrix
+//   const std::vector<Eigen::MatrixXd> &k, // kspace trajectory
+//   const Eigen::VectorXd &kz,
+//   const Eigen::MatrixXd &t,       // kspace timings
+//   const double &vel_enc_time,     // duration time of the bipolar gradients
+//   const Eigen::MatrixXd &v,       // object velocity
+//   const Eigen::MatrixXd &r0,      // object position
+//   const double &T2,               // T2 time of the blood
+//   const double &VENC){            // Velocity encoding             
 
-    // Number of kspace lines/spokes/interleaves
-    const size_t nb_lines = k[0].cols();
+//     // Number of kspace lines/spokes/interleaves
+//     const size_t nb_lines = k[0].cols();
     
-    // Number of measurements in the readout direction
-    const size_t nb_meas = k[0].rows();
+//     // Number of measurements in the readout direction
+//     const size_t nb_meas = k[0].rows();
 
-   // Number of measurements in the kz direction
-    const size_t nb_kz = kz.size();
+//    // Number of measurements in the kz direction
+//     const size_t nb_kz = kz.size();
 
-    // Number of spins
-    const size_t nb_spins = r0.rows();
+//     // Number of spins
+//     const size_t nb_spins = r0.rows();
 
-    // Get the equivalent gradient needed to go from the center of the kspace
-    // to each location
-    const Eigen::MatrixXd kx = k[0]*(2.0*PI);
-    const Eigen::MatrixXd ky = k[1]*(2.0*PI);
-    const Eigen::VectorXd kzz = kz*(2.0*PI);
+//     // Get the equivalent gradient needed to go from the center of the kspace
+//     // to each location
+//     const Eigen::MatrixXd kx = k[0]*(2.0*PI);
+//     const Eigen::MatrixXd ky = k[1]*(2.0*PI);
+//     const Eigen::VectorXd kzz = kz*(2.0*PI);
 
-    // Copy blood position to estimate the current position using the approximation r(t0+dt) = r0 + v0*dt
-    Eigen::MatrixXd r = r0;
+//     // Copy blood position to estimate the current position using the approximation r(t0+dt) = r0 + v0*dt
+//     Eigen::MatrixXd r = r0;
 
-    // Build magnetizations and Fourier exponential
-    Eigen::MatrixXcd Mag = FlowMags(v, VENC);
-    Eigen::MatrixXcd fe = Eigen::MatrixXcd::Zero(nb_spins, 1);
+//     // Build magnetizations and Fourier exponential
+//     Eigen::MatrixXcd Mag = FlowMags(v, VENC);
+//     Eigen::MatrixXcd fe = Eigen::MatrixXcd::Zero(nb_spins, 1);
 
-    // Dummy ones for temporal integration
-    Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(1,nb_spins,1.0);
+//     // Dummy ones for temporal integration
+//     Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(1,nb_spins,1.0);
   
-    // Image kspace
-    std::vector<Eigen::MatrixXcd> Mxy(nb_kz);
-    for (size_t k = 0; k < nb_kz; k++){
-      Mxy[k] = Eigen::MatrixXcd::Zero(nb_meas,nb_lines);
-    }
+//     // Image kspace
+//     std::vector<Eigen::MatrixXcd> Mxy(nb_kz);
+//     for (size_t k = 0; k < nb_kz; k++){
+//       Mxy[k] = Eigen::MatrixXcd::Zero(nb_meas,nb_lines);
+//     }
 
-    // Iterate over kspace measurements/kspace points
-    for (size_t k = 0; k < nb_kz; k++){
+//     // Iterate over kspace measurements/kspace points
+//     for (size_t k = 0; k < nb_kz; k++){
 
-      // Debugging
-      py::print("    kz location ", k);
+//       // Debugging
+//       py::print("    kz location ", k);
 
-      for (size_t j = 0; j < nb_lines; j++){
-        for (size_t i = 0; i < nb_meas; i++){
+//       for (size_t j = 0; j < nb_lines; j++){
+//         for (size_t i = 0; i < nb_meas; i++){
 
-          // Update blood position at time t(i,j)
-          r.noalias() = r0 + v*(t(i,j) - vel_enc_time);
+//           // Update blood position at time t(i,j)
+//           r.noalias() = r0 + v*(t(i,j) - vel_enc_time);
 
-          // Fourier exponential
-          fe.noalias() = FourierExp(r, kx(i,j), ky(i,j), kzz(k));
+//           // Fourier exponential
+//           fe.noalias() = FourierExp(r, kx(i,j), ky(i,j), kzz(k));
 
-          // Integral calculation
-          Mxy[k](i,j) = (ones*(M*Mag.col(2).cwiseProduct(fe)))[0];
+//           // Integral calculation
+//           Mxy[k](i,j) = (ones*(M*Mag.col(2).cwiseProduct(fe)))[0];
 
-          // Adds the T2 decay
-          Mxy[k](i,j) *= std::exp(-t(i,j)/T2);
+//           // Adds the T2 decay
+//           Mxy[k](i,j) *= std::exp(-t(i,j)/T2);
 
-        }
-      }
-    }
+//         }
+//       }
+//     }
 
-    return Mxy;
-}
+//     return Mxy;
+// }
 
 
 // Calculate image kspace
@@ -217,16 +209,16 @@ ComplexTensor FlowImage3Dv3(
   const double &VENC){             // Velocity encoding             
 
     // Number of kspace lines/spokes/interleaves
-    const size_t nb_lines = k[0].cols();
+    const uint nb_lines = k[0].cols();
     
     // Number of measurements in the readout direction
-    const size_t nb_meas = k[0].rows();
+    const uint nb_meas = k[0].rows();
 
    // Number of measurements in the kz direction
-    const size_t nb_kz = kz.size();
+    const uint nb_kz = kz.size();
 
     // Number of spins
-    const size_t nb_spins = r0.rows();
+    const uint nb_spins = r0.rows();
 
     // Get the equivalent gradient needed to go from the center of the kspace
     // to each location
@@ -241,34 +233,36 @@ ComplexTensor FlowImage3Dv3(
     Eigen::MatrixXcd Mag = FlowMags(v, VENC);
     Eigen::MatrixXcd fe = Eigen::MatrixXcd::Zero(nb_spins, Mag.cols());
 
-    // Dummy ones for temporal integration
-    Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(1,nb_spins,1.0);
-
     // Vector to store the k-space value for each velocity encoding
     Eigen::MatrixXcd k_vec = Eigen::MatrixXcd::Constant(1, 3, 0.0);
 
     // Image kspace
     ComplexTensor Mxy(nb_meas, nb_lines, nb_kz, 3);
 
+    // T2* decay
+    double T2_decay = 0.0;
+
     // Iterate over kspace measurements/kspace points
-    for (size_t k = 0; k < nb_kz; k++){
-
+    for (uint j = 0; j < nb_lines; j++){
       // Debugging
-      py::print("    kz location ", k);
+      py::print("    ky location ", j);
+      for (uint i = 0; i < nb_meas; i++){
 
-      for (size_t j = 0; j < nb_lines; j++){
-        for (size_t i = 0; i < nb_meas; i++){
+        // Update blood position at time t(i,j)
+        r.noalias() = r0 + v*t(i,j);
 
-          // Update blood position at time t(i,j)
-          r.noalias() = r0 + v*t(i,j);
+        // T2* decay
+        T2_decay = std::exp(-t(i,j)/T2);
 
-          // Fourier exponential
-          fe.noalias() = FourierExp(r, kx(i,j), ky(i,j), kzz(k));
+        for (uint k = 0; k < nb_kz; k++){
+
+          // Update Fourier exponential
+          FourierExp(fe, r, kx(i,j), ky(i,j), kzz(k));
 
           // Calculate k-space values, add T2* decay, and assign value to output array
-          k_vec.noalias() = ones*(M*Mag.cwiseProduct(fe));
-          k_vec *= std::exp(-t(i,j)/T2);
-          for (size_t l = 0; l < 3; l++){
+          k_vec.noalias() = (M*Mag.cwiseProduct(fe)).colwise().sum();
+          k_vec *= T2_decay;
+          for (uint l = 0; l < 3; l++){
             Mxy(i,j,k,l) = k_vec(l); 
           }
         }
@@ -281,7 +275,7 @@ ComplexTensor FlowImage3Dv3(
 
 PYBIND11_MODULE(FlowToImage, m) {
     m.doc() = "Utilities for 4d flow image generation";
-    m.def("FlowImage3D", &FlowImage3D);
-    m.def("FlowImage3Dv2", &FlowImage3Dv2);
+    // m.def("FlowImage3D", &FlowImage3D);
+    // m.def("FlowImage3Dv2", &FlowImage3Dv2);
     m.def("FlowImage3Dv3", &FlowImage3Dv3);
 }

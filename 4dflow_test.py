@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import meshio
 import numpy as np
 from Fem import massAssemble
-from FlowToImage import FlowImage3D, FlowImage3Dv2, FlowImage3Dv3
+from FlowToImage import FlowImage3Dv3
 
 from PyMRStrain.KSpaceTraj import Cartesian
 from PyMRStrain.Math import itok, ktoi
