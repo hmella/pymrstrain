@@ -147,12 +147,16 @@ class BuildExt(build_ext):
                 opts.append('-O3')
             if has_flag(self.compiler, '-Ofast'):
                 opts.append('-Ofast')
-            # if has_flag(self.compiler, '-funroll-loops'):
-            #     opts.append('-funroll-loops')
+            if has_flag(self.compiler, '-funroll-loops'):
+                opts.append('-funroll-loops')
             if has_flag(self.compiler, '-march=native'):
                 opts.append('-march=native')
             # if has_flag(self.compiler, '-mfpmath=sse'):
             #     opts.append('-mfpmath=sse')
+            if has_flag(self.compiler, '-fopenmp'):
+                opts.append('-fopenmp')
+            if has_flag(self.compiler, '-ffast-math'):
+                opts.append('-ffast-math')
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
         for ext in self.extensions:
@@ -171,3 +175,5 @@ setup(name='PyMRStrain',
       author='Hernan Mella',
       author_email='hernan.mella@pucv.cl'
       )
+
+
