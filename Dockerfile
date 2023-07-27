@@ -6,7 +6,7 @@ MAINTAINER Hernan Mella <hernan.mella@pucv.cl>
 USER root
 
 # Create new user
-RUN useradd --create-home --shel /bin/bash pymrstrain
+RUN useradd --create-home --shel /bin/bash pymrstrain && echo "pymrstrain:root" | chpasswd && adduser pymrstrain sudo
 
 # Update Ubuntu Software repository
 # RUN apt -qq update && \
