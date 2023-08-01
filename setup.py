@@ -47,7 +47,6 @@ ext_modules = [
             '/usr/include/eigen3/'
         ],
         language='c++',
-        undef_macros=['O2','O2']
     ),
     Extension(
         'Connectivity',
@@ -58,7 +57,6 @@ ext_modules = [
             '/usr/include/eigen3/'
         ],
         language='c++',
-        undef_macros=['O2','O2']
     ),
     Extension(
         'TrajToImage',
@@ -69,7 +67,6 @@ ext_modules = [
             '/usr/include/eigen3/'
         ],
         language='c++',
-        undef_macros=['O2','O2']
     ),
     Extension(
         'Fem',
@@ -80,7 +77,6 @@ ext_modules = [
             '/usr/include/eigen3/'
         ],
         language='c++',
-        undef_macros=['O2','O2']
     ),
     Extension(
         'FlowToImage',
@@ -91,7 +87,6 @@ ext_modules = [
             '/usr/include/eigen3/'
         ],
         language='c++',
-        undef_macros=['O2','O2']
     ),
 ]
 
@@ -143,20 +138,18 @@ class BuildExt(build_ext):
             opts.append(cpp_flag(self.compiler))
             if has_flag(self.compiler, '-fvisibility=hidden'):
                 opts.append('-fvisibility=hidden')
-            if has_flag(self.compiler, '-O3'):
-                opts.append('-O3')
             if has_flag(self.compiler, '-Ofast'):
                 opts.append('-Ofast')
-            if has_flag(self.compiler, '-funroll-loops'):
-                opts.append('-funroll-loops')
             if has_flag(self.compiler, '-march=native'):
                 opts.append('-march=native')
             # if has_flag(self.compiler, '-mfpmath=sse'):
             #     opts.append('-mfpmath=sse')
-            if has_flag(self.compiler, '-fopenmp'):
-                opts.append('-fopenmp')
-            if has_flag(self.compiler, '-ffast-math'):
-                opts.append('-ffast-math')
+            if has_flag(self.compiler, '-mavx2'):
+                opts.append('-mavx2')
+            if has_flag(self.compiler, '-mfma'):
+                opts.append('-mfma')
+            # if has_flag(self.compiler, '-fopenmp'):
+            #     opts.append('-fopenmp')
         elif ct == 'msvc':
             opts.append('/DVERSION_INFO=\\"%s\\"' % self.distribution.get_version())
         for ext in self.extensions:
