@@ -1,3 +1,5 @@
+import time
+
 import matplotlib.pyplot as plt
 import meshio
 import numpy as np
@@ -29,7 +31,7 @@ if __name__ == '__main__':
   # Import imaging parameters
   with open('PARAMETERS.yaml') as file:
     pars = yaml.load(file, Loader=yaml.FullLoader)
-  print(pars["Imaging"])
+  if MPI_rank == 0: print(pars)
 
   # Imaging parameters
   FOV = np.array(pars["Imaging"]["FOV"])
@@ -37,7 +39,6 @@ if __name__ == '__main__':
   T2star = pars["Imaging"]["T2star"]/1000.0
   VENC = pars["Imaging"]["VENC"]
   OFAC = pars["Imaging"]["OVERSAMPLING"]
-  print(FOV, RES, T2star, VENC, OFAC)
 
   # Formatting parameters
   tx = pars["Formatting"]["tx"]
@@ -62,38 +63,35 @@ if __name__ == '__main__':
     nodes = (Rz(tz)@Ry(ty)@Rx(tx)@nodes.T).T  # mesh rotation
     nodes /= 100  # mesh scaling
     meshio.write_points_cells("debug/mesh.vtk", nodes, [("tetra", elems)])
-    cardiac_phase = reader.num_steps # number of cardiac phases
+    Nfr = reader.num_steps # number of frames
 
-  # Assemble mass matrix for integrals (just once)
-  M = massAssemble(elems,nodes)
+    # Assemble mass matrix for integrals (just once)
+    M = massAssemble(elems,nodes)
 
-  # Imaging sequences for the image generation
-  sequences = ["FFE", "EPI"]
+    # Imaging sequences for the image generation
+    sequences = ["FFE", "EPI"]
 
-  # Image generation
-  for seq in sequences:
+    # Image generation
+    for seq in sequences:
 
-    # Path to export the generated data
-    export_path = "MRImages/{:s}".format(seq)
+      # Path to export the generated data
+      export_path = "MRImages/{:s}".format(seq)
 
-    # Generate kspace trajectory
-    lps = pars[seq]["LinesPerShot"]
-    traj = Cartesian(FOV=FOV[:-1], res=RES[:-1], oversampling=OFAC, lines_per_shot=lps, VENC=VENC)
+      # Generate kspace trajectory
+      lps = pars[seq]["LinesPerShot"]
+      traj = Cartesian(FOV=FOV[:-1], res=RES[:-1], oversampling=OFAC, lines_per_shot=lps, VENC=VENC)
 
-    # Print echo time
-    if MPI_rank==0: print("Echo time = {:.1f} ms".format(1000.0*traj.echo_time))
+      # Print echo time
+      if MPI_rank==0: print("Echo time = {:.1f} ms".format(1000.0*traj.echo_time))
 
-    # kspace array
-    K = np.zeros([traj.ro_samples, traj.ph_samples, len(kz), 3, cardiac_phase], dtype=complex)
+      # kspace array
+      K = np.zeros([traj.ro_samples, traj.ph_samples, len(kz), 3, Nfr], dtype=complex)
 
-    # List to store how much is taking to generate one volume
-    times = []
-
-    # Start reading the data and generating the image
-    with meshio.xdmf.TimeSeriesReader(path_NS) as reader:
+      # List to store how much is taking to generate one volume
+      times = []
 
       # Iterate over cardiac phases
-      for fr in range(reader.num_steps):
+      for fr in range(Nfr):
 
         # Read velocity data in each time step
         d, point_data, cell_data = reader.read_data(fr)
