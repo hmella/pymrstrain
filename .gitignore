@@ -1,5 +1,6 @@
 demo/3D/files/msh_file
 *phantom/
+*phantoms/
 *output/
 *debug/
 build/
