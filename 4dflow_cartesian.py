@@ -32,11 +32,12 @@ if __name__ == '__main__':
   print(pars["Imaging"])
 
   # Imaging parameters
-  FOV = pars["Imaging"]["FOV"]
-  RES = pars["Imaging"]["RES"]
+  FOV = np.array(pars["Imaging"]["FOV"])
+  RES = np.array(pars["Imaging"]["RES"])
   T2star = pars["Imaging"]["T2star"]/1000.0
   VENC = pars["Imaging"]["VENC"]
   OFAC = pars["Imaging"]["OVERSAMPLING"]
+  print(FOV, RES, T2star, VENC, OFAC)
 
   # Formatting parameters
   tx = pars["Formatting"]["tx"]
@@ -49,7 +50,7 @@ if __name__ == '__main__':
   kz       = np.arange(-0.5*BW_kz, 0.5*BW_kz, delta_kz)
 
   # Navier-Stokes simulation data to be used
-  path_NS = "phantom/xdmf/phantom.xdmf"
+  path_NS = "phantoms/Non-linear/HCR45/xdmf/phantom.xdmf"
 
   # Import mesh, translate it to the origin, rotate it, and scale to meters
   with meshio.xdmf.TimeSeriesReader(path_NS) as reader:
@@ -76,7 +77,8 @@ if __name__ == '__main__':
     export_path = "MRImages/{:s}".format(seq)
 
     # Generate kspace trajectory
-    traj = Cartesian(FOV=FOV[:-1], res=RES[:-1], oversampling=OFAC, lines_per_shot=seq["LinesPerShot"], VENC=VENC)
+    lps = pars[seq]["LinesPerShot"]
+    traj = Cartesian(FOV=FOV[:-1], res=RES[:-1], oversampling=OFAC, lines_per_shot=lps, VENC=VENC)
 
     # Print echo time
     if MPI_rank==0: print("Echo time = {:.1f} ms".format(1000.0*traj.echo_time))
