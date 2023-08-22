@@ -28,6 +28,9 @@ def Rz(tz):
 
 if __name__ == '__main__':
 
+  # Preview partial results
+  preview = True
+
   # Import imaging parameters
   with open('PARAMETERS.yaml') as file:
     pars = yaml.load(file, Loader=yaml.FullLoader)
@@ -110,8 +113,12 @@ if __name__ == '__main__':
         t1 = time.time()
         times.append(t1-t0)
 
-        # Synchronize MPI processes
-        MPI_comm.Barrier()
+        # Save kspace for debugging purposes
+        if preview:
+          K_copy = np.copy(K)
+          K_copy = gather_image(K_copy)
+          if MPI_rank==0:
+            np.save(export_path, K_copy)
 
         # Synchronize MPI processes
         print(np.array(times).mean())
@@ -123,10 +130,10 @@ if __name__ == '__main__':
       # Gather results
       K = gather_image(K)
 
-      # Fix dimensions
-      K[:,1::2,...] = K[::-1,1::2,...]
-      I = ktoi(K[::2,::-1,...],[0,1,2])
-
       # Export generated data
       if MPI_rank==0:
         np.save(export_path, K)
+
+      # # Fix dimensions
+      # K[:,1::2,...] = K[::-1,1::2,...]
+      # I = ktoi(K[::2,::-1,...],[0,1,2])
