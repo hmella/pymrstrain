@@ -46,9 +46,9 @@ ComplexTensor FlowImage3D(
 
     // Get the equivalent gradient needed to go from the center of the kspace
     // to each location
-    const MatrixXcf kx = kxy[0]*(2.0*PI);
-    const MatrixXcf ky = kxy[1]*(2.0*PI);
-    const VectorXcf kz = kzz*(2.0*PI);
+    const MatrixXcf kx = 2.0*PI*kxy[0];
+    const MatrixXcf ky = 2.0*PI*kxy[1];
+    const VectorXcf kz = 2.0*PI*kzz;
 
     // Copy blood position to estimate the current position using the approximation r(t0+dt) = r0 + v0*dt
     MatrixXcf r = r0;
@@ -81,7 +81,7 @@ ComplexTensor FlowImage3D(
         for (uint k = 0; k < nb_kz; ++k){
 
           // Update Fourier exponential
-          fe = ii*(fe - r.col(2)*kz(k)).array().exp();
+          fe(Eigen::all, 0) = ii*(fe - r.col(2)*kz(k)).array().exp();
 
           // Calculate k-space values, add T2* decay, and assign value to output array
           for (uint l = 0; l < 3; l++){
