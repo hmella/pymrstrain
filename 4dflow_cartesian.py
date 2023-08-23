@@ -1,3 +1,4 @@
+import os
 import time
 
 import matplotlib.pyplot as plt
@@ -54,7 +55,8 @@ if __name__ == '__main__':
   kz       = np.arange(-0.5*BW_kz, 0.5*BW_kz, delta_kz)
 
   # Navier-Stokes simulation data to be used
-  path_NS = "phantoms/Non-linear/HCR45/xdmf/phantom.xdmf"
+  Hcr = 35
+  path_NS = "phantoms/Non-linear/HCR{:d}/xdmf/phantom.xdmf".format(Hcr)
 
   # Import mesh, translate it to the origin, rotate it, and scale to meters
   with meshio.xdmf.TimeSeriesReader(path_NS) as reader:
@@ -78,7 +80,12 @@ if __name__ == '__main__':
     for seq in sequences:
 
       # Path to export the generated data
-      export_path = "MRImages/{:s}".format(seq)
+      export_path = "MRImages/HCR{:d}/{:s}".format(Hcr,seq)
+
+      # Make sure the directory exist
+      if not os.path.isdir("MRImages/HCR{:d}".format(Hcr)):
+        if MPI_rank==0:
+          os.makedirs("MRImages/HCR{:d}".format(Hcr), exist_ok=True)
 
       # Generate kspace trajectory
       lps = pars[seq]["LinesPerShot"]
