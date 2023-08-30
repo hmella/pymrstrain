@@ -10,7 +10,7 @@ sudo pip3 install scipy
 sudo pip3 install matplotlib
 
 # Clone, build and install Eigen3-dev
-git clone https://github.com/eigenteam/eigen-git-mirror.git && \
-cd eigen-git-mirror && mkdir build && cd build/ && \
+git clone https://gitlab.com/libeigen/eigen.git && \
+cd eigen && mkdir build && cd build/ && \
 cmake -DCMAKE_INSTALL_PREFIX=/usr .. && sudo make install && \
-cd .. && cd .. && rm -rf eigen-git-mirror
+cd .. && cd .. && rm -rf eigen
