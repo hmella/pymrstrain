@@ -13,3 +13,4 @@ PyMRStrain.egg-info/
 *.pkl
 *.msh
 PyMRStrain/__pycache__
+*log*
