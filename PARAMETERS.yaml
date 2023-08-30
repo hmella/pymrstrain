@@ -1,7 +1,7 @@
 # Imaging parameters
 Imaging:
-  RES: [66, 50, 100]
-  FOV: [0.1325, 0.1, 0.2] # in meters
+  RES: [60, 45, 90]
+  FOV: [0.12, 0.09, 0.18] # in meters
   T2star: 254.0           # in milliseconds
   VENC: 1.5               # in meters per second
   TIMESPACING: 30.0       # in milliseconds
