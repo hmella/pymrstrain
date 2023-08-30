@@ -54,7 +54,8 @@ ComplexTensor FlowImage3D(
     MatrixXcf r = r0;
 
     // Kspace and Fourier exponential
-    MatrixXcf Mxy = 1000.0*nb_spins*((ii*(PI/VENC)*v).array().exp());
+    MatrixXcf Mxy = 1.0e+3*nb_spins*((ii*(PI/VENC)*v).array().exp());
+    VectorXcf fe_xy = MatrixXcf::Zero(nb_spins, 1);
     VectorXcf fe = MatrixXcf::Zero(nb_spins, 1);
 
     // Image kspace
@@ -76,15 +77,15 @@ ComplexTensor FlowImage3D(
         r.noalias() = r0 + v*t(i,j);
 
         // Fourier exponential
-        fe.noalias() = -(r.col(0)*kx(i,j) + r.col(1)*ky(i,j));
+        fe_xy.noalias() = -(r.col(0)*kx(i,j) + r.col(1)*ky(i,j));
 
         for (uint k = 0; k < nb_kz; ++k){
 
           // Update Fourier exponential
-          fe(Eigen::all, 0) = ii*(fe - r.col(2)*kz(k)).array().exp();
+          fe(indexing::all, 0) = (ii*(fe_xy - r.col(2)*kz(k))).array().exp();
 
           // Calculate k-space values, add T2* decay, and assign value to output array
-          for (uint l = 0; l < 3; l++){
+          for (uint l = 0; l < 3; ++l){
             Ks(i,j,k,l) = (M*Mxy.col(l).cwiseProduct(fe)).sum()*T2_decay(i,j);
           }
         }
