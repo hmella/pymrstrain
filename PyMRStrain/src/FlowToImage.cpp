@@ -4,14 +4,16 @@
 #include <pybind11/stl.h>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <math.h>
 
 
 using namespace Eigen;
 namespace py = pybind11;
 
 // Definition of PI and complex unit
-const float PI = std::atan(1.0)*4.0;
-const std::complex<float> ii(0, 1);
+const float PI = M_PI;
+
+const std::complex< float > i1(0, 1);
 
 // Definition of magnetization datatype for 4d flow expression
 typedef std::tuple<MatrixXcf,
@@ -46,23 +48,23 @@ ComplexTensor FlowImage3D(
 
     // Get the equivalent gradient needed to go from the center of the kspace
     // to each location
-    const MatrixXcf kx = 2.0*PI*kxy[0];
-    const MatrixXcf ky = 2.0*PI*kxy[1];
-    const VectorXcf kz = 2.0*PI*kzz;
+    const MatrixXf kx = 2.0*PI*kxy[0];
+    const MatrixXf ky = 2.0*PI*kxy[1];
+    const VectorXf kz = 2.0*PI*kzz;
 
     // Copy blood position to estimate the current position using the approximation r(t0+dt) = r0 + v0*dt
-    MatrixXcf r = r0;
+    MatrixXf r = MatrixXf::Zero(nb_spins, 3);
 
     // Kspace and Fourier exponential
-    MatrixXcf Mxy = 1.0e+3*nb_spins*((ii*(PI/VENC)*v).array().exp());
-    VectorXcf fe_xy = MatrixXcf::Zero(nb_spins, 1);
+    const MatrixXcf Mxy = 1.0e+3*nb_spins*((i1*(PI/VENC)*v).array().exp());
+    VectorXf fe_xy = MatrixXf::Zero(nb_spins, 1);
     VectorXcf fe = MatrixXcf::Zero(nb_spins, 1);
 
-    // Image kspace
-    ComplexTensor Ks(nb_meas, nb_lines, nb_kz, 3);
+    // kspace
+    ComplexTensor kspace(nb_meas, nb_lines, nb_kz, 3);
 
     // T2* decay
-    const MatrixXcf T2_decay = (-t/T2).array().exp();
+    const MatrixXf T2_decay = (-t/T2).array().exp();
 
     // Iterate over kspace measurements/kspace points
     for (uint j = 0; j < nb_lines; ++j){
@@ -82,17 +84,17 @@ ComplexTensor FlowImage3D(
         for (uint k = 0; k < nb_kz; ++k){
 
           // Update Fourier exponential
-          fe(indexing::all, 0) = (ii*(fe_xy - r.col(2)*kz(k))).array().exp();
+          fe(indexing::all, 0) = (i1*(fe_xy - r.col(2)*kz(k))).array().exp();
 
           // Calculate k-space values, add T2* decay, and assign value to output array
           for (uint l = 0; l < 3; ++l){
-            Ks(i,j,k,l) = (M*Mxy.col(l).cwiseProduct(fe)).sum()*T2_decay(i,j);
+            kspace(i,j,k,l) = (M*Mxy.col(l).cwiseProduct(fe)).sum()*T2_decay(i,j);
           }
         }
       }
     }
 
-    return Ks;
+    return kspace;
 }
 
 
