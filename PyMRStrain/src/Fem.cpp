@@ -4,22 +4,23 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
+using namespace Eigen;
 namespace py = pybind11;
 
 // Custom types
-typedef std::tuple<Eigen::Matrix<double, 4, 1>,
-  Eigen::Matrix<double, 4, 1>,
-  Eigen::Matrix<double, 4, 1>,
-  Eigen::Matrix<double, 4, 1>> shapeFunctions;
-typedef std::tuple<Eigen::Matrix<double, 4, 3>, std::array<double, 4>> quadRule;
-typedef std::tuple<Eigen::Matrix<double, 4, 1>,
-  Eigen::Matrix<double, 4, 1>,
-  Eigen::Matrix<double, 4, 1>,
-  Eigen::Matrix<double, 4, 1>,
+typedef std::tuple<Matrix<double, 4, 1>,
+  Matrix<double, 4, 1>,
+  Matrix<double, 4, 1>,
+  Matrix<double, 4, 1>> shapeFunctions;
+typedef std::tuple<Matrix<double, 4, 3>, std::array<double, 4>> quadRule;
+typedef std::tuple<Matrix<double, 4, 1>,
+  Matrix<double, 4, 1>,
+  Matrix<double, 4, 1>,
+  Matrix<double, 4, 1>,
   double> isopMap;
 
 // Triplets
-typedef Eigen::Triplet<double> T;
+typedef Triplet<double> T;
 
 
 // Quadrature rule
@@ -27,7 +28,7 @@ quadRule quadratureRule(int degree){
   // // Points
   // double a = 0.585410196624969;
   // double b = 0.138196601125011;
-  // Eigen::Matrix<double, 4, 3> x = (Eigen::Matrix<double, 4, 3>() <<
+  // Matrix<double, 4, 3> x = (Matrix<double, 4, 3>() <<
   // a, b, b,
   // b, a, b,
   // b, b, a,
@@ -41,7 +42,7 @@ quadRule quadratureRule(int degree){
   // w[3] = 1.0/24.0;
 
   // Points
-  Eigen::Matrix<double, 4, 3> x = (Eigen::Matrix<double, 4, 3>() <<
+  Matrix<double, 4, 3> x = (Matrix<double, 4, 3>() <<
   0.5854101966249685,  0.1381966011250105,  0.1381966011250105,
   0.1381966011250105,  0.5854101966249685,  0.1381966011250105,
   0.1381966011250105,  0.1381966011250105,  0.5854101966249685,
@@ -62,24 +63,24 @@ quadRule quadratureRule(int degree){
 // Shape functions and derivatives
 shapeFunctions P1ShapeTetra(double r, double s, double t){
   // Shape functions
-  Eigen::Matrix<double, 4, 1> S;
+  Matrix<double, 4, 1> S;
   S(0,0) = 1-r-s-t;
   S(1,0) = r;
   S(2,0) = s;
   S(3,0) = t;
 
   // Derivatives
-  Eigen::Matrix<double, 4, 1> dSdr;
+  Matrix<double, 4, 1> dSdr;
   dSdr(0,0) = -1;
   dSdr(1,0) = 1;
   dSdr(2,0) = 0;
   dSdr(3,0) = 0;
-  Eigen::Matrix<double, 4, 1> dSds;
+  Matrix<double, 4, 1> dSds;
   dSds(0,0) = -1;
   dSds(1,0) = 0;
   dSds(2,0) = 1;
   dSds(3,0) = 0;
-  Eigen::Matrix<double, 4, 1> dSdt;
+  Matrix<double, 4, 1> dSdt;
   dSdt(0,0) = -1;
   dSdt(1,0) = 0;
   dSdt(2,0) = 0;
@@ -90,21 +91,21 @@ shapeFunctions P1ShapeTetra(double r, double s, double t){
 
 
 // Isoparametric mapping
-isopMap isopMapping(const Eigen::MatrixXd &x,
-  const Eigen::MatrixXd &y,
-  const Eigen::MatrixXd &z,
+isopMap isopMapping(const MatrixXd &x,
+  const MatrixXd &y,
+  const MatrixXd &z,
   const double &r,
   const double &s,
   const double &t){
   // Evaluate shape functions
   const shapeFunctions sss = P1ShapeTetra(r,s,t);
-  const Eigen::Matrix<double, 4, 1> S = std::get<0>(sss);
-  const Eigen::Matrix<double, 4, 1> dSdr = std::get<1>(sss);
-  const Eigen::Matrix<double, 4, 1> dSds = std::get<2>(sss);
-  const Eigen::Matrix<double, 4, 1> dSdt = std::get<3>(sss);
+  const Matrix<double, 4, 1> S = std::get<0>(sss);
+  const Matrix<double, 4, 1> dSdr = std::get<1>(sss);
+  const Matrix<double, 4, 1> dSds = std::get<2>(sss);
+  const Matrix<double, 4, 1> dSdt = std::get<3>(sss);
 
   // Jacobian matrix
-  // const Eigen::Matrix3d J = (Eigen::Matrix3d() << 
+  // const Matrix3d J = (Matrix3d() << 
   //   (dSdr.array()*x.array()).sum(),
   //   (dSdr.array()*x.array()).sum(),
   //   (dSdr.array()*x.array()).sum(),
@@ -114,7 +115,7 @@ isopMap isopMapping(const Eigen::MatrixXd &x,
   //   (dSdr.array()*x.array()).sum(),
   //   (dSdr.array()*x.array()).sum(),
   //   (dSdr.array()*x.array()).sum()).finished();
-  const Eigen::Matrix3d J = (Eigen::Matrix3d() << (dSdr.transpose()*x).sum(),
+  const Matrix3d J = (Matrix3d() << (dSdr.transpose()*x).sum(),
     (dSdr.transpose()*y).sum(),
     (dSdr.transpose()*z).sum(),
     (dSds.transpose()*x).sum(),
@@ -128,32 +129,32 @@ isopMap isopMapping(const Eigen::MatrixXd &x,
   const double detJ = J.determinant();
 
   // Jacobian inverse matrix
-  const Eigen::Matrix3d invJ = J.inverse();
+  const Matrix3d invJ = J.inverse();
 
   // Shape functions in the global element
-  const Eigen::Matrix<double, 4, 1> dSdx = invJ(0,0)*dSdr + invJ(0,1)*dSds + invJ(0,2)*dSdt;
-  const Eigen::Matrix<double, 4, 1> dSdy = invJ(1,0)*dSdr + invJ(1,1)*dSds + invJ(1,2)*dSdt;
-  const Eigen::Matrix<double, 4, 1> dSdz = invJ(2,0)*dSdr + invJ(2,1)*dSds + invJ(2,2)*dSdt;
+  const Matrix<double, 4, 1> dSdx = invJ(0,0)*dSdr + invJ(0,1)*dSds + invJ(0,2)*dSdt;
+  const Matrix<double, 4, 1> dSdy = invJ(1,0)*dSdr + invJ(1,1)*dSds + invJ(1,2)*dSdt;
+  const Matrix<double, 4, 1> dSdz = invJ(2,0)*dSdr + invJ(2,1)*dSds + invJ(2,2)*dSdt;
 
   return std::make_tuple(S, dSdx, dSdy, dSdz, detJ);
 }
 
 
 // Assemble integral locally
-Eigen::Vector3d local_assemble(const Eigen::Matrix<double, 4, 3> &xe,
-  const Eigen::Matrix<double, 4, 3> &values,
-  const Eigen::Matrix<double, 4, 3> &qpoints,
+Vector3d local_assemble(const Matrix<double, 4, 3> &xe,
+  const Matrix<double, 4, 3> &values,
+  const Matrix<double, 4, 3> &qpoints,
   const std::array<double, 4> &qweights){
 
   // Assembled integral
-  Eigen::Vector3d integral;
+  Vector3d integral;
 
   // Assembling
   for (int q=0; q<4; q++){ 
     // Isoparametric mapping
     const isopMap iso = isopMapping(xe.col(0),xe.col(1),xe.col(2),
                                     qpoints(q,0),qpoints(q,1),qpoints(q,2));
-    const Eigen::Matrix<double, 4, 1> S = std::get<0>(iso);
+    const Matrix<double, 4, 1> S = std::get<0>(iso);
     const double detJ = std::get<4>(iso);
 
     // Matrix assembling (should the determinant be adjusted?)
@@ -167,34 +168,34 @@ Eigen::Vector3d local_assemble(const Eigen::Matrix<double, 4, 3> &xe,
 
 
 // Assemble integral over the whole domain
-Eigen::Vector3d assemble(const Eigen::MatrixXi &elems,
-  const Eigen::MatrixXd &nodes,
-  const Eigen::MatrixXd &values){
+Vector3d assemble(const MatrixXi &elems,
+  const MatrixXd &nodes,
+  const MatrixXd &values){
 
   // Number of elements
   const int nel = elems.rows();
 
   // Quadrature rule
   const quadRule quadrature = quadratureRule(0);
-  const Eigen::Matrix<double, 4, 3> qpoints  = std::get<0>(quadrature);
+  const Matrix<double, 4, 3> qpoints  = std::get<0>(quadrature);
   const std::array<double, 4> qweights = std::get<1>(quadrature);
 
   // Assembled integral
-  Eigen::Vector3d integral = (Eigen::Vector3d() << 0, 0, 0).finished();
-  Eigen::Vector3d local_integral = (Eigen::Vector3d() << 0, 0, 0).finished();
+  Vector3d integral = (Vector3d() << 0, 0, 0).finished();
+  Vector3d local_integral = (Vector3d() << 0, 0, 0).finished();
 
   // Assembling
-  Eigen::Vector<int, 4> elem;
-  Eigen::Matrix<double, 4, 3> xe;
-  Eigen::Matrix<double, 4, 3> val;
+  Vector<int, 4> elem;
+  Matrix<double, 4, 3> xe;
+  Matrix<double, 4, 3> val;
   for (int e=0; e<nel; e++){ // loop over elements
     for (int n=0; n<4; n++){ // loop over nodes in the element e
       // Nodes in the element
-      elem = elems(e, Eigen::all);
-      xe = nodes(elem, Eigen::all);
+      elem = elems(e, indexing::all);
+      xe = nodes(elem, indexing::all);
 
       // Nodal values to be integrated
-      val = values(elem, Eigen::all);
+      val = values(elem, indexing::all);
 
       // Local assemble
       local_integral = local_assemble(xe, val, qpoints, qweights);
@@ -208,30 +209,30 @@ Eigen::Vector3d assemble(const Eigen::MatrixXi &elems,
 
 
 // Assemble local mass matrix
-std::tuple<Eigen::VectorXd, Eigen::Matrix4i> localMassAssemble(
-  const Eigen::Matrix<double, 4, 3> &xe,
-  const Eigen::Matrix<double, 4, 3> &qpoints,
+std::tuple<VectorXd, Matrix4i> localMassAssemble(
+  const Matrix<double, 4, 3> &xe,
+  const Matrix<double, 4, 3> &qpoints,
   const std::array<double, 4> &qweights){
 
   // Assembled local matrix
-  Eigen::Matrix4d Me;
+  Matrix4d Me;
 
   // Local indices
-  Eigen::Matrix4i idx;
+  Matrix4i idx;
 
   // Assembling
   for (int q=0; q<4; q++){ 
     // Isoparametric mapping
     const isopMap iso = isopMapping(xe.col(0),xe.col(1),xe.col(2),
                                     qpoints(q,0),qpoints(q,1),qpoints(q,2));
-    const Eigen::Matrix<double, 4, 1> S = std::get<0>(iso);
+    const Matrix<double, 4, 1> S = std::get<0>(iso);
     const double detJ = std::get<4>(iso);
 
     // Matrix assembling (should the determinant be adjusted?)
     Me = (S*S.transpose())*detJ*qweights[q];
 
     // Indices
-    idx(q, Eigen::all) = (Eigen::Array<int, 1, 4>() << 0, 1, 2, 3).finished();
+    idx(q, indexing::all) = (Array<int, 1, 4>() << 0, 1, 2, 3).finished();
   }
 
   return std::make_tuple(Me.reshaped(), idx);
@@ -239,8 +240,8 @@ std::tuple<Eigen::VectorXd, Eigen::Matrix4i> localMassAssemble(
 
 
 // Assemble mass matrix
-Eigen::SparseMatrix<double> massAssemble(const Eigen::MatrixXi &elems,
-  const Eigen::MatrixXd &nodes){
+SparseMatrix<double> massAssemble(const MatrixXi &elems,
+  const MatrixXd &nodes){
 
   // Number of elements and nodes
   const int nel = elems.rows();
@@ -248,27 +249,27 @@ Eigen::SparseMatrix<double> massAssemble(const Eigen::MatrixXi &elems,
 
   // Quadrature rule
   const quadRule quadrature = quadratureRule(0);
-  const Eigen::Matrix<double, 4, 3> qpoints  = std::get<0>(quadrature);
+  const Matrix<double, 4, 3> qpoints  = std::get<0>(quadrature);
   const std::array<double, 4> qweights = std::get<1>(quadrature);
 
   // Mass matrix
-  Eigen::SparseMatrix<double> M(nno, nno);
-  Eigen::Matrix<double, 1, 16> Me;
-  Eigen::Matrix4i idx;
+  SparseMatrix<double> M(nno, nno);
+  Matrix<double, 1, 16> Me;
+  Matrix4i idx;
 
   // Indices
-  Eigen::Vector<int,16> rows;
-  Eigen::Vector<int,16> cols;
+  Vector<int,16> rows;
+  Vector<int,16> cols;
   std::vector<T> coefficients;
 
   // Assembling
-  Eigen::Vector<int, 4> elem;
-  Eigen::Matrix<double, 4, 3> xe;
+  Vector<int, 4> elem;
+  Matrix<double, 4, 3> xe;
   for (int e=0; e<nel; e++){ // loop over elements
     for (int n=0; n<4; n++){ // loop over nodes in the element e
       // Nodes in the element
-      elem = elems(e, Eigen::all);
-      xe = nodes(elem, Eigen::all);
+      elem = elems(e, indexing::all);
+      xe = nodes(elem, indexing::all);
 
       // Local assemble
       auto lma = localMassAssemble(xe, qpoints, qweights);
@@ -294,9 +295,9 @@ Eigen::SparseMatrix<double> massAssemble(const Eigen::MatrixXi &elems,
 
 
 // Assemble integral over the whole domain using the mass matrix
-Eigen::VectorXd massAssembleInt(const Eigen::MatrixXi &elems,
-  const Eigen::MatrixXd &nodes,
-  const Eigen::MatrixXd &values){
+VectorXd massAssembleInt(const MatrixXi &elems,
+  const MatrixXd &nodes,
+  const MatrixXd &values){
 
   // Number of nodes
   const int nno = nodes.rows();
@@ -305,13 +306,13 @@ Eigen::VectorXd massAssembleInt(const Eigen::MatrixXi &elems,
   const int nva = values.cols();
 
   // Function of ones
-  Eigen::MatrixXd ones = Eigen::MatrixXd::Constant(nva,nno,1.0);
+  MatrixXd ones = MatrixXd::Constant(nva,nno,1.0);
 
   // Mass matrix
-  Eigen::SparseMatrix<double> M = massAssemble(elems, nodes);
+  SparseMatrix<double> M = massAssemble(elems, nodes);
 
   // Calculate integral
-  Eigen::VectorXd integral = ones*(M*values);
+  VectorXd integral = ones*(M*values);
 
   return integral;
 }
