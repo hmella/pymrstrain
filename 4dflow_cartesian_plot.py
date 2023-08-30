@@ -8,10 +8,14 @@ from PyMRStrain.Noise import add_cpx_noise
 if __name__ == '__main__':
 
   # Import generated data
-  K = np.load('MRImages/FFE.npy')
+  im = 'FFE'
+  K = np.load('MRImages/HCR35/{:s}.npy'.format(im))
 
-  # Fix dimensions and generate image
-  K[:,1::2,...] = K[::-1,1::2,...]
+  # Fix the direction of kspace lines measured in the opposite direction
+  if im == 'EPI':
+    K[:,1::2,...] = K[::-1,1::2,...]
+
+  # Apply the inverse Fourier transform to obtain the image
   I = ktoi(K[::2,::-1,...],[0,1,2])
 
   # Add noise 
