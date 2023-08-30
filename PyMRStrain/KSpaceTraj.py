@@ -117,11 +117,15 @@ class Cartesian(Trajectory):
       kspace = (np.zeros([self.ro_samples, self.ph_samples]),
                 np.zeros([self.ro_samples, self.ph_samples]))
 
+      # Fix kspace shifts
+      if (self.ro_samples/self.oversampling) % 2 == 0:
+        kx = kx - 0.5*self.kspace_spa[0]
+
       # kspace times and locations
       t = np.zeros([self.ro_samples, self.ph_samples])
       for ph in range(0,self.ph_samples):
         # Fill locations
-        if (ph+1) % 2 != 0:
+        if (ph+1) % 2 != 0 or self.lines_per_shot == 1:
           kspace[0][:,ph] = kx
           kspace[1][:,ph] = ky - self.kspace_bw[1]*(ph/(self.ph_samples-1))
         else:
