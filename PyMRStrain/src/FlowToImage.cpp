@@ -56,7 +56,7 @@ ComplexTensor FlowImage3D(
     MatrixXf r = MatrixXf::Zero(nb_spins, 3);
 
     // Kspace and Fourier exponential
-    const MatrixXcf Mxy = 1.0e+3*nb_spins*((i1*(PI/VENC)*v).array().exp());
+    const MatrixXcf Mxy = 1.0e+3*nb_spins*(i1*PI/VENC*v).array().exp();
     VectorXf fe_xy = MatrixXf::Zero(nb_spins, 1);
     VectorXcf fe = MatrixXcf::Zero(nb_spins, 1);
 
