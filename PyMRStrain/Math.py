@@ -9,12 +9,12 @@ MICRO = 1e-06
 def itok(x, axes=None):
   if axes is None:
     axes = [i for i in range(len(x.shape)) if i < 3]
-  return fftshift(fftn(ifftshift(x,axes=axes),axes=axes),axes=axes)
+  return fftshift(fftn(ifftshift(x, axes=axes), axes=axes), axes=axes)
 
 def ktoi(x, axes=None):
   if axes is None:
     axes = [i for i in range(len(x.shape)) if i < 3]
-  return fftshift(ifftn(ifftshift(x,axes=axes),axes=axes),axes=axes)
+  return fftshift(ifftn(ifftshift(x, axes=axes), axes=axes), axes=axes)
 
 def wrap(x, value):
   return np.mod(x + 0.5*value, value) - 0.5*value
