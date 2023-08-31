@@ -226,7 +226,7 @@ std::tuple<VectorXd, Matrix4i> localMassAssemble(
     const isopMap iso = isopMapping(xe.col(0),xe.col(1),xe.col(2),
                                     qpoints(q,0),qpoints(q,1),qpoints(q,2));
     const Matrix<double, 4, 1> S = std::get<0>(iso);
-    const double detJ = std::get<4>(iso);
+    const double detJ = std::abs(std::get<4>(iso));
 
     // Matrix assembling (should the determinant be adjusted?)
     Me = (S*S.transpose())*detJ*qweights[q];
