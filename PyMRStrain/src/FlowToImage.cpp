@@ -12,12 +12,10 @@ namespace py = pybind11;
 
 // Definition of PI and complex unit
 const float PI = M_PI;
-
-const std::complex< float > i1(0, 1);
+const std::complex<float> i1(0, 1);
 
 // Definition of magnetization datatype for 4d flow expression
-typedef std::tuple<MatrixXcf,
-  MatrixXcf> magnetizations;
+typedef std::tuple<MatrixXcf, MatrixXcf> magnetizations;
 
 // Definition of third rank complex tensor datatype
 typedef Tensor<std::complex<float>, 4> ComplexTensor;
