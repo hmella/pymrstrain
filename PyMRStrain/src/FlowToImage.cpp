@@ -46,23 +46,23 @@ ComplexTensor FlowImage3D(
 
     // Get the equivalent gradient needed to go from the center of the kspace
     // to each location
-    const MatrixXf kx = 2.0*PI*kxy[0];
-    const MatrixXf ky = 2.0*PI*kxy[1];
-    const VectorXf kz = 2.0*PI*kzz;
+    const MatrixXf kx = 2.0 * PI * kxy[0];
+    const MatrixXf ky = 2.0 * PI * kxy[1];
+    const VectorXf kz = 2.0 * PI * kzz;
 
     // Copy blood position to estimate the current position using the approximation r(t0+dt) = r0 + v0*dt
-    MatrixXf r = MatrixXf::Zero(nb_spins, 3);
+    MatrixXf r(nb_spins, 3);
 
     // Kspace and Fourier exponential
-    const MatrixXcf Mxy = 1.0e+3*nb_spins*(i1*PI/VENC*v).array().exp();
-    VectorXf fe_xy = MatrixXf::Zero(nb_spins, 1);
-    VectorXcf fe = MatrixXcf::Zero(nb_spins, 1);
+    const MatrixXcf Mxy = 1.0e+3 * nb_spins * (i1 * PI / VENC * v).array().exp();
+    VectorXf fe_xy(nb_spins);
+    VectorXcf fe(nb_spins);
 
     // kspace
     ComplexTensor kspace(nb_meas, nb_lines, nb_kz, 3);
 
     // T2* decay
-    const MatrixXf T2_decay = (-t/T2).array().exp();
+    const MatrixXf T2_decay = (-t / T2).array().exp();
 
     // Iterate over kspace measurements/kspace points
     for (uint j = 0; j < nb_lines; ++j){
@@ -77,16 +77,16 @@ ComplexTensor FlowImage3D(
         r.noalias() = r0 + v*t(i,j);
 
         // Fourier exponential
-        fe_xy.noalias() = -(r.col(0)*kx(i,j) + r.col(1)*ky(i,j));
+        fe_xy.noalias() = -(r.col(0) * kx(i,j) + r.col(1) * ky(i,j));
 
         for (uint k = 0; k < nb_kz; ++k){
 
           // Update Fourier exponential
-          fe(indexing::all, 0) = (i1*(fe_xy - r.col(2)*kz(k))).array().exp();
+          fe(indexing::all, 0) = (i1 * (fe_xy - r.col(2) * kz(k))).array().exp();
 
           // Calculate k-space values, add T2* decay, and assign value to output array
           for (uint l = 0; l < 3; ++l){
-            kspace(i,j,k,l) = (M*Mxy.col(l).cwiseProduct(fe)).sum()*T2_decay(i,j);
+            kspace(i,j,k,l) = (M * Mxy.col(l).cwiseProduct(fe)).sum() * T2_decay(i,j);
           }
         }
       }
