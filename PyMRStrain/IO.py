@@ -88,7 +88,7 @@ def export_image(data, path=None, name=None):
 
 
 # Scale images
-def scale_image(I,mag=True,pha=False,real=False,compl=False,dtype=np.uint64):
+def scale_data(I, mag=True, pha=False, real=False, imag=False, dtype=np.uint64):
 
     # slope and intercept
     ScaleIntercept = np.ceil(np.abs(I).max())
@@ -96,13 +96,13 @@ def scale_image(I,mag=True,pha=False,real=False,compl=False,dtype=np.uint64):
 
     # Data extraction
     if mag:
-        I_mag = (ScaleSlope*np.abs(I)+ScaleIntercept).astype(dtype)
+        mag = (ScaleSlope*np.abs(I)+ScaleIntercept).astype(dtype)
     if pha:
-        I_pha = (ScaleSlope*1000*(np.angle(I)+np.pi)).astype(dtype)
+        pha = (ScaleSlope*1000*(np.angle(I)+np.pi)).astype(dtype)
     if real:
-        I_real = (ScaleSlope*(np.real(I)+ScaleIntercept)).astype(dtype)
-    if compl:
-        I_comp = (ScaleSlope*(np.imag(I)+ScaleIntercept)).astype(dtype)
+        real = (ScaleSlope*(np.real(I)+ScaleIntercept)).astype(dtype)
+    if imag:
+        imag = (ScaleSlope*(np.imag(I)+ScaleIntercept)).astype(dtype)
 
     # Rescaling parameters
     RescaleSlope = 1.0/ScaleSlope
@@ -111,19 +111,19 @@ def scale_image(I,mag=True,pha=False,real=False,compl=False,dtype=np.uint64):
     # output
     output = {}
     if mag:
-        output["magnitude"] = {"Image": I_mag,
-                          "RescaleSlope": RescaleSlope,
-                          "RescaleIntercept": RescaleIntercept}
+        output["mag"] = {"Image": mag,
+                        "RescaleSlope": RescaleSlope,
+                        "RescaleIntercept": RescaleIntercept}
     if pha:
-        output["phase"] = {"Image": I_pha,
-                      "RescaleSlope": RescaleSlope,
-                      "RescaleIntercept": RescaleIntercept}
+        output["pha"] = {"Image": pha,
+                        "RescaleSlope": RescaleSlope,
+                        "RescaleIntercept": RescaleIntercept}
     if real:
-        output["real"] = {"Image": I_real,
-                     "RescaleSlope": RescaleSlope,
-                     "RescaleIntercept": RescaleIntercept}
-    if compl:
-        output["complex"] = {"Image": I_comp,
+        output["real"] = {"Image": real,
+                        "RescaleSlope": RescaleSlope,
+                        "RescaleIntercept": RescaleIntercept}
+    if imag:
+        output["imag"] = {"Image": imag,
                         "RescaleSlope": RescaleSlope,
                         "RescaleIntercept": RescaleIntercept}
 
