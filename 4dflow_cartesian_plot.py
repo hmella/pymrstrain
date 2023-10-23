@@ -15,8 +15,15 @@ if __name__ == '__main__':
   if im == 'EPI':
     K[:,1::2,...] = K[::-1,1::2,...]
 
+  # Kspace filtering (as the scanner would do)
+  h_meas = Tukey_filter(K.shape[0], width=0.9, lift=0.3)
+  h_pha  = Tukey_filter(K.shape[1], width=0.9, lift=0.3)
+  h = np.outer(h_meas, h_pha)
+  H = np.tile(h[:,:,np.newaxis, np.newaxis, np.newaxis], (1, 1, K.shape[2], K.shape[3], K.shape[4]))
+  K_fil = H*K
+
   # Apply the inverse Fourier transform to obtain the image
-  I = ktoi(K[::2,::-1,...],[0,1,2])
+  I = ktoi(K_fil[::2,::-1,...],[0,1,2])
 
   # Get mask
   mask = I > 0.1
@@ -28,7 +35,7 @@ if __name__ == '__main__':
   for fr in range(K.shape[-1]):
     print(fr)
     for i in [2]:
-      # multi_slice_viewer(np.abs(K[::2,:,:,i,fr]))
+      # multi_slice_viewer(np.abs(K_fil[::2,:,:,i,fr]))
       # multi_slice_viewer(np.abs(I[:,:,:,i,fr]))
       multi_slice_viewer(np.angle(I[:,:,:,i,fr]),caxis=[-np.pi,np.pi])
       plt.show()
