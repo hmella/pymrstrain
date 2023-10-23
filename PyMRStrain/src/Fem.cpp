@@ -105,16 +105,6 @@ isopMap isopMapping(const MatrixXd &x,
   const Matrix<double, 4, 1> dSdt = std::get<3>(sss);
 
   // Jacobian matrix
-  // const Matrix3d J = (Matrix3d() << 
-  //   (dSdr.array()*x.array()).sum(),
-  //   (dSdr.array()*x.array()).sum(),
-  //   (dSdr.array()*x.array()).sum(),
-  //   (dSdr.array()*x.array()).sum(),
-  //   (dSdr.array()*x.array()).sum(),
-  //   (dSdr.array()*x.array()).sum(),
-  //   (dSdr.array()*x.array()).sum(),
-  //   (dSdr.array()*x.array()).sum(),
-  //   (dSdr.array()*x.array()).sum()).finished();
   const Matrix3d J = (Matrix3d() << (dSdr.transpose()*x).sum(),
     (dSdr.transpose()*y).sum(),
     (dSdr.transpose()*z).sum(),
@@ -266,25 +256,21 @@ SparseMatrix<double> massAssemble(const MatrixXi &elems,
   Vector<int, 4> elem;
   Matrix<double, 4, 3> xe;
   for (int e=0; e<nel; e++){ // loop over elements
-    for (int n=0; n<4; n++){ // loop over nodes in the element e
-      // Nodes in the element
-      elem = elems(e, indexing::all);
-      xe = nodes(elem, indexing::all);
+    // Nodes in the element
+    elem = elems(e, indexing::all);
+    xe = nodes(elem, indexing::all);
 
-      // Local assemble
-      auto lma = localMassAssemble(xe, qpoints, qweights);
-      Me  = std::get<0>(lma);
-      idx = std::get<1>(lma);
+    // Local assemble
+    auto [Me, idx] = localMassAssemble(xe, qpoints, qweights);
 
-      // Assign triplets
-      rows = elem(idx.reshaped());
-      cols = elem(idx.transpose().reshaped());
+    // Assign triplets
+    rows = elem(idx.reshaped());
+    cols = elem(idx.transpose().reshaped());
 
-      // Fill triplets
-      for (int i=0; i<16; i++){
-        coefficients.push_back(T(rows(i),cols(i),Me(i)));
-      }        
-    }
+    // Fill triplets
+    for (int i=0; i<16; i++){
+      coefficients.push_back(T(rows(i),cols(i),Me(i)));
+    }        
   }
 
   // Sparse matrix filling
