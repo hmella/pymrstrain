@@ -1,17 +1,17 @@
 # Imaging parameters
 Imaging:
-  RES: [60, 45, 90]
-  FOV: [0.12, 0.09, 0.18] # in meters
-  T2star: 254.0           # in milliseconds
-  VENC: 1.5               # in meters per second
-  TIMESPACING: 30.0       # in milliseconds
+  RES: [66, 55, 120]
+  FOV: [0.132, 0.11, 0.24] # in meters
+  T2star: 254.0            # in milliseconds
+  VENC: [1.5, 2.0, 2.5]    # in meters per second
+  TIMESPACING: 31.858      # in milliseconds
   OVERSAMPLING: 2
 
 # Data formatting
 Formatting:
-  tx: -1.57079633 # -pi/2
-  ty: -0.07853982 # -pi/40
-  tz: 0.78539816  # pi/4
+  tx: 0.0
+  ty: 0.0
+  tz: -1.57079633 # pi/2
 
 # EPI parameters
 EPI:
@@ -20,7 +20,7 @@ EPI:
 # Gradient-echo parameters
 FFE:
   LinesPerShot: 1
-  
+
 # Spiral parameters
 SPIRAL:
 

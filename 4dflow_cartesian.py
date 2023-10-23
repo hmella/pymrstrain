@@ -30,7 +30,7 @@ def Rz(tz):
 if __name__ == '__main__':
 
   # Preview partial results
-  preview = False
+  preview = True
 
   # Import imaging parameters
   with open('PARAMETERS.yaml') as file:
@@ -40,7 +40,7 @@ if __name__ == '__main__':
   FOV = np.array(pars["Imaging"]["FOV"])
   RES = np.array(pars["Imaging"]["RES"])
   T2star = pars["Imaging"]["T2star"]/1000.0
-  VENC = pars["Imaging"]["VENC"]
+  VENCs = np.array(pars["Imaging"]["VENC"])
   OFAC = pars["Imaging"]["OVERSAMPLING"]
 
   # Formatting parameters
@@ -54,7 +54,7 @@ if __name__ == '__main__':
   kz       = np.arange(-0.5*BW_kz, 0.5*BW_kz, delta_kz)
 
   # Hematocrits
-  hematocrits = [35, 45, 50]
+  hematocrits = [45] #[35, 45, 50]
 
   # Iterate over hematocrits
   for Hcr in hematocrits:
@@ -86,69 +86,70 @@ if __name__ == '__main__':
 
       # Image generation
       for seq in sequences:
+        for VENC in VENCs:
 
-        # Path to export the generated data
-        export_path = "MRImages/HCR{:d}/{:s}".format(Hcr,seq)
+          # Path to export the generated data
+          export_path = "MRImages/HCR{:d}/{:s}_V{:.0f}".format(Hcr,seq,100.0*VENC)
 
-        # Make sure the directory exist
-        if not os.path.isdir("MRImages/HCR{:d}".format(Hcr)):
-          if MPI_rank==0:
-            os.makedirs("MRImages/HCR{:d}".format(Hcr), exist_ok=True)
-
-        # Generate kspace trajectory
-        lps = pars[seq]["LinesPerShot"]
-        traj = Cartesian(FOV=FOV[:-1], res=RES[:-1], oversampling=OFAC, lines_per_shot=lps, VENC=VENC)
-
-        # Print echo time
-        if MPI_rank==0: print("Echo time = {:.1f} ms".format(1000.0*traj.echo_time))
-
-        # kspace array
-        K = np.zeros([traj.ro_samples, traj.ph_samples, len(kz), 3, Nfr], dtype=complex)
-
-        # List to store how much is taking to generate one volume
-        times = []
-
-        # Iterate over cardiac phases
-        for fr in range(Nfr):
-
-          # Read velocity data in each time step
-          d, point_data, cell_data = reader.read_data(fr)
-          velocity = point_data['velocity']
-
-          # Rotate velocity
-          velocity = (Rz(tz)@Ry(ty)@Rx(tx)@velocity.T).T
-
-          # Convert everything to meters
-          velocity /= 100
-
-          # Generate 4D flow image
-          if MPI_rank == 0: print("Generating frame {:d}".format(fr))
-          t0 = time.time()
-          K[traj.local_idx,:,:,:,fr] = FlowImage3D(MPI_rank, M, traj.points, kz, traj.times, velocity, nodes, T2star, VENC)
-          t1 = time.time()
-          times.append(t1-t0)
-
-          # Save kspace for debugging purposes
-          if preview:
-            K_copy = np.copy(K)
-            K_copy = gather_image(K_copy)
+          # Make sure the directory exist
+          if not os.path.isdir("MRImages/HCR{:d}".format(Hcr)):
             if MPI_rank==0:
-              np.save(export_path, K_copy)
+              os.makedirs("MRImages/HCR{:d}".format(Hcr), exist_ok=True)
 
-          # Synchronize MPI processes
+          # Generate kspace trajectory
+          lps = pars[seq]["LinesPerShot"]
+          traj = Cartesian(FOV=FOV[:-1], res=RES[:-1], oversampling=OFAC, lines_per_shot=lps, VENC=VENC)
+
+          # Print echo time
+          if MPI_rank==0: print("Echo time = {:.1f} ms".format(1000.0*traj.echo_time))
+
+          # kspace array
+          K = np.zeros([traj.ro_samples, traj.ph_samples, len(kz), 3, Nfr], dtype=complex)
+
+          # List to store how much is taking to generate one volume
+          times = []
+
+          # Iterate over cardiac phases
+          for fr in range(Nfr):
+
+            # Read velocity data in each time step
+            d, point_data, cell_data = reader.read_data(fr)
+            velocity = point_data['velocity']
+
+            # Rotate velocity
+            velocity = (Rz(tz)@Ry(ty)@Rx(tx)@velocity.T).T
+
+            # Convert everything to meters
+            velocity /= 100
+
+            # Generate 4D flow image
+            if MPI_rank == 0: print("Generating frame {:d}".format(fr))
+            t0 = time.time()
+            K[traj.local_idx,:,:,:,fr] = FlowImage3D(MPI_rank, M, traj.points, kz, traj.times, velocity, nodes, T2star, VENC)
+            t1 = time.time()
+            times.append(t1-t0)
+
+            # Save kspace for debugging purposes
+            if preview:
+              K_copy = np.copy(K)
+              K_copy = gather_image(K_copy)
+              if MPI_rank==0:
+                np.save(export_path, K_copy)
+
+            # Synchronize MPI processes
+            print(np.array(times).mean())
+            MPI_comm.Barrier()
+
+          # Show mean time that takes to generate each 3D volume
           print(np.array(times).mean())
-          MPI_comm.Barrier()
 
-        # Show mean time that takes to generate each 3D volume
-        print(np.array(times).mean())
+          # Gather results
+          K = gather_image(K)
 
-        # Gather results
-        K = gather_image(K)
+          # Export generated data
+          if MPI_rank==0:
+            np.save(export_path, K)
 
-        # Export generated data
-        if MPI_rank==0:
-          np.save(export_path, K)
-
-        # # Fix dimensions
-        # K[:,1::2,...] = K[::-1,1::2,...]
-        # I = ktoi(K[::2,::-1,...],[0,1,2])
+          # # Fix dimensions
+          # K[:,1::2,...] = K[::-1,1::2,...]
+          # I = ktoi(K[::2,::-1,...],[0,1,2])
