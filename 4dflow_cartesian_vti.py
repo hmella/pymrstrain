@@ -1,9 +1,11 @@
 import os
+from subprocess import run
 
 import matplotlib.pyplot as plt
 import meshio
 import numpy as np
-import pyevtk
+from pyevtk.hl import imageToVTK
+from pyevtk.vtk import VtkGroup
 import yaml
 from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.Noise import add_cpx_noise
@@ -34,6 +36,7 @@ if __name__ == '__main__':
   # Imaging parameters
   FOV = np.array(pars["Imaging"]["FOV"])
   RES = np.array(pars["Imaging"]["RES"])
+  dt = pars["Imaging"]["TIMESPACING"]
 
   # Formatting parameters
   tx = pars["Formatting"]["tx"]
@@ -42,7 +45,7 @@ if __name__ == '__main__':
 
   # Import generated data
   seq = 'FFE'
-  Hcr = 35
+  Hcr = 45
   K = np.load('MRImages/HCR{:d}/{:s}.npy'.format(Hcr,seq))
 
   # Fix the direction of kspace lines measured in the opposite direction
@@ -56,8 +59,9 @@ if __name__ == '__main__':
   I = add_cpx_noise(I, relative_std=0.025, mask=1)
 
   # Make sure the directory exist
-  if not os.path.isdir("MRImages/HCR{:d}/vti".format(Hcr)):
-    os.makedirs("MRImages/HCR{:d}/vti".format(Hcr), exist_ok=True)
+  vti_path = "MRImages/HCR{:d}/vti".format(Hcr)
+  if not os.path.isdir(vti_path):
+    os.makedirs(vti_path, exist_ok=True)
 
   # Origin and pixel spacing of the generated image
   origin  = -0.5*FOV
@@ -67,11 +71,30 @@ if __name__ == '__main__':
   origin  = tuple(origin)
   spacing = tuple(spacing)
 
+  # Create VtkGroup object to write PVD
+  pvd = VtkGroup(vti_path+'/IM_{:s}'.format(seq))
+
   # Export vti files
+  print("Exporting vti...")
   for fr in range(K.shape[-1]):
-    print(fr)
-    for i in range(3):
-      pyevtk.hl.imageToVTK('MRImages/HCR{:d}/vti/PH_{:d}_{:04d}.vti'.format(Hcr,i, fr), cellData={'data': np.angle(I[:,:,:,i,fr])}, origin=origin, spacing=spacing)
+    print("    writing fame {:d}".format(fr))
+
+    # Get velocity and magnitude
+    v = (np.angle(I[:,:,:,0,fr]), np.angle(I[:,:,:,1,fr]), np.angle(I[:,:,:,2,fr]))
+    m = (np.abs(I[:,:,:,0,fr]), np.abs(I[:,:,:,1,fr]), np.abs(I[:,:,:,2,fr]))
+
+    # Estimate angiographic image
+    angio = (m[0] + m[1] + m[2])/3*np.sqrt(v[0]**2 + v[1]**2 + v[2]**2)/K.shape[-1]
+
+    # Write VTI
+    frame_path = vti_path+'/IM_{:s}_{:04d}'.format(seq,fr)
+    imageToVTK(frame_path, cellData={'velocity': v, 'angiography': angio, 'magnitude': m}, origin=origin, spacing=spacing)
+
+    # Add VTI files to pvd group
+    pvd.addFile(filepath=frame_path+'.vti', sim_time=fr*dt)
+
+  # Save PVD
+  pvd.save()
 
   # Import mesh, translate it to the origin, rotate it, and scale to meters
   path_NS = "phantoms/Non-linear/HCR{:d}/xdmf/phantom.xdmf".format(Hcr)
@@ -85,25 +108,26 @@ if __name__ == '__main__':
     Nfr = reader.num_steps # number of frames
 
     # Path to export the generated data
-    export_path = "MRImages/HCR{:d}/{:s}".format(Hcr,seq)
+    xdmf_path = "MRImages/HCR{:d}/xdmf".format(Hcr)
 
     # Make sure the directory exist
-    if not os.path.isdir("MRImages/HCR{:d}/xdmf".format(Hcr)):
-      os.makedirs("MRImages/HCR{:d}/xdmf".format(Hcr), exist_ok=True)
+    if not os.path.isdir(xdmf_path):
+      os.makedirs(xdmf_path, exist_ok=True)
 
     # Write data
-    xdmffile = "MRImages/HCR{:d}/xdmf/phantom.xdmf".format(Hcr)
-    with meshio.xdmf.TimeSeriesWriter(xdmffile) as writer:
+    xdmffile_path = xdmf_path+"/phantom.xdmf".format(Hcr)
+    print("Exporting XDMF file in the image domain...")
+    with meshio.xdmf.TimeSeriesWriter(xdmffile_path) as writer:
       writer.write_points_cells(nodes, elems)
 
       # Iterate over cardiac phases
       for fr in range(Nfr):
+        print("    writing frame {:d}".format(fr))
 
-        print(fr)
-
-        # Read velocity data in each time step
+        # Read velocity and pressure data in each time step
         d, point_data, cell_data = reader.read_data(fr)
         velocity = point_data['velocity']
+        pressure = point_data['pressure']
 
         # Rotate velocity
         velocity = (Rz(tz)@Ry(ty)@Rx(tx)@velocity.T).T
@@ -112,4 +136,7 @@ if __name__ == '__main__':
         velocity /= 100
 
         # Export data in the registered frame
-        writer.write_data(fr, point_data={"velocity": velocity})
+        writer.write_data(fr, point_data={"velocity": velocity, "pressure": pressure})
+
+    # Move generated HDF5 file to the right folder
+    run(['mv','phantom.h5',xdmf_path])
