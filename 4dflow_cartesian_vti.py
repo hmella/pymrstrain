@@ -44,9 +44,10 @@ if __name__ == '__main__':
   tz = pars["Formatting"]["tz"]
 
   # Import generated data
-  seq = 'FFE'
-  Hcr = 45
-  K = np.load('MRImages/HCR{:d}/{:s}.npy'.format(Hcr,seq))
+  seq  = 'FFE'
+  VENC = 150
+  Hcr  = 45
+  K = np.load('MRImages/HCR{:d}/{:s}_V{:d}.npy'.format(Hcr,seq,VENC))
 
   # Fix the direction of kspace lines measured in the opposite direction
   if seq == 'EPI':
@@ -72,7 +73,7 @@ if __name__ == '__main__':
   spacing = tuple(spacing)
 
   # Create VtkGroup object to write PVD
-  pvd = VtkGroup(vti_path+'/IM_{:s}'.format(seq))
+  pvd = VtkGroup(vti_path+'/IM_{:s}_V{:d}'.format(seq,VENC))
 
   # Export vti files
   print("Exporting vti...")
@@ -87,7 +88,7 @@ if __name__ == '__main__':
     angio = (m[0] + m[1] + m[2])/3*np.sqrt(v[0]**2 + v[1]**2 + v[2]**2)/K.shape[-1]
 
     # Write VTI
-    frame_path = vti_path+'/IM_{:s}_{:04d}'.format(seq,fr)
+    frame_path = vti_path+'/IM_{:s}_V{:d}_{:04d}'.format(seq,VENC,fr)
     imageToVTK(frame_path, cellData={'velocity': v, 'angiography': angio, 'magnitude': m}, origin=origin, spacing=spacing)
 
     # Add VTI files to pvd group
@@ -136,7 +137,7 @@ if __name__ == '__main__':
         velocity /= 100
 
         # Export data in the registered frame
-        writer.write_data(fr, point_data={"velocity": velocity, "pressure": pressure})
+        writer.write_data(fr*dt, point_data={"velocity": velocity, "pressure": pressure})
 
     # Move generated HDF5 file to the right folder
     run(['mv','phantom.h5',xdmf_path])
