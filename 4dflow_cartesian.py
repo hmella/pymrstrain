@@ -7,6 +7,7 @@ import numpy as np
 import yaml
 from Fem import massAssemble
 from FlowToImage import FlowImage3D
+from PyMRStrain.IO import scale_data
 from PyMRStrain.KSpaceTraj import Cartesian
 from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.MPIUtilities import MPI_comm, MPI_rank, gather_image
@@ -148,6 +149,7 @@ if __name__ == '__main__':
 
           # Export generated data
           if MPI_rank==0:
+	    # K_scaled = scale_data(K, mag=False, real=True, imag=True, dtype=np.uint64)
             np.save(export_path, K)
 
           # # Fix dimensions
