@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PyMRStrain.Filters import Hamming_filter, Riesz_filter, Tukey_filter
 from PyMRStrain.Helpers import build_idx, isodd, order
-from PyMRStrain.IO import rescale_image, scale_image
+from PyMRStrain.IO import rescale_image, scale_data
 from PyMRStrain.Math import itok, ktoi
 
 
@@ -88,9 +88,9 @@ class kspace:
         self.k_msk[...,slice,enc_dir,timestep] = k_tmp_msk
 
     def scale(self,dtype=np.uint64):
-        self.k = scale_image(self.k,mag=False,real=True,compl=True,dtype=dtype)
-        self.k_msk = scale_image(self.k_msk,mag=False,real=True,compl=False,dtype=dtype)
-        self.k_acq = scale_image(self.k_acq,mag=False,real=True,compl=True,dtype=dtype)
+        self.k = scale_data(self.k,mag=False,real=True,imag=True,dtype=dtype)
+        self.k_msk = scale_data(self.k_msk,mag=False,real=True,imag=False,dtype=dtype)
+        self.k_acq = scale_data(self.k_acq,mag=False,real=True,imag=True,dtype=dtype)
 
     def rescale(self):
         tmp = rescale_image(self.k)
