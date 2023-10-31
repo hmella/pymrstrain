@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from PyMRStrain.Filters import Tukey_filter
 from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.Plotter import multi_slice_viewer
 from PyMRStrain.Noise import add_cpx_noise
@@ -8,11 +9,12 @@ from PyMRStrain.Noise import add_cpx_noise
 if __name__ == '__main__':
 
   # Import generated data
-  im = 'FFE'
-  K = np.load('MRImages/HCR45/{:s}.npy'.format(im))
+  seq  = 'FFE'
+  VENC = 250
+  K = np.load('MRImages/HCR45/{:s}_V{:d}.npy'.format(seq, VENC))
 
   # Fix the direction of kspace lines measured in the opposite direction
-  if im == 'EPI':
+  if seq == 'EPI':
     K[:,1::2,...] = K[::-1,1::2,...]
 
   # Kspace filtering (as the scanner would do)
@@ -36,6 +38,6 @@ if __name__ == '__main__':
     print(fr)
     for i in [2]:
       # multi_slice_viewer(np.abs(K_fil[::2,:,:,i,fr]))
-      # multi_slice_viewer(np.abs(I[:,:,:,i,fr]))
-      multi_slice_viewer(np.angle(I[:,:,:,i,fr]),caxis=[-np.pi,np.pi])
+      multi_slice_viewer(np.abs(I[:,:,:,i,fr]))
+      # multi_slice_viewer(np.angle(I[:,:,:,i,fr]),caxis=[-np.pi,np.pi])
       plt.show()
