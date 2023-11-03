@@ -23,14 +23,14 @@ if __name__ == '__main__':
 
   # Sequences and hematocrits to convert
   sequences = ['FFE', 'EPI']
-  hematocrits = [10] #[10, 35, 45, 60, 70]
+  hematocrits = [10, 35, 45, 60, 70]
 
   for seq in sequences:
     for Hcr in hematocrits:
       for VENC in VENCs:
 
         # Import kspace
-        K = np.load('MRImages/HCR{:d}/{:s}_V{:.0f}.npy'.format(Hcr,seq,100.0*VENC))
+        K = np.load('MRImages/HCR{:d}/{:s}_V{:.0f}.npy'.format(Hcr,seq,VENC_cms))
 
         # Fix the direction of kspace lines measured in the opposite direction
         if seq == 'EPI':
@@ -59,27 +59,28 @@ if __name__ == '__main__':
         In = add_cpx_noise(I, relative_std=0.025, mask=1)
 
         # Create data to export in mat format
+        VENC_cms = 100.0*VENC
         data = {'MR_FFE_FH': np.abs(I[:,:,:,2,:]),
                 'MR_FFE_AP': np.abs(I[:,:,:,0,:]),
                 'MR_FFE_RL': np.abs(I[:,:,:,1,:]),
-                'MR_PCA_FH': 100.0*VENC/np.pi*np.angle(I[:,:,:,2,:]),
-                'MR_PCA_AP': 100.0*VENC/np.pi*np.angle(I[:,:,:,0,:]),
-                'MR_PCA_RL': 100.0*VENC/np.pi*np.angle(I[:,:,:,1,:]),
+                'MR_PCA_FH': VENC_cms/np.pi*np.angle(I[:,:,:,2,:]),
+                'MR_PCA_AP': VENC_cms/np.pi*np.angle(I[:,:,:,0,:]),
+                'MR_PCA_RL': VENC_cms/np.pi*np.angle(I[:,:,:,1,:]),
                 'voxel_MR': 1000.0*(FOV/RES).reshape((1, 3)),
-                'VENC': 100.0*VENC,
+                'VENC': VENC_cms,
                 'heart_rate': 64.034151547,
                 'type': 'DCM'}
         ndata = {'MR_FFE_FH': np.abs(In[:,:,:,2,:]),
                 'MR_FFE_AP': np.abs(In[:,:,:,0,:]),
                 'MR_FFE_RL': np.abs(In[:,:,:,1,:]),
-                'MR_PCA_FH': 100.0*VENC/np.pi*np.angle(In[:,:,:,2,:]),
-                'MR_PCA_AP': 100.0*VENC/np.pi*np.angle(In[:,:,:,0,:]),
-                'MR_PCA_RL': 100.0*VENC/np.pi*np.angle(In[:,:,:,1,:]),
+                'MR_PCA_FH': VENC_cms/np.pi*np.angle(In[:,:,:,2,:]),
+                'MR_PCA_AP': VENC_cms/np.pi*np.angle(In[:,:,:,0,:]),
+                'MR_PCA_RL': VENC_cms/np.pi*np.angle(In[:,:,:,1,:]),
                 'voxel_MR': 1000.0*(FOV/RES).reshape((1, 3)),
-                'VENC': 100.0*VENC,
+                'VENC': VENC_cms,
                 'heart_rate': 64.034151547,
                 'type': 'DCM'}
 
         # Export mats
-        savemat("MRImages/HCR{:d}/mat/{:s}_V{:.0f}.mat".format(Hcr,seq,100.0*VENC), {'data': data})
-        savemat("MRImages/HCR{:d}/mat/{:s}_V{:.0f}_noisy.mat".format(Hcr,seq,100.0*VENC), {'data': ndata})
+        savemat("MRImages/HCR{:d}/mat/{:s}_V{:.0f}.mat".format(Hcr,seq,VENC_cms), {'data': data})
+        savemat("MRImages/HCR{:d}/mat/{:s}_V{:.0f}_noisy.mat".format(Hcr,seq,VENC_cms), {'data': ndata})
