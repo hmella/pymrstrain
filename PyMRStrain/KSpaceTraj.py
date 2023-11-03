@@ -3,6 +3,8 @@ import numpy as np
 
 from PyMRStrain.MPIUtilities import scatterKspace
 
+plt.rcParams['text.usetex'] = True
+
 # Generic tracjectory
 class Trajectory:
   def __init__(self, FOV=np.array([0.3, 0.3]), res=np.array([100, 100]),
@@ -123,20 +125,24 @@ class Cartesian(Trajectory):
 
       # kspace times and locations
       t = np.zeros([self.ro_samples, self.ph_samples])
-      for ph in range(0,self.ph_samples):
+      for ph in range(self.ph_samples):
+
+        # Evaluate readout direction
+        if ph % self.lines_per_shot == 0:
+          ro = 1
+
         # Fill locations
-        if (ph+1) % 2 != 0 or self.lines_per_shot == 1:
-          kspace[0][:,ph] = kx
-          kspace[1][:,ph] = ky - self.kspace_bw[1]*(ph/(self.ph_samples-1))
-        else:
-          kspace[0][::-1,ph] = kx
-          kspace[1][::-1,ph] = ky - self.kspace_bw[1]*(ph/(self.ph_samples-1))
+        kspace[0][::ro,ph] = kx
+        kspace[1][::ro,ph] = ky - self.kspace_bw[1]*(ph/(self.ph_samples-1))
 
         # Update timings
         if ph % self.lines_per_shot == 0:
-          t[:,ph] = venc_time + slope + lenc + slope + slope + dt
+          t[::ro,ph] = venc_time + slope + lenc + slope + slope + dt
         else:
-          t[:,ph] = t[-1,ph-1] + slope + slope + dt
+          t[::ro,ph] = t[::-ro,ph-1][-1] + slope + slope + dt
+
+        # Reverse readout
+        ro = -ro
 
       # Calculate echo time
       self.echo_time = 0.5*(t[:].max() - 3*slope - lenc - venc_time) + 3*slope + lenc + venc_time
@@ -149,16 +155,26 @@ class Cartesian(Trajectory):
 
     def plot_trajectory(self):
       # Plot kspace locations and times
-      fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-      axs[0].plot(self.points[0].flatten('F'),self.points[1].flatten('F'))
-      im = axs[1].scatter(self.points[0],self.points[1],c=1000*self.times,s=1.5)
-      axs[0].set_xlabel('k_x (1/m)')
-      axs[0].set_ylabel('k_y (1/m)')
-      axs[1].set_xlabel('k_x (1/m)')
-      axs[1].set_ylabel('k_y (1/m)')
-      cbar = fig.colorbar(im, ax=axs[1])
+      plt.figure(1)
+      for i in range(int(self.points[0].shape[1]/self.lines_per_shot)):
+        idx = [i*self.lines_per_shot, (i+1)*self.lines_per_shot]
+        kxx = np.concatenate((np.array([0]), self.points[0][:,idx[0]:idx[1]].flatten('F')))
+        kyy = np.concatenate((np.array([0]), self.points[1][:,idx[0]:idx[1]].flatten('F')))
+        # kxx = self.points[0][:,idx[0]:idx[1]].flatten('F')
+        # kyy = self.points[1][:,idx[0]:idx[1]].flatten('F')
+        plt.plot(kxx,kyy)
+      plt.xlabel('$k_x ~(1/m)$')
+      plt.ylabel('$k_y ~(1/m)$')
+      plt.axis('equal')
+
+      plt.figure(2)
+      im = plt.scatter(self.points[0],self.points[1],c=1000*self.times,s=1.5)
+      plt.xlabel('$k_x ~(1/m)$')
+      plt.ylabel('$k_y ~(1/m)$')
+      cbar = plt.colorbar(im, ax=plt.gca())
       cbar.ax.tick_params(labelsize=8) 
       cbar.ax.set_title('Time [ms]',fontsize=8)
+      plt.axis('equal')
       plt.show()
 
 
