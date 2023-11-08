@@ -29,6 +29,9 @@ if __name__ == '__main__':
     for Hcr in hematocrits:
       for VENC in VENCs:
 
+	      # Get VENC in cm/s
+        VENC_cms = 100.0*VENC
+
         # Import kspace
         K = np.load('MRImages/HCR{:d}/{:s}_V{:.0f}.npy'.format(Hcr,seq,VENC_cms))
 
@@ -59,7 +62,6 @@ if __name__ == '__main__':
         In = add_cpx_noise(I, relative_std=0.025, mask=1)
 
         # Create data to export in mat format
-        VENC_cms = 100.0*VENC
         data = {'MR_FFE_FH': np.abs(I[:,:,:,2,:]),
                 'MR_FFE_AP': np.abs(I[:,:,:,0,:]),
                 'MR_FFE_RL': np.abs(I[:,:,:,1,:]),
