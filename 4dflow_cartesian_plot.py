@@ -35,9 +35,8 @@ if __name__ == '__main__':
 
   # Show figure
   for fr in range(K.shape[-1]):
-    print(fr)
     for i in [2]:
-      # multi_slice_viewer(np.abs(K_fil[::2,:,:,i,fr]))
-      multi_slice_viewer(np.abs(I[:,:,:,i,fr]))
-      # multi_slice_viewer(np.angle(I[:,:,:,i,fr]),caxis=[-np.pi,np.pi])
+      M = np.transpose(np.abs(I[:,:,:,i,fr]), (0,2,1))
+      P = np.transpose(np.angle(I[:,:,:,i,fr]), (0,2,1))
+      multi_slice_viewer([M, P])
       plt.show()

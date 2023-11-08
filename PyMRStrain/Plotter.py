@@ -9,27 +9,29 @@ def remove_keymap_conflicts(new_keys_set):
             for key in remove_list:
                 keys.remove(key)
 
-def multi_slice_viewer(volume,caxis=None):
+def multi_slice_viewer(volumes,caxis=None):
     remove_keymap_conflicts({'j', 'k'})
-    volume = np.transpose(volume, (1,0,2))
-    fig, ax = plt.subplots()
-    ax.volume = volume
-    ax.index = 0
-    if caxis==None:
-      ax.imshow(volume[...,ax.index], cmap=plt.get_cmap('Greys_r'), vmin=volume.min(), vmax=volume.max())
-    else:
-      ax.imshow(volume[...,ax.index], cmap=plt.get_cmap('Greys_r'), vmin=caxis[0], vmax=caxis[1])
-    ax.invert_yaxis()
+    volumes = [np.transpose(volume, (1,0,2)) for volume in volumes]
+    fig, ax = plt.subplots(1, len(volumes))
+    for (i, volume) in enumerate(volumes):
+      ax[i].volume = volume
+      ax[i].index = 0
+      if caxis==None:
+        ax[i].imshow(volume[...,ax[i].index], cmap=plt.get_cmap('Greys_r'), vmin=volume.min(), vmax=volume.max())
+      else:
+        ax[i].imshow(volume[...,ax[i].index], cmap=plt.get_cmap('Greys_r'), vmin=caxis[0], vmax=caxis[1])
+      ax[i].invert_yaxis()
+
     fig.canvas.mpl_connect('key_press_event', process_key)
     plt.show()
 
 def process_key(event):
     fig = event.canvas.figure
-    ax = fig.axes[0]
-    if event.key == 'j':
-        previous_slice(ax)
-    elif event.key == 'k':
-        next_slice(ax)
+    for ax in fig.axes:
+      if event.key == 'j':
+          previous_slice(ax)
+      elif event.key == 'k':
+          next_slice(ax)
     fig.canvas.draw()
 
 def previous_slice(ax):
