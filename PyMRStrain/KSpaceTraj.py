@@ -3,11 +3,11 @@ import numpy as np
 
 from PyMRStrain.MPIUtilities import scatterKspace
 
-plt.rcParams['text.usetex'] = True
+# plt.rcParams['text.usetex'] = True
 
 # Gradient
 class Gradient:
-  def __init__(self, slope=1, lenc=1, G=1, max_Gro_amp=30, Gro_slew_rate=195, gamma=42.58):
+  def __init__(self, slope=1.0, lenc=1.0, G=1.0, max_Gro_amp=30.0, Gro_slew_rate=195.0, gamma=42.58):
     self.slope = slope   # [ms]
     self.lenc = lenc     # [ms]
     self.G = G           # [mT/m]
@@ -20,31 +20,87 @@ class Gradient:
     self.Gro_slew_rate_ = Gro_slew_rate    # [T/(m*s)]
     self.gamma = gamma                     # [MHz/T]
     self.gamma_ = 2.0*np.pi*1.0e+6*gamma   # [rad Hz/T]
+    self.timings, self.amplitudes = self.group_timings()
 
-  def calculate(self, area):
-    ''' Calculate gradient based on target area'''
-    # Time needed to reach the maximun amplitude
-    dur_to_max = self.max_Gro_amp_/self.Gro_slew_rate_ # seconds
+  def __add__(self, g):
+    # Concatenate gradients
+    return 1
 
-    # Calculate maximum gradient amplitude needed (considering just slopes)
-    G_req = self.area/self.Gro_slew_rate_
-
-    # Build gradient
-    if G_req < self.max_Gro_amp_:
-      self.lenc_ = G_req/self.Gro_slew_rate_ # [s]
-      self.G_ = G_req                        # [T/m]
-      self.dur_ = self.lenc - dur_to_max     # [s]
+  def group_timings(self):
+    if self.lenc <= 0.0:
+      timings = np.array([0.0, 
+                          self.slope,
+                          self.slope+self.slope])
+      amplitudes = np.array([0.0, 
+                            self.G,
+                            0.0])
     else:
-      self.lenc_ = dur_to_max                                 # [s]
-      self.G_ = self.max_Gro_amp_                             # [T/m]
-      self.dur_ = (self.area - self.max_Gro_amp_*self.lenc)
-      self.dur_ = self.dur_/self.max_Gro_amp_                 # [s]
+      timings = np.array([0.0, 
+                          self.slope, 
+                          self.slope+self.lenc, 
+                          self.slope+self.lenc+self.slope])
+      amplitudes = np.array([0.0, 
+                            self.G, 
+                            self.G, 
+                            0.0])
+    return timings, amplitudes
+
+  def calculate(self, area, receiver_bw=None, ro_samples=None, ofac=None):
+    ''' Calculate gradient based on target area 
+                                             __________
+                _1_ /|\                    /|          |\
+     slew rate |  /  |  \                /  |          |  \
+               |/    G    \            /    G          G    \
+              /      |      \        /      |          |      \
+               slope   slope          slope     lenc     slope
+    '''
+    # Calculate gradient
+    if receiver_bw != None:
+      ''' If the receiver bandwidth is given, the lenc should be fixed and
+      calculated accordingly
+      Reminder:
+            grad_area = (gamma/(2*pi))*G*dur
+      '''
+      self.lenc_  = (ro_samples/ofac)/receiver_bw         # [s]
+      self.G_     = 2*np.pi*area/(self.gamma_*self.lenc_) # [T/m]
+      self.slope_ = np.abs(self.G_)/self.Gro_slew_rate_   # [s]
+    else:
+      # Minimum time needed to reach the maximun amplitude
+      slope_min_ = self.max_Gro_amp_/self.Gro_slew_rate_ # [s]
+
+      # Calculate maximum gradient amplitude needed (considering just slopes)
+      G_req = 2*np.pi*area/(self.gamma_*slope_min_)
+
+      # Build gradient
+      if np.abs(G_req) < self.max_Gro_amp_:
+        print(1)
+        self.slope_ = np.abs(G_req)/self.Gro_slew_rate_ # [s]
+        self.G_     = G_req                             # [T/m]
+        self.lenc_  = self.slope_ - slope_min_          # [s]
+      else:
+        print(2)
+        self.slope_  = slope_min_      # [s]
+        self.G_      = self.max_Gro_amp_   # [T/m]
+        # Calculate lenc
+        area_slopes_ = self.gamma_/(2*np.pi)*self.max_Gro_amp_*self.slope_
+        self.lenc_   = 2*np.pi*(area - area_slopes_)/(self.G_*self.gamma_)
+        # Account for area sign
+        self.G_ *= np.sign(area)
 
     # Store variables in mT - ms
-    self.lenc = 1.0e+3*self.lenc_ # [ms]
-    self.G = 1.0e+3*self.G        # [mT/m]
-    self.dur = 1.0e+3*self.dur_   # [ms]
+    self.lenc = 1.0e+3*self.lenc_     # [ms]
+    self.G = 1.0e+3*self.G_           # [mT/m]
+    self.slope = 1.0e+3*self.slope_   # [ms]
 
+    # Update timings and amplitudes in array
+    self.timings, self.amplitudes = self.group_timings()
+
+  def plot(self, axes=[]):
+    ''' Plot gradient '''
+    plt.figure()
+    plt.plot(self.timings, self.amplitudes)
+    plt.axis([0, 1.2, -40, 40]) 
+    plt.show()
 
 # Generic tracjectory
 class Trajectory:
@@ -150,7 +206,22 @@ class Cartesian(Trajectory):
       dt = np.linspace(0.0, dt_line, self.ro_samples)
 
       # Readout gradient timings
-      grad = 
+      ph_grad = Gradient()
+      ph_grad.calculate(0.5*self.kspace_bw[1])
+      blip_grad = Gradient()
+      blip_grad.calculate(-self.kspace_bw[1]/self.ph_samples)
+      ro_grad0 = Gradient()
+      ro_grad0.calculate(-0.5*self.kspace_bw[0])
+      ro_grad = Gradient()
+      ro_grad.calculate(self.kspace_bw[0], receiver_bw=128.0*1e+3, ro_samples=self.ro_samples, ofac=self.oversampling)
+      print('PH grad: ', ph_grad.G, ph_grad.slope, ph_grad.lenc)
+      print('blip grad: ', blip_grad.G, blip_grad.slope, blip_grad.lenc)
+      print('RO grad: ', ro_grad.G, ro_grad.slope, ro_grad.lenc)
+      ph_grad.plot()
+      ro_grad0.plot()
+      ro_grad.plot()
+      blip_grad.plot()
+
       slope = self.max_Gro_amp_/self.Gro_slew_rate
       lenc  = (0.5*self.kspace_bw[0]*2*np.pi - self.gamma_*slope*self.max_Gro_amp_)/(self.gamma_*self.max_Gro_amp_)
 
