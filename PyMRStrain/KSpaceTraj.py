@@ -173,7 +173,8 @@ class Gradient:
 # Generic tracjectory
 class Trajectory:
   def __init__(self, FOV=np.array([0.3, 0.3]), res=np.array([100, 100]),
-              oversampling=2, max_Gro_amp=30, Gro_slew_rate=195,lines_per_shot=7, gammabar=42.58, VENC=None, plot_seq=False):
+              oversampling=2, max_Gro_amp=30, Gro_slew_rate=195,lines_per_shot=7, gammabar=42.58, VENC=None, 
+              receiver_bw=128.0e+3, plot_seq=False):
       self.FOV = FOV
       self.res = res
       self.oversampling = oversampling
@@ -191,6 +192,7 @@ class Trajectory:
       self.ro_samples = oversampling*res[0]
       self.VENC = VENC  # [m/s]
       self.plot_seq = plot_seq
+      self.receiver_bw = receiver_bw          # [Hz]
 
   def check_ph_enc_lines(self, ph_samples):
     ''' Verify if the number of lines in the phase encoding direction
@@ -234,7 +236,7 @@ class Cartesian(Trajectory):
       for i in range(self.lines_per_shot):
         # Calculate readout gradient
         ro_grad = Gradient(t_ref=ro_gradients[i+1].timings[-1])
-        ro_grad.calculate((-1)**i*self.kspace_bw[0], receiver_bw=128e+3, ro_samples=self.ro_samples, ofac=self.oversampling)
+        ro_grad.calculate((-1)**i*self.kspace_bw[0], receiver_bw=self.receiver_bw, ro_samples=self.ro_samples, ofac=self.oversampling)
         ro_gradients.append(ro_grad)
 
         # Calculate blip gradient
