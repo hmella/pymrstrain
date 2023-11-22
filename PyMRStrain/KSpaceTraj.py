@@ -97,16 +97,23 @@ class Gradient:
     self.lenc  = 1.0e+3*self.lenc_    # [ms]
     self.G     = 1.0e+3*self.G_       # [mT/m]
     self.slope = 1.0e+3*self.slope_   # [ms]
+    if self.lenc < 0:
+      self.dur_ = self.slope_ + self.slope_ # [ms]
+    else:
+      self.dur_ = self.slope_ + self.lenc_ + self.slope_ # [ms]
+    self.dur = 1.0e+3*self.dur_ # [s]
 
     # Update timings and amplitudes in array
     self.timings, self.amplitudes = self.group_timings()
 
   def plot(self, linestyle='-', axes=[]):
     ''' Plot gradient '''
-    plt.figure()
+    fig = plt.figure(2)
     plt.plot(self.timings, self.amplitudes, linestyle)
     plt.axis([0, 1.2, -40, 40]) 
     plt.show()
+
+    return fig
 
 # Generic tracjectory
 class Trajectory:
@@ -144,50 +151,60 @@ class Trajectory:
     based on the values of max_Gro_amp and Gro_slew_rate'''
 
     # Bipolar lobes areas without rectangle part
-    dur_to_max = self.max_Gro_amp_/self.Gro_slew_rate_ # seconds
-    alpha = np.pi/(self.gamma_*self.VENC*self.max_Gro_amp_)
-    t1 = (0.5*alpha*dur_to_max)**(1/3)
+    # For triangle part, VENC = pi/(2*gamma*SR*slope^3)
+    slope_ = self.max_Gro_amp_/self.Gro_slew_rate_ # [s]
+    slope_req_ = np.cbrt(np.pi/(2*self.gamma_*self.VENC*self.Gro_slew_rate_))
 
     # Check if rectangle parts of the gradient are needed
-    if t1 <= dur_to_max:
+    if slope_req_ <= slope_:
       # Calculate duration of the first velocity encoding gradient lobe
-      dur2 = 2.0*t1
+      dur2 = 2.0*slope_req_
       enc_time = 2.0*dur2
 
       # Plot
       if self.plot_seq:
-        t = np.array([0, t1, 2*t1, 3*t1, 4*t1])
-        G_max = t1/dur_to_max*self.max_Gro_amp
+        t = np.array([0, slope_req_, 2*slope_req_, 3*slope_req_, 4*slope_req_])
+        G_max = self.Gro_slew_rate*(1000*slope_req_)
         G = np.array([0, G_max, 0, -G_max, 0])
         plt.figure(1)
-        plt.plot(t,G)
+        plt.plot(1000*t,G)
+        plt.axis([0, 1.2, -40, 40]) 
         plt.show()
 
     else:
-      # Estimate the duration of the rectangular part of the gradient
-      a = 1.0 
-      b = 3.0*dur_to_max
-      c = 2.0*dur_to_max**2 - alpha
-      t2 = np.array([(-b + (b**2 - 4*a*c)**0.5)/(2*a),
-                     (-b - (b**2 - 4*a*c)**0.5)/(2*a)])
+      # Lobe area (only ramps)
+      area_ramps = slope_*self.max_Gro_amp_
+
+      # Estimate remaining area 
+      # VENC = pi/(2*gamma*(area_ramps + max_Gro_amp_*lenc)*(2*slope+lenc))
+      # (area_ramps + max_Gro_amp_*lenc)*(2*slope+lenc) = pi/(2*gamma*VENC)
+      # 2*slope*area_ramps + lenc*area_ramps + 2*slope*max_Gro_amp_*lenc + lenc*max_Gro_amp_*lenc = pi/(2*gamma*VENC)
+      # (2*slope*area_ramps - pi/(2*gamma*VENC)) + lenc*(area_ramps + 2*slope*max_Gro_amp_) + max_Gro_amp_*lenc^2 = 0
+      a = self.max_Gro_amp_
+      b = area_ramps + 2*slope_*self.max_Gro_amp_
+      c = (2*slope_*area_ramps - np.pi/(2*self.gamma_*self.VENC))
+      t2 = np.array([(-b + np.sqrt(b**2 - 4*a*c))/(2*a),
+                     (-b - np.sqrt(b**2 - 4*a*c))/(2*a)])
 
       # Remove negative solutions
       t2[t2 < 0] = 1e+10
       t2 = t2.min()
 
       # Gradients duration
-      dur2 = 2.0*dur_to_max + t2
+      dur2 = 2.0*slope_ + t2
       enc_time = 2*dur2
 
       # Plot velocity encoding gradient
       if self.plot_seq:      
-        t = np.array([0, dur_to_max, dur_to_max+t2, 2*dur_to_max+t2, 3*dur_to_max+t2, 3*dur_to_max+2*t2, 4*dur_to_max+2*t2])
+        t = np.array([0, slope_, slope_+t2, 2*slope_+t2, 3*slope_+t2, 3*slope_+2*t2, 4*slope_+2*t2])
         G = self.max_Gro_amp*np.array([0, 1, 1, 0, -1, -1, 0])
 
-        plt.figure(1)
+        fig = plt.figure(1)
         plt.plot(1000.0*t,G)
         plt.axis([0, 1.2, -40, 40]) 
         plt.show()
+        fig.savefig('bipolar.eps')
+
 
     # Store velocity encoding time
     self.vel_enc_time = enc_time
@@ -207,40 +224,40 @@ class Cartesian(Trajectory):
 
     def kspace_points(self):
       ''' Get kspace points '''
+      # Readout gradient timings
+      ph_grad = Gradient()
+      ph_grad.calculate(0.5*self.kspace_bw[1])
+      blip_grad = Gradient()
+      blip_grad.calculate(-self.kspace_bw[1]/self.ph_samples)
+      ro_grad = Gradient()
+      ro_grad.calculate(self.kspace_bw[0], receiver_bw=128e+3, ro_samples=self.ro_samples, ofac=self.oversampling)
+      ro_grad0 = Gradient()
+      ro_grad0.calculate(-0.5*self.kspace_bw[0] - 0.5*ro_grad0.gammabar_*ro_grad0.G_*ro_grad0.slope_)
+
+      # print("PH gradient")
+      # print('   PH grad: ', ph_grad.G, ph_grad.slope, ph_grad.lenc)
+      # print("Blip gradient")
+      # print('   blip grad: ', blip_grad.G, blip_grad.slope, blip_grad.lenc)
+      # print("RO gradient")
+      # print('   RO grad: ', ro_grad.G, ro_grad.slope, ro_grad.lenc)
+      # print("Half RO gradient")
+      # print('   RO grad 0: ', ro_grad0.G, ro_grad0.slope, ro_grad0.lenc)
+
+      if self.plot_seq:
+        fig = ph_grad.plot(linestyle='r--')
+        fig.savefig('ph.eps')
+        fig = blip_grad.plot(linestyle='r--')
+        fig.savefig('blip.eps')
+        fig = ro_grad.plot()
+        fig.savefig('ro.eps')
+        fig = ro_grad0.plot()
+        fig.savefig('ro_0.eps')
+
       # Time needed to acquire one line
       # It depends on the kspcae bandwidth, the gyromagnetic constant, and
       # the maximun gradient amplitude
-      dt_line = (self.kspace_bw[0]*2*np.pi)/(self.gamma_*self.max_Gro_amp_)
-      dt = np.linspace(0.0, dt_line, self.ro_samples)
+      dt = np.linspace(0.0, ro_grad.lenc_, self.ro_samples)
 
-      # Readout gradient timings
-      print("PH gradient")
-      ph_grad = Gradient()
-      ph_grad.calculate(0.5*self.kspace_bw[1])
-      print('   PH grad: ', ph_grad.G, ph_grad.slope, ph_grad.lenc)
-
-      print("Blip gradient")
-      blip_grad = Gradient()
-      blip_grad.calculate(-self.kspace_bw[1]/self.ph_samples)
-      print('   blip grad: ', blip_grad.G, blip_grad.slope, blip_grad.lenc)
-
-      print("RO gradient")
-      ro_grad = Gradient()
-      ro_grad.calculate(self.kspace_bw[0], receiver_bw=128.0*1e+3, ro_samples=self.ro_samples, ofac=self.oversampling)
-      print('   RO grad: ', ro_grad.G, ro_grad.slope, ro_grad.lenc)
-
-      print("Half RO gradient")
-      ro_grad0 = Gradient()
-      ro_grad0.calculate(-0.5*self.kspace_bw[0] - 0.5*ro_grad0.gammabar_*ro_grad0.G_*ro_grad0.slope_)
-      print('   RO grad 0: ', ro_grad0.G, ro_grad0.slope, ro_grad0.lenc)
-
-      ph_grad.plot(linestyle='r--')
-      blip_grad.plot(linestyle='r--')
-      ro_grad.plot()
-      ro_grad0.plot()
-
-      slope = self.max_Gro_amp_/self.Gro_slew_rate
-      lenc  = (0.5*self.kspace_bw[0]*2*np.pi - self.gamma_*slope*self.max_Gro_amp_)/(self.gamma_*self.max_Gro_amp_)
 
       # Update timings to include bipolar gradients and pre-positioning gradient before the readout
       venc_time = 0.0
@@ -271,15 +288,17 @@ class Cartesian(Trajectory):
 
         # Update timings
         if ph % self.lines_per_shot == 0:
-          t[::ro,ph] = venc_time + slope + lenc + slope + slope + dt
+          t[::ro,ph] = venc_time + ro_grad0.dur_ + ro_grad.slope_ + dt
         else:
-          t[::ro,ph] = t[::-ro,ph-1][-1] + slope + slope + dt
+          t[::ro,ph] = t[::-ro,ph-1][-1] + ro_grad.slope_ + ro_grad.slope_ + dt
 
         # Reverse readout
         ro = -ro
 
       # Calculate echo time
-      self.echo_time = 0.5*(t[:].max() - 3*slope - lenc - venc_time) + 3*slope + lenc + venc_time
+      self.echo_time = venc_time + ro_grad0.dur_ + 0.5*self.lines_per_shot*ro_grad.dur_
+      print("echo_time: {:.2f} (ms)".format(1000*self.echo_time))
+      # self.echo_time = 0.5*(t[:].max() - 3*slope - lenc - venc_time) + 3*slope + lenc + venc_time
 
       # Send the information to each process if running in parallel
       kspace, t, local_idx = scatterKspace(kspace, t)
