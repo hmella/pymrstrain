@@ -46,8 +46,8 @@ class Gradient:
                             self.G, 
                             0.0])
 
-      # Add reference time
-      timings += self.t_ref
+    # Add reference time
+    timings += self.t_ref
 
     return timings, amplitudes
 
@@ -106,6 +106,61 @@ class Gradient:
     # Update timings and amplitudes in array
     self.timings, self.amplitudes = self.group_timings()
 
+  def calculate_bipolar(self, VENC):
+    ''' Calculate the time needed to apply the velocity encoding gradients
+    based on the values of max_Gro_amp and Gro_slew_rate'''
+
+    # Bipolar lobes areas without rectangle part
+    # For triangle part, VENC = pi/(2*gamma*SR*slope^3)
+    slope_ = self.max_Gro_amp_/self.Gro_slew_rate_ # [s]
+    slope_req_ = np.cbrt(np.pi/(2*self.gamma_*VENC*self.Gro_slew_rate_))
+
+    # Check if rectangle parts of the gradient are needed
+    if slope_req_ <= slope_:
+      # Calculate duration of the first velocity encoding gradient lobe
+      self.slope_ = slope_req_                      # [s]
+      self.G_     = self.Gro_slew_rate_*slope_req_  # [s]
+      self.lenc_  = self.slope_ - slope_req_        # [s]
+    else:
+      # Lobe area (only ramps)
+      area_ramps = slope_*self.max_Gro_amp_
+
+      # Estimate remaining area 
+      # VENC = pi/(2*gamma*(area_ramps + max_Gro_amp_*lenc)*(2*slope+lenc))
+      # (area_ramps + max_Gro_amp_*lenc)*(2*slope+lenc) = pi/(2*gamma*VENC)
+      # 2*slope*area_ramps + lenc*area_ramps + 2*slope*max_Gro_amp_*lenc + lenc*max_Gro_amp_*lenc = pi/(2*gamma*VENC)
+      # (2*slope*area_ramps - pi/(2*gamma*VENC)) + lenc*(area_ramps + 2*slope*max_Gro_amp_) + max_Gro_amp_*lenc^2 = 0
+      a = self.max_Gro_amp_
+      b = area_ramps + 2*slope_*self.max_Gro_amp_
+      c = (2*slope_*area_ramps - np.pi/(2*self.gamma_*VENC))
+      t2 = np.array([(-b + np.sqrt(b**2 - 4*a*c))/(2*a),
+                     (-b - np.sqrt(b**2 - 4*a*c))/(2*a)])
+
+      # Remove negative solutions
+      t2[t2 < 0] = 1e+10
+      t2 = t2.min()
+
+      # Gradients parameters
+      self.slope_ = slope_
+      self.G_     = self.max_Gro_amp_
+      self.lenc_  = t2
+
+    # Store variables in mT - ms
+    self.lenc  = 1.0e+3*self.lenc_    # [ms]
+    self.G     = 1.0e+3*self.G_       # [mT/m]
+    self.slope = 1.0e+3*self.slope_   # [ms]
+    if self.lenc < 0:
+      self.dur_ = 2*(self.slope_ + self.slope_) # [s]
+    else:
+      self.dur_ = 2*(self.slope_ + self.lenc_ + self.slope_) # [s]
+    self.dur = 1.0e+3*self.dur_ # [ms]
+
+    # Update timings and amplitudes in array
+    timings, amplitudes = self.group_timings()  
+    self.timings = np.concatenate((timings, timings[-1] + timings))
+    self.amplitudes = np.concatenate((amplitudes, -amplitudes))
+
+
   def plot(self, linestyle='-', axes=[]):
     ''' Plot gradient '''
     fig = plt.figure(2)
@@ -146,71 +201,6 @@ class Trajectory:
 
     return ph_samples
 
-  def velenc_time(self):
-    ''' Calculate the time needed to apply the velocity encoding gradients
-    based on the values of max_Gro_amp and Gro_slew_rate'''
-
-    # Bipolar lobes areas without rectangle part
-    # For triangle part, VENC = pi/(2*gamma*SR*slope^3)
-    slope_ = self.max_Gro_amp_/self.Gro_slew_rate_ # [s]
-    slope_req_ = np.cbrt(np.pi/(2*self.gamma_*self.VENC*self.Gro_slew_rate_))
-
-    # Check if rectangle parts of the gradient are needed
-    if slope_req_ <= slope_:
-      # Calculate duration of the first velocity encoding gradient lobe
-      dur2 = 2.0*slope_req_
-      enc_time = 2.0*dur2
-
-      # Plot
-      if self.plot_seq:
-        t = np.array([0, slope_req_, 2*slope_req_, 3*slope_req_, 4*slope_req_])
-        G_max = self.Gro_slew_rate*(1000*slope_req_)
-        G = np.array([0, G_max, 0, -G_max, 0])
-        plt.figure(1)
-        plt.plot(1000*t,G)
-        plt.axis([0, 1.2, -40, 40]) 
-        plt.show()
-
-    else:
-      # Lobe area (only ramps)
-      area_ramps = slope_*self.max_Gro_amp_
-
-      # Estimate remaining area 
-      # VENC = pi/(2*gamma*(area_ramps + max_Gro_amp_*lenc)*(2*slope+lenc))
-      # (area_ramps + max_Gro_amp_*lenc)*(2*slope+lenc) = pi/(2*gamma*VENC)
-      # 2*slope*area_ramps + lenc*area_ramps + 2*slope*max_Gro_amp_*lenc + lenc*max_Gro_amp_*lenc = pi/(2*gamma*VENC)
-      # (2*slope*area_ramps - pi/(2*gamma*VENC)) + lenc*(area_ramps + 2*slope*max_Gro_amp_) + max_Gro_amp_*lenc^2 = 0
-      a = self.max_Gro_amp_
-      b = area_ramps + 2*slope_*self.max_Gro_amp_
-      c = (2*slope_*area_ramps - np.pi/(2*self.gamma_*self.VENC))
-      t2 = np.array([(-b + np.sqrt(b**2 - 4*a*c))/(2*a),
-                     (-b - np.sqrt(b**2 - 4*a*c))/(2*a)])
-
-      # Remove negative solutions
-      t2[t2 < 0] = 1e+10
-      t2 = t2.min()
-
-      # Gradients duration
-      dur2 = 2.0*slope_ + t2
-      enc_time = 2*dur2
-
-      # Plot velocity encoding gradient
-      if self.plot_seq:      
-        t = np.array([0, slope_, slope_+t2, 2*slope_+t2, 3*slope_+t2, 3*slope_+2*t2, 4*slope_+2*t2])
-        G = self.max_Gro_amp*np.array([0, 1, 1, 0, -1, -1, 0])
-
-        fig = plt.figure(1)
-        plt.plot(1000.0*t,G)
-        plt.axis([0, 1.2, -40, 40]) 
-        plt.show()
-        fig.savefig('bipolar.eps')
-
-
-    # Store velocity encoding time
-    self.vel_enc_time = enc_time
-
-    return enc_time
-
 
 # Cartesian trajectory
 class Cartesian(Trajectory):
@@ -224,34 +214,56 @@ class Cartesian(Trajectory):
 
     def kspace_points(self):
       ''' Get kspace points '''
-      # Readout gradient timings
-      ph_grad = Gradient()
+      # Bipolar gradient
+      if self.VENC != None:
+        bipolar = Gradient(t_ref=0.0)
+        bipolar.calculate_bipolar(self.VENC)
+
+      # k-space positioning gradients
+      ph_grad = Gradient(t_ref=bipolar.timings[-1])
       ph_grad.calculate(0.5*self.kspace_bw[1])
-      blip_grad = Gradient()
-      blip_grad.calculate(-self.kspace_bw[1]/self.ph_samples)
-      ro_grad = Gradient()
-      ro_grad.calculate(self.kspace_bw[0], receiver_bw=128e+3, ro_samples=self.ro_samples, ofac=self.oversampling)
-      ro_grad0 = Gradient()
+
+      ro_grad0 = Gradient(t_ref=bipolar.timings[-1])
       ro_grad0.calculate(-0.5*self.kspace_bw[0] - 0.5*ro_grad0.gammabar_*ro_grad0.G_*ro_grad0.slope_)
 
-      # print("PH gradient")
-      # print('   PH grad: ', ph_grad.G, ph_grad.slope, ph_grad.lenc)
-      # print("Blip gradient")
-      # print('   blip grad: ', blip_grad.G, blip_grad.slope, blip_grad.lenc)
-      # print("RO gradient")
-      # print('   RO grad: ', ro_grad.G, ro_grad.slope, ro_grad.lenc)
-      # print("Half RO gradient")
-      # print('   RO grad 0: ', ro_grad0.G, ro_grad0.slope, ro_grad0.lenc)
+      blip_grad = Gradient(t_ref=0.0)
+      blip_grad.calculate(-self.kspace_bw[1]/self.ph_samples)
+
+      ro_gradients = [bipolar, ro_grad0, ]
+      ph_gradients = [ph_grad, ]
+      for i in range(self.lines_per_shot):
+        # Calculate readout gradient
+        ro_grad = Gradient(t_ref=ro_gradients[i+1].timings[-1])
+        ro_grad.calculate((-1)**i*self.kspace_bw[0], receiver_bw=128e+3, ro_samples=self.ro_samples, ofac=self.oversampling)
+        ro_gradients.append(ro_grad)
+
+        # Calculate blip gradient
+        ref = ro_gradients[-1].t_ref + ro_gradients[-1].dur - 0.5*blip_grad.dur
+        blip_grad = Gradient(t_ref=ref)
+        blip_grad.calculate(-self.kspace_bw[1]/self.ph_samples)
+        ph_gradients.append(blip_grad)
 
       if self.plot_seq:
-        fig = ph_grad.plot(linestyle='r--')
-        fig.savefig('ph.eps')
-        fig = blip_grad.plot(linestyle='r--')
-        fig.savefig('blip.eps')
-        fig = ro_grad.plot()
-        fig.savefig('ro.eps')
-        fig = ro_grad0.plot()
-        fig.savefig('ro_0.eps')
+        plt.rcParams['text.usetex'] = True
+        fig = plt.figure(figsize=(8,3))
+        print(ph_gradients)
+        for gr in ph_gradients[:-1]:
+          ax1 = plt.plot(gr.timings, gr.amplitudes, 'r-', linewidth=2)
+        for gr in ro_gradients:
+          ax2 = plt.plot(gr.timings, gr.amplitudes, 'b-', linewidth=2)
+        plt.tick_params('both', length=5, width=1, which='major', labelsize=16)
+        plt.tick_params('both', length=3, width=1, which='minor', labelsize=16)
+        plt.minorticks_on()
+        plt.xlabel('$t~\mathrm{(ms)}$', fontsize=20)
+        plt.ylabel('$G~\mathrm{(mT/m)}$', fontsize=20)
+        ax1[0].set_label('PH')
+        ax2[0].set_label('RO')
+        plt.legend(fontsize=16, loc='upper right', ncols=2)
+        plt.axis([0, ro_gradients[-1].t_ref + ro_gradients[-1].dur, -50, 50])
+        plt.yticks([-45, -30, -15, 0, 15, 30, 45])
+        plt.tight_layout()
+        fig.savefig('sequence.pdf')
+        plt.show()
 
       # Time needed to acquire one line
       # It depends on the kspcae bandwidth, the gyromagnetic constant, and
@@ -262,7 +274,7 @@ class Cartesian(Trajectory):
       # Update timings to include bipolar gradients and pre-positioning gradient before the readout
       venc_time = 0.0
       if self.VENC != None:
-        venc_time = self.velenc_time()
+        venc_time = bipolar.dur_
 
       # kspace locations
       kx = np.linspace(-0.5*self.kspace_bw[0], 0.5*self.kspace_bw[0], self.ro_samples)
