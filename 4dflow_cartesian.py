@@ -44,6 +44,11 @@ if __name__ == '__main__':
   VENCs = np.array(pars["Imaging"]["VENC"])
   OFAC = pars["Imaging"]["OVERSAMPLING"]
 
+  # Hardware parameters
+  G_sr  = pars["Hardware"]["G_sr"]
+  G_max = pars["Hardware"]["G_max"]
+  r_BW  = pars["Hardware"]["r_BW"]
+
   # Formatting parameters
   tx = pars["Formatting"]["tx"]
   ty = pars["Formatting"]["ty"]
@@ -80,7 +85,7 @@ if __name__ == '__main__':
         print('Bounding box: ({:f},{:f},{:f}), ({:f},{:f},{:f})'.format(bmin[0],bmin[1],bmin[2],bmax[0],bmax[1],bmax[2]))
 
       # Assemble mass matrix for integrals (just once)
-      M = massAssemble(elems,nodes)
+      # M = massAssemble(elems,nodes)
 
       # Imaging sequences for the image generation
       sequences = ["FFE", "EPI"]
@@ -99,59 +104,59 @@ if __name__ == '__main__':
 
           # Generate kspace trajectory
           lps = pars[seq]["LinesPerShot"]
-          traj = Cartesian(FOV=FOV[:-1], res=RES[:-1], oversampling=OFAC, lines_per_shot=lps, VENC=VENC)
+          traj = Cartesian(FOV=FOV[:-1], res=RES[:-1], oversampling=OFAC, lines_per_shot=lps, VENC=VENC, receiver_bw=r_BW, Gr_max=G_max, Gr_sr=G_sr, plot_seq=True)
 
-          # Print echo time
-          if MPI_rank==0: print("Echo time = {:.1f} ms".format(1000.0*traj.echo_time))
+      #     # Print echo time
+      #     if MPI_rank==0: print("Echo time = {:.1f} ms".format(1000.0*traj.echo_time))
 
-          # kspace array
-          K = np.zeros([traj.ro_samples, traj.ph_samples, len(kz), 3, Nfr], dtype=complex)
+      #     # kspace array
+      #     K = np.zeros([traj.ro_samples, traj.ph_samples, len(kz), 3, Nfr], dtype=complex)
 
-          # List to store how much is taking to generate one volume
-          times = []
+      #     # List to store how much is taking to generate one volume
+      #     times = []
 
-          # Iterate over cardiac phases
-          for fr in range(Nfr):
+      #     # Iterate over cardiac phases
+      #     for fr in range(Nfr):
 
-            # Read velocity data in each time step
-            d, point_data, cell_data = reader.read_data(fr)
-            velocity = point_data['velocity']
+      #       # Read velocity data in each time step
+      #       d, point_data, cell_data = reader.read_data(fr)
+      #       velocity = point_data['velocity']
 
-            # Rotate velocity
-            velocity = (Rz(tz)@Ry(ty)@Rx(tx)@velocity.T).T
+      #       # Rotate velocity
+      #       velocity = (Rz(tz)@Ry(ty)@Rx(tx)@velocity.T).T
 
-            # Convert everything to meters
-            velocity /= 100
+      #       # Convert everything to meters
+      #       velocity /= 100
 
-            # Generate 4D flow image
-            if MPI_rank == 0: print("Generating frame {:d}".format(fr))
-            t0 = time.time()
-            K[traj.local_idx,:,:,:,fr] = FlowImage3D(MPI_rank, M, traj.points, kz, traj.times, velocity, nodes, T2star, VENC)
-            t1 = time.time()
-            times.append(t1-t0)
+      #       # Generate 4D flow image
+      #       if MPI_rank == 0: print("Generating frame {:d}".format(fr))
+      #       t0 = time.time()
+      #       K[traj.local_idx,:,:,:,fr] = FlowImage3D(MPI_rank, M, traj.points, kz, traj.times, velocity, nodes, T2star, VENC)
+      #       t1 = time.time()
+      #       times.append(t1-t0)
 
-            # Save kspace for debugging purposes
-            if preview:
-              K_copy = np.copy(K)
-              K_copy = gather_image(K_copy)
-              if MPI_rank==0:
-                np.save(export_path, K_copy)
+      #       # Save kspace for debugging purposes
+      #       if preview:
+      #         K_copy = np.copy(K)
+      #         K_copy = gather_image(K_copy)
+      #         if MPI_rank==0:
+      #           np.save(export_path, K_copy)
 
-            # Synchronize MPI processes
-            print(np.array(times).mean())
-            MPI_comm.Barrier()
+      #       # Synchronize MPI processes
+      #       print(np.array(times).mean())
+      #       MPI_comm.Barrier()
 
-          # Show mean time that takes to generate each 3D volume
-          print(np.array(times).mean())
+      #     # Show mean time that takes to generate each 3D volume
+      #     print(np.array(times).mean())
 
-          # Gather results
-          K = gather_image(K)
+      #     # Gather results
+      #     K = gather_image(K)
 
-          # Export generated data
-          if MPI_rank==0:
-	    # K_scaled = scale_data(K, mag=False, real=True, imag=True, dtype=np.uint64)
-            np.save(export_path, K)
+      #     # Export generated data
+      #     if MPI_rank==0:
+	    # # K_scaled = scale_data(K, mag=False, real=True, imag=True, dtype=np.uint64)
+      #       np.save(export_path, K)
 
-          # # Fix dimensions
-          # K[:,1::2,...] = K[::-1,1::2,...]
-          # I = ktoi(K[::2,::-1,...],[0,1,2])
+      #     # # Fix dimensions
+      #     # K[:,1::2,...] = K[::-1,1::2,...]
+      #     # I = ktoi(K[::2,::-1,...],[0,1,2])
