@@ -11,7 +11,7 @@ Imaging:
 Hardware:
   G_sr: 195.0    # in mT/m/s
   G_max: 40.0    # in mT/m
-  r_BW: 128.0e+3 # in Hz
+  r_BW: 153.0e+3 # in Hz (equivalent to 450 Hz/pixel)
 
 # Data formatting
 Formatting:
