@@ -11,6 +11,7 @@ from PyMRStrain.IO import scale_data
 from PyMRStrain.KSpaceTraj import Cartesian
 from PyMRStrain.Math import itok, ktoi
 from PyMRStrain.MPIUtilities import MPI_comm, MPI_rank, gather_image
+from scipy.interpolate import griddata as gd
 
 
 def Rx(tx):

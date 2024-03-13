@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
   # Import generated data
   seq  = 'FFE'
-  VENC = 150
+  VENC = 250
   Hcr  = 45
   K = np.load('MRImages/HCR{:d}/{:s}_V{:d}.npy'.format(Hcr,seq,VENC))
 
@@ -56,7 +56,7 @@ if __name__ == '__main__':
   # Apply the inverse Fourier transform to obtain the image
   I = ktoi(K[::2,::-1,...],[0,1,2])
 
-  # Add noise 
+  # Add noise
   I = add_cpx_noise(I, relative_std=0.025, mask=1)
 
   # Make sure the directory exist

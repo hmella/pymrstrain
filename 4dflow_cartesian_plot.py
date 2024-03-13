@@ -11,11 +11,13 @@ if __name__ == '__main__':
   # Import generated data
   seq  = 'FFE'
   VENC = 250
-  K = np.load('MRImages/HCR45/{:s}_V{:d}.npy'.format(seq, VENC))
+  K = np.load('MRImages/Linear/HCR45/{:s}_V{:d}.npy'.format(seq, VENC))
 
   # Fix the direction of kspace lines measured in the opposite direction
   if seq == 'EPI':
-    K[:,1::2,...] = K[::-1,1::2,...]
+    for i in range(K.shape[1]):
+      if i % 5 == 0:
+        K[:,i,...] = K[::-1,i,...]
 
   # Kspace filtering (as the scanner would do)
   h_meas = Tukey_filter(K.shape[0], width=0.9, lift=0.3)
@@ -36,7 +38,9 @@ if __name__ == '__main__':
   # Show figure
   for fr in range(K.shape[-1]):
     for i in [2]:
-      M = np.transpose(np.abs(I[:,:,:,i,fr]), (0,2,1))
-      P = np.transpose(np.angle(I[:,:,:,i,fr]), (0,2,1))
+      # M = np.transpose(np.abs(I[:,:,:,i,fr]), (0,2,1))
+      # P = np.transpose(np.angle(I[:,:,:,i,fr]), (0,2,1))
+      M = np.transpose(np.abs(I[:,:,:,i,fr]), (0,1,2))
+      P = np.transpose(np.angle(I[:,:,:,i,fr]), (0,1,2))
       multi_slice_viewer([M, P])
       plt.show()
