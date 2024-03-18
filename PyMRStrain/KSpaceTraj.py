@@ -187,7 +187,7 @@ class Trajectory:
       self.lines_per_shot = lines_per_shot
       self.pxsz = FOV/res
       self.kspace_bw = 1.0/self.pxsz
-      self.kspace_spa = 1.0/(oversampling*self.FOV)
+      self.kspace_spa = self.kspace_bw/np.array([oversampling*res[0]-1, res[1]-1])
       self.ro_samples = oversampling*res[0]
       self.VENC = VENC  # [m/s]
       self.plot_seq = plot_seq
@@ -286,6 +286,8 @@ class Cartesian(Trajectory):
       # Fix kspace shifts
       if (self.ro_samples/self.oversampling) % 2 == 0:
         kx = kx - 0.5*self.kspace_spa[0]
+      if self.ph_samples % 2 == 0:
+        ky = ky - 0.5*self.kspace_spa[1]
 
       # kspace times and locations
       t = np.zeros([self.ro_samples, self.ph_samples])
@@ -297,7 +299,7 @@ class Cartesian(Trajectory):
 
         # Fill locations
         kspace[0][::ro,ph] = kx
-        kspace[1][::ro,ph] = ky - self.kspace_bw[1]*(ph/(self.ph_samples-1))
+        kspace[1][::ro,ph] = ky - self.kspace_spa[1]*ph
 
         # Update timings
         if ph % self.lines_per_shot == 0:

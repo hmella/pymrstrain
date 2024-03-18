@@ -56,9 +56,13 @@ if __name__ == '__main__':
   tz = pars["Formatting"]["tz"]
 
   # Kspace parameters in the z-direction
-  delta_kz = 1.0/FOV[2]
   BW_kz    = 1.0/(FOV[2]/RES[2])
-  kz       = np.arange(-0.5*BW_kz, 0.5*BW_kz, delta_kz)
+  delta_kz = BW_kz/(RES[2]-1)
+  kz = np.linspace(-0.5*BW_kz, 0.5*BW_kz, RES[2])
+
+  # Fix kspace shifts
+  if RES[2] % 2 == 0:
+    kz = kz - 0.5*delta_kz
 
   # Simulation type
   simtypes = ['Linear','Non-linear']
