@@ -9,24 +9,9 @@ from Fem import massAssemble
 from FlowToImage import FlowImage3D
 from PyMRStrain.IO import scale_data
 from PyMRStrain.KSpaceTraj import Cartesian
-from PyMRStrain.Math import itok, ktoi
+from PyMRStrain.Math import itok, ktoi, Rx, Ry, Rz
 from PyMRStrain.MPIUtilities import MPI_comm, MPI_rank, gather_image
 
-
-def Rx(tx):
-  return np.array([[1, 0, 0],
-                    [0, np.cos(tx), -np.sin(tx)],
-                    [0, np.sin(tx), np.cos(tx)]])
-
-def Ry(ty):
-  return np.array([[np.cos(ty), 0, np.sin(ty)],
-                    [0, 1, 0],
-                    [-np.sin(ty), 0, np.cos(ty)]])
-
-def Rz(tz):
-  return np.array([[np.cos(tz), -np.sin(tz), 0],
-                    [np.sin(tz), np.cos(tz), 0],
-                    [0, 0, 1]])
 
 if __name__ == '__main__':
 

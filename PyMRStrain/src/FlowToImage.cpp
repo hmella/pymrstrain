@@ -17,46 +17,57 @@ const std::complex<float> i1(0, 1);
 // Definition of magnetization datatype for 4d flow expression
 typedef std::tuple<MatrixXcf, MatrixXcf> magnetizations;
 
-// Definition of third rank complex tensor datatype
+// Definition of fourth rank complex tensor datatype
 typedef Tensor<std::complex<float>, 4> ComplexTensor;
+
+// Definition of third rank complex tensor datatype
+typedef Tensor<float, 3> klocations;
 
 // Calculate image kspace
 ComplexTensor FlowImage3D(
   const int &MPI_rank,
-  const SparseMatrix<float> &M, // Mass matrix
-  const std::vector<MatrixXf> &kxy, // kspace trajectory
-  const VectorXf &kzz,
+  const SparseMatrix<float> &M,        // Mass matrix
+  const std::vector<klocations> &kloc, // kspace trajectory
   const MatrixXf &t,  // kspace timings
   const MatrixXf &v,  // object velocity
-  const MatrixXf &r0, // object position
+  const MatrixXf &r0, // object initial position
+  const VectorXf &gamma_x_delta_B0,  // Field inhomogeneity
   const float &T2,          // T2 time of the blood
-  const float &VENC){       // Velocity encoding
+  const float &VENC,        // Velocity encoding
+  const VectorXf &profile   // Slice profile
+  ){
 
     // Number of kspace lines/spokes/interleaves
-    const uint nb_lines = kxy[0].cols();
+    const uint nb_lines = kloc[0].dimension(0);
     
     // Number of measurements in the readout direction
-    const uint nb_meas = kxy[0].rows();
+    const uint nb_meas = kloc[0].dimension(1);
 
    // Number of measurements in the kz direction
-    const uint nb_kz = kzz.size();
+    const uint nb_kz = kloc[0].dimension(2);
 
     // Number of spins
     const uint nb_spins = r0.rows();
 
     // Get the equivalent gradient needed to go from the center of the kspace
     // to each location
-    const MatrixXf kx = 2.0 * PI * kxy[0];
-    const MatrixXf ky = 2.0 * PI * kxy[1];
-    const VectorXf kz = 2.0 * PI * kzz;
+    const klocations kx = 2.0 * PI * kloc[0];
+    const klocations ky = 2.0 * PI * kloc[1];
+    const klocations kz = 2.0 * PI * kloc[2];
 
     // Copy blood position to estimate the current position using the approximation r(t0+dt) = r0 + v0*dt
     MatrixXf r(nb_spins, 3);
 
-    // Kspace and Fourier exponential
-    const MatrixXcf Mxy = 1.0e+3 * nb_spins * (i1 * PI / VENC * v).array().exp();
-    VectorXf fe_xy(nb_spins);
+    // Kspace, Fourier exponential, and off-resonance phase
+    MatrixXcf Mxy = 1.0e+3 * nb_spins * (i1 * PI / VENC * v).array().exp();
+    VectorXf  fe_xy(nb_spins);
     VectorXcf fe(nb_spins);
+    VectorXf  phi_off(nb_spins);
+
+    // Apply slice profile to magnetization
+    for (uint s = 0; s < Mxy.cols(); ++s){
+      Mxy(indexing::all,s) = Mxy.col(s).cwiseProduct(profile);
+    }
 
     // kspace
     ComplexTensor kspace(nb_meas, nb_lines, nb_kz, 3);
@@ -76,13 +87,16 @@ ComplexTensor FlowImage3D(
         // Update blood position at time t(i,j)
         r.noalias() = r0 + v*t(i,j);
 
+        // Update off-resonance phase
+        phi_off.noalias() = gamma_x_delta_B0*t(i,j);
+
         // Fourier exponential
-        fe_xy.noalias() = -(r.col(0) * kx(i,j) + r.col(1) * ky(i,j));
+        fe_xy.noalias() = -(r.col(0) * kx(i,j,0) + r.col(1) * ky(i,j,0) + phi_off);
 
         for (uint k = 0; k < nb_kz; ++k){
 
           // Update Fourier exponential
-          fe(indexing::all, 0) = (i1 * (fe_xy - r.col(2) * kz(k))).array().exp();
+          fe(indexing::all, 0) = (i1 * (fe_xy - r.col(2) * kz(i,j,k))).array().exp();
 
           // Calculate k-space values, add T2* decay, and assign value to output array
           for (uint l = 0; l < 3; ++l){
