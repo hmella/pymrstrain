@@ -18,3 +18,18 @@ def ktoi(x, axes=None):
 
 def wrap(x, value):
   return np.mod(x + 0.5*value, value) - 0.5*value
+
+def Rx(tx):
+  return np.array([[1, 0, 0],
+                    [0, np.cos(tx), -np.sin(tx)],
+                    [0, np.sin(tx), np.cos(tx)]])
+
+def Ry(ty):
+  return np.array([[np.cos(ty), 0, np.sin(ty)],
+                    [0, 1, 0],
+                    [-np.sin(ty), 0, np.cos(ty)]])
+
+def Rz(tz):
+  return np.array([[np.cos(tz), -np.sin(tz), 0],
+                    [np.sin(tz), np.cos(tz), 0],
+                    [0, 0, 1]])
