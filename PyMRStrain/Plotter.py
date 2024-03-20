@@ -21,6 +21,7 @@ def multi_slice_viewer(volumes,caxis=None):
       else:
         ax[i].imshow(volume[...,ax[i].index], cmap=plt.get_cmap('Greys_r'), vmin=caxis[0], vmax=caxis[1])
       ax[i].invert_yaxis()
+      ax[i].set_title('Slice {:d}'.format(ax[i].index))
 
     fig.canvas.mpl_connect('key_press_event', process_key)
     plt.show()
@@ -39,9 +40,11 @@ def previous_slice(ax):
     volume = ax.volume
     ax.index = (ax.index - 1) % volume.shape[2]  # wrap around using %
     ax.images[0].set_array(volume[...,ax.index])
+    ax.set_title('Slice {:d}'.format(ax.index))
 
 def next_slice(ax):
     """Go to the next slice."""
     volume = ax.volume
     ax.index = (ax.index + 1) % volume.shape[2]
     ax.images[0].set_array(volume[...,ax.index])
+    ax.set_title('Slice {:d}'.format(ax.index))
