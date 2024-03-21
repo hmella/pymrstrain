@@ -4,9 +4,6 @@
 #include <pybind11/stl.h>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
-#include <math.h>
-#include <unsupported/Eigen/MatrixFunctions>
-
 
 using namespace Eigen;
 namespace py = pybind11;
@@ -61,7 +58,7 @@ ComplexTensor FlowImage3D(
 
     // Kspace, Fourier exponential, and off-resonance phase
     MatrixXcf Mxy = 1.0e+3 * nb_spins * (i1 * PI / VENC * v).array().exp();
-    MatrixXcf fe(nb_spins,1);
+    VectorXcf fe(nb_spins);
     VectorXf  phi_off(nb_spins);
 
     // Apply slice profile to magnetization
@@ -73,7 +70,7 @@ ComplexTensor FlowImage3D(
     ComplexTensor kspace(nb_meas, nb_lines, nb_kz, 3);
 
     // T2* decay
-    const MatrixXf T2_decay = (-t / T2).exp();
+    const MatrixXf T2_decay = (-t / T2).array().exp();
 
     // Iterate over kspace measurements/kspace points
     for (uint j = 0; j < nb_lines; ++j){
@@ -93,7 +90,7 @@ ComplexTensor FlowImage3D(
         for (uint k = 0; k < nb_kz; ++k){
 
           // Update Fourier exponential
-          fe(indexing::all,0) = (- i1 * (r.col(0)*kx(i,j,k) + r.col(1)*ky(i,j,k) + r.col(2)*kz(i,j,k) ) - i1 * phi_off).array().exp();
+          fe(indexing::all,0) = (- i1 * (r.col(0)*kx(i,j,k) + r.col(1)*ky(i,j,k) + r.col(2)*kz(i,j,k) + phi_off)).array().exp();
 
           // Calculate k-space values, add T2* decay, and assign value to output array
           for (uint l = 0; l < 3; ++l){
