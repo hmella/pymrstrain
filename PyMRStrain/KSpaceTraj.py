@@ -186,7 +186,7 @@ class Trajectory:
       self.lines_per_shot = lines_per_shot
       self.pxsz = FOV/res
       self.kspace_bw = 1.0/self.pxsz
-      self.kspace_spa = self.kspace_bw/np.array([oversampling*res[0]-1, res[1]-1, res[2]-1])
+      self.kspace_spa = self.kspace_bw/np.array([oversampling*res[0]-1, res[1]-1, res[2]])
       self.ro_samples = oversampling*res[0] # number of readout samples
       self.slices = res[2]               # number of slices
       self.VENC = VENC  # [m/s]
@@ -282,9 +282,9 @@ class Cartesian(Trajectory):
       kx = np.linspace(-0.5*self.kspace_bw[0], 0.5*self.kspace_bw[0], self.ro_samples)
       ky = 0.5*self.kspace_bw[1]*np.ones(kx.shape)
       kz = np.linspace(-0.5*self.kspace_bw[2], 0.5*self.kspace_bw[2], self.slices)
-      kspace = (np.zeros([self.ro_samples, self.ph_samples, self.slices]),
-                np.zeros([self.ro_samples, self.ph_samples, self.slices]),
-                np.zeros([self.ro_samples, self.ph_samples, self.slices]))
+      kspace = (np.zeros([self.ro_samples, self.ph_samples, self.slices],dtype=np.float32),
+                np.zeros([self.ro_samples, self.ph_samples, self.slices],dtype=np.float32),
+                np.zeros([self.ro_samples, self.ph_samples, self.slices],dtype=np.float32))
 
       # Fix kspace shifts
       if (self.ro_samples/self.oversampling) % 2 == 0:
@@ -295,7 +295,7 @@ class Cartesian(Trajectory):
         kz = kz - 0.5*self.kspace_spa[2]
 
       # kspace times and locations
-      t = np.zeros([self.ro_samples, self.ph_samples])
+      t = np.zeros([self.ro_samples, self.ph_samples], dtype=np.float32)
       for ph in range(self.ph_samples):
 
         # Evaluate readout direction

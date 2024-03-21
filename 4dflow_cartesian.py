@@ -13,6 +13,17 @@ from PyMRStrain.Math import itok, ktoi, Rx, Ry, Rz
 from PyMRStrain.MPIUtilities import MPI_comm, MPI_rank, gather_image
 
 
+def FlowKspace(M, traj, velocity, nodes, gamma_x_delta_B0, T2star, VENC, profile):
+  # Instead of rotating the kspace to obtain the desired MPS orientation, rotate tha phantom
+  nodes = (traj.MPS_ori.T@nodes.T).T        # mesh rotation
+  velocity = (traj.MPS_ori.T@velocity.T).T  # velocity rotation
+
+  # Generate kspace locations
+  kspace = FlowImage3D(MPI_rank, M, traj.points, traj.times, velocity, nodes, gamma_x_delta_B0, T2star, VENC, profile)
+
+  return kspace
+
+
 if __name__ == '__main__':
 
   # Preview partial results
@@ -34,19 +45,11 @@ if __name__ == '__main__':
   G_max = pars["Hardware"]["G_max"]
   r_BW  = pars["Hardware"]["r_BW"]
 
-  # Formatting parameters
-  tx = pars["Formatting"]["tx"]
-  ty = pars["Formatting"]["ty"]
-  tz = pars["Formatting"]["tz"]
-
-  # Kspace parameters in the z-direction
-  BW_kz    = 1.0/(FOV[2]/RES[2])
-  delta_kz = BW_kz/(RES[2]-1)
-  kz = np.linspace(-0.5*BW_kz, 0.5*BW_kz, RES[2])
-
-  # Fix kspace shifts
-  if RES[2] % 2 == 0:
-    kz = kz - 0.5*delta_kz
+  # Imaging orientation paramters
+  M = pars["Formatting"]["M"]
+  P = pars["Formatting"]["P"]
+  S = pars["Formatting"]["S"]
+  MPS_ori = np.array([M,P,S])
 
   # Simulation type
   simtypes = ['Linear','Non-linear']
@@ -76,7 +79,6 @@ if __name__ == '__main__':
           nodes[:,0] -= 0.5*(nodes[:,0].max()+nodes[:,0].min()) # x-translation
           nodes[:,1] -= 0.5*(nodes[:,1].max()+nodes[:,1].min()) # y-translation
           nodes[:,2] -= 0.5*(nodes[:,2].max()+nodes[:,2].min()) # z-translation
-          nodes = (Rz(tz)@Ry(ty)@Rx(tx)@nodes.T).T  # mesh rotation
           nodes /= 100  # mesh scaling
           meshio.write_points_cells("debug/mesh.vtk", nodes, [("tetra", elems)])
           Nfr = reader.num_steps # number of frames
@@ -87,6 +89,21 @@ if __name__ == '__main__':
 
           # Assemble mass matrix for integrals (just once)
           M = massAssemble(elems,nodes)
+
+          # Slice profile
+          gammabar = 1.0e+6*42.58 # Hz/T 
+          G_z = 1.0e-3*30.0   # [T/m]
+          delta_z = 0.002  # [m]
+          delta_g = gammabar*G_z*delta_z
+          z0 = 0.0
+          profile = (np.abs(nodes[:,1] - z0) <= delta_z).astype(np.float32)
+
+          # Fiel inhomogeneity
+          delta_B0 = nodes[:,0] + nodes [:,1] + nodes[:,2]  # spatial distribution
+          delta_B0 /= np.abs(delta_B0).max()  # normalization
+          delta_B0 *= 1.5*1e-6  # scaling (1 ppm of 1.5T)        
+          delta_B0 *= 1.0  # additional scaling (just for testing)
+          gamma_x_delta_B0 = 2*np.pi*gammabar*delta_B0
 
           # Iterate over vencs
           for VENC in VENCs:
@@ -101,13 +118,16 @@ if __name__ == '__main__':
 
             # Generate kspace trajectory
             lps = pars[seq]["LinesPerShot"]
-            traj = Cartesian(FOV=FOV[:-1], res=RES[:-1], oversampling=OFAC, lines_per_shot=lps, VENC=VENC, receiver_bw=r_BW, Gr_max=G_max, Gr_sr=G_sr, plot_seq=False)
+            traj = Cartesian(FOV=FOV, res=RES, oversampling=OFAC, lines_per_shot=lps, VENC=VENC, MPS_ori=MPS_ori, receiver_bw=r_BW, Gr_max=G_max, Gr_sr=G_sr, plot_seq=False)
 
             # Print echo time
             if MPI_rank==0: print("Echo time = {:.1f} ms".format(1000.0*traj.echo_time))
 
             # kspace array
-            K = np.zeros([traj.ro_samples, traj.ph_samples, len(kz), 3, Nfr], dtype=complex)
+            ro_samples = traj.ro_samples
+            ph_samples = traj.ph_samples
+            slices = traj.slices
+            K = np.zeros([ro_samples, ph_samples, slices, 3, Nfr], dtype=np.complex64)
 
             # List to store how much is taking to generate one volume
             times = []
@@ -119,16 +139,13 @@ if __name__ == '__main__':
               d, point_data, cell_data = reader.read_data(fr)
               velocity = point_data['velocity']
 
-              # Rotate velocity
-              velocity = (Rz(tz)@Ry(ty)@Rx(tx)@velocity.T).T
-
               # Convert everything to meters
               velocity /= 100
 
               # Generate 4D flow image
               if MPI_rank == 0: print("Generating frame {:d}".format(fr))
               t0 = time.time()
-              K[traj.local_idx,:,:,:,fr] = FlowImage3D(MPI_rank, M, traj.points, kz, traj.times, velocity, nodes, T2star, VENC)
+              K[traj.local_idx,:,:,:,fr] = FlowKspace(M, traj, velocity, nodes, gamma_x_delta_B0, T2star, VENC, profile)
               t1 = time.time()
               times.append(t1-t0)
 

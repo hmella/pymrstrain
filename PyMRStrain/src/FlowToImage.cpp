@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <math.h>
+#include <unsupported/Eigen/MatrixFunctions>
 
 
 using namespace Eigen;
@@ -12,7 +13,7 @@ namespace py = pybind11;
 
 // Definition of PI and complex unit
 const float PI = M_PI;
-const std::complex<float> i1(0, 1);
+const std::complex<float> i1(0.0f, 1.0f);
 
 // Definition of magnetization datatype for 4d flow expression
 typedef std::tuple<MatrixXcf, MatrixXcf> magnetizations;
@@ -37,12 +38,12 @@ ComplexTensor FlowImage3D(
   const VectorXf &profile   // Slice profile
   ){
 
-    // Number of kspace lines/spokes/interleaves
-    const uint nb_lines = kloc[0].dimension(0);
-    
     // Number of measurements in the readout direction
-    const uint nb_meas = kloc[0].dimension(1);
+    const uint nb_meas = kloc[0].dimension(0);
 
+    // Number of kspace lines/spokes/interleaves
+    const uint nb_lines = kloc[0].dimension(1);
+    
    // Number of measurements in the kz direction
     const uint nb_kz = kloc[0].dimension(2);
 
@@ -60,8 +61,7 @@ ComplexTensor FlowImage3D(
 
     // Kspace, Fourier exponential, and off-resonance phase
     MatrixXcf Mxy = 1.0e+3 * nb_spins * (i1 * PI / VENC * v).array().exp();
-    VectorXf  fe_xy(nb_spins);
-    VectorXcf fe(nb_spins);
+    MatrixXcf fe(nb_spins,1);
     VectorXf  phi_off(nb_spins);
 
     // Apply slice profile to magnetization
@@ -73,7 +73,7 @@ ComplexTensor FlowImage3D(
     ComplexTensor kspace(nb_meas, nb_lines, nb_kz, 3);
 
     // T2* decay
-    const MatrixXf T2_decay = (-t / T2).array().exp();
+    const MatrixXf T2_decay = (-t / T2).exp();
 
     // Iterate over kspace measurements/kspace points
     for (uint j = 0; j < nb_lines; ++j){
@@ -90,13 +90,10 @@ ComplexTensor FlowImage3D(
         // Update off-resonance phase
         phi_off.noalias() = gamma_x_delta_B0*t(i,j);
 
-        // Fourier exponential
-        fe_xy.noalias() = -(r.col(0) * kx(i,j,0) + r.col(1) * ky(i,j,0) + phi_off);
-
         for (uint k = 0; k < nb_kz; ++k){
 
           // Update Fourier exponential
-          fe(indexing::all, 0) = (i1 * (fe_xy - r.col(2) * kz(i,j,k))).array().exp();
+          fe(indexing::all,0) = (- i1 * (r.col(0)*kx(i,j,k) + r.col(1)*ky(i,j,k) + r.col(2)*kz(i,j,k) ) - i1 * phi_off).array().exp();
 
           // Calculate k-space values, add T2* decay, and assign value to output array
           for (uint l = 0; l < 3; ++l){

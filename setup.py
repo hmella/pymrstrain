@@ -142,12 +142,14 @@ class BuildExt(build_ext):
                 opts.append('-Ofast')
             if has_flag(self.compiler, '-march=native'):
                 opts.append('-march=native')
-            # if has_flag(self.compiler, '-mfpmath=sse'):
-            #     opts.append('-mfpmath=sse')
             if has_flag(self.compiler, '-mavx2'):
                 opts.append('-mavx2')
-            if has_flag(self.compiler, '-mfma'):
-                opts.append('-mfma')
+            if has_flag(self.compiler, '-fno-math-errno'):
+                opts.append('-fno-math-errno')
+            if has_flag(self.compiler, '-DNDEBUG'):
+                opts.append('-DNDEBUG')
+            if has_flag(self.compiler, '-mfpmath=sse'):
+                opts.append('-mfpmath=sse')
             # if has_flag(self.compiler, '-fopenmp'):
             #     opts.append('-fopenmp')
         elif ct == 'msvc':

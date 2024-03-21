@@ -1,6 +1,6 @@
 # Imaging parameters
 Imaging:
-  RES: [66, 55, 120]
+  RES: [30, 30, 20]
   FOV: [0.132, 0.11, 0.24] # in meters
   T2star: 254.0            # in milliseconds
   VENC: [1.5, 2.0, 2.5]    # in meters per second
@@ -13,11 +13,17 @@ Hardware:
   G_max: 40.0    # in mT/m
   r_BW: 153.0e+3 # in Hz (equivalent to 450 Hz/pixel)
 
-# Data formatting
+# Imaging orientation (make sure about orthogonality)
 Formatting:
-  tx: 0.0
-  ty: 0.0
-  tz: -1.57079633 # pi/2
+  M: [1.0, 0.0, 0.0]
+  P: [0.0, 0.0, 1.0]
+  S: [0.0, 1.0, 0.0]
+
+# # Data formatting
+# Formatting:
+#   tx: 0.0
+#   ty: 0.0
+#   tz: -1.57079633 # pi/2
 
 # EPI parameters
 EPI:

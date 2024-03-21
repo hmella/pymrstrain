@@ -27,7 +27,9 @@ def scatterKspace(kspace, times):
 
   # Scatter local arrays to other cores
   local_idx   = MPI_comm.scatter(local_idx, root=0)[0]
-  local_kspace = (kspace[0][local_idx,...], kspace[1][local_idx,...])
+  local_kspace = (kspace[0][local_idx,...],
+                  kspace[1][local_idx,...],
+                  kspace[2][local_idx,...])
   local_times  = times[local_idx,...]
 
   print("Number of readout points in process {:d}: {:d}".format(MPI_rank, len(local_idx
