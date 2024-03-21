@@ -280,7 +280,7 @@ class Cartesian(Trajectory):
 
       # kspace locations
       kx = np.linspace(-0.5*self.kspace_bw[0], 0.5*self.kspace_bw[0], self.ro_samples)
-      ky = 0.5*self.kspace_bw[1]*np.ones(kx.shape)
+      ky = -0.5*self.kspace_bw[1]*np.ones(kx.shape)
       kz = np.linspace(-0.5*self.kspace_bw[2], 0.5*self.kspace_bw[2], self.slices)
       kspace = (np.zeros([self.ro_samples, self.ph_samples, self.slices],dtype=np.float32),
                 np.zeros([self.ro_samples, self.ph_samples, self.slices],dtype=np.float32),
@@ -304,7 +304,7 @@ class Cartesian(Trajectory):
 
         # Fill locations
         kspace[0][::ro,ph,:] = np.tile(kx[:,np.newaxis], [1, self.slices])
-        kspace[1][::ro,ph,:] = np.tile(ky[:,np.newaxis] - self.kspace_spa[1]*ph, [1, self.slices])
+        kspace[1][::ro,ph,:] = np.tile(ky[:,np.newaxis] + self.kspace_spa[1]*ph, [1, self.slices])
 
         # Update timings
         if ph % self.lines_per_shot == 0:
@@ -314,6 +314,8 @@ class Cartesian(Trajectory):
 
         # Reverse readout
         ro = -ro
+
+      print(kspace[1][0,:,0,...])
 
       # Fill kz coordinates
       for s in range(self.slices):
