@@ -172,7 +172,7 @@ class Gradient:
 
 # Generic tracjectory
 class Trajectory:
-  def __init__(self, FOV=np.array([0.3, 0.3, 0.08]), res=np.array([100, 100, 1]), oversampling=2, Gr_max=30, Gr_sr=195, lines_per_shot=7, gammabar=42.58, VENC=None, receiver_bw=128.0e+3, plot_seq=False, MPS_ori=np.eye(3)):
+  def __init__(self, FOV=np.array([0.3, 0.3, 0.08]), res=np.array([100, 100, 1]), oversampling=2, Gr_max=30, Gr_sr=195, lines_per_shot=7, gammabar=42.58, VENC=None, receiver_bw=128.0e+3, plot_seq=False, MPS_ori=np.eye(3), LOC=0.0):
       self.FOV = FOV
       self.res = res
       self.oversampling = oversampling
@@ -186,13 +186,17 @@ class Trajectory:
       self.lines_per_shot = lines_per_shot
       self.pxsz = FOV/res
       self.kspace_bw = 1.0/self.pxsz
-      self.kspace_spa = self.kspace_bw/np.array([oversampling*res[0]-1, res[1]-1, res[2]])
+      if res[2] == 1:
+        self.kspace_spa = self.kspace_bw/np.array([self.oversampling*self.res[0]-1, self.res[1]-1, self.res[2]])
+      else:
+        self.kspace_spa = self.kspace_bw/np.array([self.oversampling*self.res[0]-1, self.res[1]-1, self.res[2]-1])        
       self.ro_samples = oversampling*res[0] # number of readout samples
-      self.slices = res[2]               # number of slices
+      self.slices = res[2]                  # number of slices
       self.VENC = VENC  # [m/s]
       self.plot_seq = plot_seq
       self.receiver_bw = receiver_bw          # [Hz]
       self.MPS_ori = MPS_ori  # orientation
+      self.LOC = LOC          # location
 
   def check_ph_enc_lines(self, ph_samples):
     ''' Verify if the number of lines in the phase encoding direction
@@ -282,7 +286,8 @@ class Cartesian(Trajectory):
       kx = np.linspace(-0.5*self.kspace_bw[0], 0.5*self.kspace_bw[0], self.ro_samples)
       ky = -0.5*self.kspace_bw[1]*np.ones(kx.shape)
       kz = np.linspace(-0.5*self.kspace_bw[2], 0.5*self.kspace_bw[2], self.slices)
-      kspace = (np.zeros([self.ro_samples, self.ph_samples, self.slices],dtype=np.float32),
+      kspace = (np.zeros([self.ro_samples, self.ph_samples, self.slices],     
+                dtype=np.float32),
                 np.zeros([self.ro_samples, self.ph_samples, self.slices],dtype=np.float32),
                 np.zeros([self.ro_samples, self.ph_samples, self.slices],dtype=np.float32))
 
@@ -291,8 +296,10 @@ class Cartesian(Trajectory):
         kx = kx - 0.5*self.kspace_spa[0]
       if self.ph_samples % 2 == 0:
         ky = ky - 0.5*self.kspace_spa[1]
-      if self.slices % 2 == 0:
+      if (self.slices % 2 == 0):
         kz = kz - 0.5*self.kspace_spa[2]
+      if (self.slices == 1):
+        kz = kz + 0.5*self.kspace_spa[2]
 
       # kspace times and locations
       t = np.zeros([self.ro_samples, self.ph_samples], dtype=np.float32)

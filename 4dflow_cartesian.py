@@ -46,9 +46,9 @@ if __name__ == '__main__':
   r_BW  = pars["Hardware"]["r_BW"]
 
   # Imaging orientation paramters
-  M = pars["Formatting"]["M"]
-  P = pars["Formatting"]["P"]
-  S = pars["Formatting"]["S"]
+  M_ori = pars["Formatting"]["M_ORI"]
+  P_ori = pars["Formatting"]["P_ORI"]
+  S_ori = pars["Formatting"]["S_ORI"]
   MPS_ori = np.array([M,P,S])
 
   # Simulation type
