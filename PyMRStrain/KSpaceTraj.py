@@ -315,8 +315,6 @@ class Cartesian(Trajectory):
         # Reverse readout
         ro = -ro
 
-      print(kspace[1][0,:,0,...])
-
       # Fill kz coordinates
       for s in range(self.slices):
         kspace[2][:,:,s] = kz[s]
