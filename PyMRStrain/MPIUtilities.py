@@ -1,7 +1,6 @@
 import numpy as np
 from mpi4py import MPI
 
-
 # MPI
 MPI_comm = MPI.COMM_WORLD
 MPI_size = MPI_comm.Get_size()
