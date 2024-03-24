@@ -11,7 +11,7 @@ if __name__ == '__main__':
   # Import generated data
   seq  = 'FFE'
   VENC = 150
-  K = np.load('MRImages/Non-linear/HCR60/{:s}_V{:d}.npy'.format(seq, VENC))
+  # K = np.load('MRImages/Non-linear/HCR60/{:s}_V{:d}.npy'.format(seq, VENC))
 
   # Fix the direction of kspace lines measured in the opposite direction
   if seq == 'EPI':
@@ -24,23 +24,21 @@ if __name__ == '__main__':
   h_pha  = Tukey_filter(K.shape[1], width=0.9, lift=0.3)
   h = np.outer(h_meas, h_pha)
   H = np.tile(h[:,:,np.newaxis, np.newaxis, np.newaxis], (1, 1, K.shape[2], K.shape[3], K.shape[4]))
-  K_fil = K#H*K
+  K_fil = H*K
 
   # Apply the inverse Fourier transform to obtain the image
-  I = ktoi(K_fil[::2,::-1,...],[0,1,2])
+  I = ktoi(K_fil[::2,...],[0,1,2])
 
   # Get mask
   mask = I > 0.1
 
   # Add complex noise 
-  # I = add_cpx_noise(I, relative_std=0.02, mask=1)
+  I = add_cpx_noise(I, relative_std=0.02, mask=1)
 
   # Show figure
   for fr in range(K.shape[-1]):
     for i in [2]:
-      # M = np.transpose(np.abs(I[:,:,:,i,fr]), (0,2,1))
-      # P = np.transpose(np.angle(I[:,:,:,i,fr]), (0,2,1))
-      M = np.transpose(np.abs(I[:,:,:,i,fr]), (0,1,2))
-      P = np.transpose(np.angle(I[:,:,:,i,fr]), (0,1,2))
+      M = np.abs(I[:,:,:,i,fr])
+      P = np.angle(I[:,:,:,i,fr])
       multi_slice_viewer([M, P])
       plt.show()
