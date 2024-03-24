@@ -1,8 +1,11 @@
 import matplotlib.pyplot as plt
+import meshio
 import numpy as np
-from PyMRStrain.IO import write_vtk
-from PyMRStrain.Spins import Function
 from scipy.ndimage.filters import gaussian_filter
+
+from PyMRStrain.IO import write_vtk
+from PyMRStrain.MPIUtilities import MPI_rank
+from PyMRStrain.Spins import Function
 
 
 # Base class for phantoms
@@ -198,3 +201,68 @@ class Phantom(PhantomBase):
   def velocity(self, i):
     self.get_data(i)
     return self.u, self.v
+
+
+class femPhantom(object):
+  def __init__(self, path='', scale_factor=1.0, vel_label='velocity', accel_label='acceleration'):
+    self.path = path
+    self.scale_factor = scale_factor
+    self.vel_label = vel_label
+    self.accel_label = accel_label
+    self.mesh, self.reader, self.Nfr = self._prepare_reader()
+    self.bbox = self.bounding_box()
+    self.velocity = None
+    self.acceleration = None
+
+  def _prepare_reader(self):
+    try:
+      # Define reader from time series to import data
+      reader = meshio.xdmf.TimeSeriesReader(self.path)
+
+      # Import mesh
+      nodes, elems = reader.read_points_cells()
+      elems = elems[0].data
+
+      # Scale mesh
+      nodes *= self.scale_factor
+
+      # Number of timesteps
+      Nfr = reader.num_steps
+
+    except Exception as e: 
+      print(e)
+      # Import mesh
+      mesh = meshio.read(self.path)
+      nodes = mesh.points
+      elems = mesh.cells[0].data
+      reader = None
+      print(mesh.cells)
+
+      # Scale mesh
+      nodes *= self.scale_factor
+      print(nodes)
+
+      # Number of timesteps
+      Nfr = 1
+
+    return {'nodes': nodes, 'elems': elems}, reader, Nfr
+
+  def bounding_box(self):
+    ''' Calculate bounding box of the FEM geometry '''
+    bmin = np.min(self.mesh['nodes'], axis=0)
+    bmax = np.max(self.mesh['nodes'], axis=0)
+    if MPI_rank == 0:
+      print('Bounding box: ({:f},{:f},{:f}), ({:f},{:f},{:f})'.format(bmin[0],bmin[1],bmin[2],bmax[0],bmax[1],bmax[2]))
+    return (bmin, bmax)
+
+  def read_data(self, fr):
+    ''' Read data at frame fr '''
+    # Velocity
+    d, point_data, cell_data = self.reader.read_data(fr)
+    self.velocity = self.scale_factor*point_data[self.vel_label]
+
+    # Acceleration
+    try:
+      self.acceleration = self.scale_factor**2*point_data[self.accel_label]
+    except Exception as e:
+      self.acceleration = None
