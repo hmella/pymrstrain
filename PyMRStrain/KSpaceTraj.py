@@ -291,11 +291,15 @@ class Cartesian(Trajectory):
                 np.zeros([self.ro_samples, self.ph_samples, self.slices],dtype=np.float32),
                 np.zeros([self.ro_samples, self.ph_samples, self.slices],dtype=np.float32))
 
-      # Fix kspace shifts
-      if (self.ro_samples/self.oversampling) % 2 == 0:
+      # Fix kx kspace shift
+      if (self.ro_samples/self.oversampling) % 2 == 0 :
         kx = kx - 0.5*self.kspace_spa[0]
+      else:
+        kx = kx + 0.5*self.kspace_spa[0]
+      # Fix ky kspace shift
       if self.ph_samples % 2 == 0:
         ky = ky - 0.5*self.kspace_spa[1]
+      # Fix kz kspace shift
       if (self.slices % 2 == 0):
         kz = kz - 0.5*self.kspace_spa[2]
       if (self.slices == 1):
