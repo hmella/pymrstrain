@@ -13,6 +13,8 @@ def multi_slice_viewer(volumes,caxis=None):
     remove_keymap_conflicts({'j', 'k'})
     volumes = [np.transpose(volume, (1,0,2)) for volume in volumes]
     fig, ax = plt.subplots(1, len(volumes))
+    if len(volumes) == 1:
+      ax = [ax,None]
     for (i, volume) in enumerate(volumes):
       ax[i].volume = volume
       ax[i].index = 0
