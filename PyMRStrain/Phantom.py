@@ -203,16 +203,18 @@ class Phantom(PhantomBase):
     return self.u, self.v
 
 
-class femPhantom(object):
-  def __init__(self, path='', scale_factor=1.0, vel_label='velocity', accel_label='acceleration'):
+class femPhantom:
+  def __init__(self, path='', scale_factor=1.0, vel_label='velocity', accel_label='acceleration', press_label='pressure'):
     self.path = path
     self.scale_factor = scale_factor
     self.vel_label = vel_label
     self.accel_label = accel_label
+    self.press_label = press_label
     self.mesh, self.reader, self.Nfr = self._prepare_reader()
     self.bbox = self.bounding_box()
     self.velocity = None
     self.acceleration = None
+    self.pressure = None
 
   def _prepare_reader(self):
     try:
@@ -220,8 +222,8 @@ class femPhantom(object):
       reader = meshio.xdmf.TimeSeriesReader(self.path)
 
       # Import mesh
-      nodes, elems = reader.read_points_cells()
-      elems = elems[0].data
+      nodes, all_elems = reader.read_points_cells()
+      elems = all_elems[0].data
 
       # Scale mesh
       nodes *= self.scale_factor
@@ -245,7 +247,7 @@ class femPhantom(object):
       # Number of timesteps
       Nfr = 1
 
-    return {'nodes': nodes, 'elems': elems}, reader, Nfr
+    return {'nodes': nodes, 'elems': elems, 'all_elems': all_elems}, reader, Nfr
 
   def bounding_box(self):
     ''' Calculate bounding box of the FEM geometry '''
@@ -266,3 +268,9 @@ class femPhantom(object):
       self.acceleration = self.scale_factor**2*point_data[self.accel_label]
     except Exception as e:
       self.acceleration = None
+
+    # Pressure
+    try:
+      self.pressure = point_data[self.press_label]
+    except Exception as e:
+      self.pressure = None
