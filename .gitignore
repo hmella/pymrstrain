@@ -7,12 +7,12 @@ build/
 dist/
 tmp/
 .vscode/
-PyMRStrain.egg-info/
+FEelMRI.egg-info/
 *.png
 *.npy
 *.pkl
 *.msh
-PyMRStrain/__pycache__
+FEelMRI/__pycache__
 *log*
 MRImages/
 animation/
